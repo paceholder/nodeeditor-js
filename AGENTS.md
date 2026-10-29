@@ -37,8 +37,10 @@ addressing, and a model base class every host must inherit.
 ```bash
 npm install
 npm run build        # tsup → dist/{core,view,react}/index.js + .d.ts (ESM only)
-npm run typecheck    # whole project + core-only pass with no DOM lib
-npm test             # vitest run
+npm run typecheck    # whole project + core-only pass with no DOM lib + examples
+npm test             # vitest, Node project (headless tests)
+npm run test:browser # vitest browser mode in the installed Google Chrome (*.browser.test.ts)
+npm run demo         # Vite dev server for examples/plain-js with live reload
 npx vitest run src/core/index.test.ts   # single file
 npx vitest run -t "pattern"             # by test name
 npm run lint         # biome check

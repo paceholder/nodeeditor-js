@@ -15,6 +15,10 @@
       "types": "./dist/view/index.d.ts",
       "import": "./dist/view/index.js"
     },
+    "./view/advanced": {
+      "types": "./dist/view/advanced.d.ts",
+      "import": "./dist/view/advanced.js"
+    },
     "./react": {
       "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.js"
@@ -29,11 +33,15 @@
   },
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit",
-    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit && tsc -p tsconfig.examples.json --noEmit",
+    "test": "vitest run --project node",
     "test:watch": "vitest",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "test:browser": "vitest run --project browser",
+    "demo": "vite --config examples/plain-js/vite.config.ts",
+    "demo:build": "vite build --config examples/plain-js/vite.config.ts",
+    "demo:preview": "vite preview --config examples/plain-js/vite.config.ts"
   },
   "peerDependencies": {
     "react": ">=19",
@@ -51,10 +59,13 @@
     "@biomejs/biome": "^2.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitest/browser-playwright": "^5.0.5",
+    "playwright": "^1.64.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tsup": "^9.0.0",
     "typescript": "^6.0.3",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
 }

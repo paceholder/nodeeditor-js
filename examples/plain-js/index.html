@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>nodeeditor-js plain demo</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1e2024; }
+      #editor { position: fixed; inset: 0; }
+      #hint {
+        position: fixed; left: 12px; top: 10px; margin: 0;
+        font: 12px/1.5 system-ui, sans-serif; color: #aeb6c4; pointer-events: none;
+      }
+      #hint kbd { color: #e6e9ef; }
+    </style>
+  </head>
+  <body>
+    <div id="editor"></div>
+    <p id="hint">
+      Drag to pan, wheel to zoom. Edit the model:
+      <kbd>M</kbd> move pump, <kbd>E</kbd> toggle valve error,
+      <kbd>Z</kbd> undo, <kbd>Y</kbd> redo.
+    </p>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

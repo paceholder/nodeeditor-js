@@ -1,4 +1,3 @@
-/// <reference types="node" />
 /**
  * Import-direction check (REA-02, REN-02, PKG-03): parses every import in `src` and fails
  * on an edge that breaks the layer order below, on a runtime import cycle between files,
@@ -25,7 +24,13 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "core/io", rank: 3, path: "src/core/io/" },
   { layer: "core/facade", rank: 4, path: "src/core/graph-model.ts" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
+  { layer: "view/platform", rank: 5, path: "src/view/platform/" },
+  { layer: "view/render", rank: 6, path: "src/view/render/" },
+  { layer: "view/interact", rank: 7, path: "src/view/interact/" },
+  { layer: "view/mount", rank: 8, path: "src/view/view-types.ts" },
+  { layer: "view/mount", rank: 8, path: "src/view/mount-view.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
+  { layer: "view/mount", rank: 8, path: "src/view/advanced.ts" },
   { layer: "react", rank: 9, path: "src/react/" },
 ];
 
@@ -37,11 +42,13 @@ const CORE_ENTRY = "src/core/index.ts";
  * from anywhere; in exchange no library file may import them.
  */
 const TEST_SUPPORT: readonly RegExp[] = [
+  /\/test-support\.ts$/, // view test hosts
   /fixtures[^/]*\.ts$/, // model and scene fixtures
   /\/test-helpers\.ts$/, // model record builders
   /\/test-kit\.ts$/, // command and snapshot test kits
   /\/test-setup\.ts$/, // patch test setup
   /\/test-utils\.ts$/, // geometry seeded RNG
+  /\/browser-support\.ts$/, // browser test hosts and frame waits
 ];
 
 interface Edge {

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "paths": {
+      "nodeeditor-js": ["./src/core/index.ts"],
+      "nodeeditor-js/view": ["./src/view/index.ts"],
+      "nodeeditor-js/view/advanced": ["./src/view/advanced.ts"]
+    }
+  },
+  "include": ["examples"],
+  // Vite configs run in Node; @types/node is not a dependency.
+  "exclude": ["examples/**/vite.config.ts"]
+}
