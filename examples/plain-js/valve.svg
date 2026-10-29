@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="50" viewBox="0 0 80 50" fill="none" stroke="#9fb4cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <title>Valve symbol</title>
+  <line x1="0" y1="25" x2="12" y2="25"/>
+  <line x1="68" y1="25" x2="80" y2="25"/>
+  <path d="M12 8 L40 25 L12 42 Z M68 8 L40 25 L68 42 Z" fill="#2f3540"/>
+  <line x1="40" y1="25" x2="40" y2="8"/>
+  <line x1="30" y1="8" x2="50" y2="8"/>
+</svg>
