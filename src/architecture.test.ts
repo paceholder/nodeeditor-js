@@ -18,6 +18,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  * each other.
  */
 const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
+  { layer: "core/base", rank: 0, path: "src/core/base/" },
+  { layer: "core/data", rank: 1, path: "src/core/data/" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
   { layer: "react", rank: 9, path: "src/react/" },
@@ -30,7 +32,9 @@ const CORE_ENTRY = "src/core/index.ts";
  * Test-only support files (fixtures, builders, harnesses). Like tests, they may import
  * from anywhere; in exchange no library file may import them.
  */
-const TEST_SUPPORT: readonly RegExp[] = [];
+const TEST_SUPPORT: readonly RegExp[] = [
+  /\/test-helpers\.ts$/, // model record builders
+];
 
 interface Edge {
   readonly from: string;
