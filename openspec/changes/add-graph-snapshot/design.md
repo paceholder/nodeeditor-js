@@ -265,3 +265,18 @@ Applying the inverse restores the original export exactly.
   keep the "no silent loss" rule. Later slices replace the rejection with real validation.
 - [Export cost for large graphs] → It is linear and payloads are shared by reference.
   `add-perf-baseline` measures export, validate, load, and diff on F-LARGE.
+
+## Implementation notes (alignment with siblings)
+
+- `GraphReader.seqOf`, the `reset` event with `EventHub.emitReset`, and
+  `IdGenerator.observe` exist as designed; they were used, not extended.
+- The facade had no way to replace the store, so a small internal hook was added:
+  `LocalAdapter.replaceDocument(replacement)` (in `edit/adapter/replace-document.ts`), exposed
+  as `GraphModelCore.replaceDocument`. `loadSnapshot` is the public entry point.
+- Not-found uses the existing code `unknown-entity`; new rejection codes were added to
+  `RejectionCode`: `invalid-shape`, `unsupported-format`, `unsupported-version`,
+  `unsupported-section`, `non-json-payload`, `limit-exceeded`.
+- The unresolved-type diagnostic has code `unresolved-type` and a JSON path; it is a
+  separate type from `UnknownTypeDiagnostic` in `data/node-types/`.
+- `loadSnapshot` replaces the model's ID cursor (it does not merge forward), then
+  advances it past every loaded ID.

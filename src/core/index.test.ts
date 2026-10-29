@@ -55,3 +55,19 @@ describe("core entry", () => {
     expect(core.findUnknownTypes(model.reader, registry)).toEqual([]);
   });
 });
+
+describe("SNP-01 / SER-01 snapshot API on the core entry", () => {
+  it("exposes the snapshot functions and constants", () => {
+    expect(core.FORMAT_VERSION).toBe(1);
+    for (const fn of [
+      core.validateSnapshot,
+      core.exportSnapshot,
+      core.loadSnapshot,
+      core.saveDocument,
+      core.loadDocument,
+      core.diffSnapshot,
+    ]) {
+      expect(typeof fn).toBe("function");
+    }
+  });
+});

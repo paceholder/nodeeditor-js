@@ -21,6 +21,7 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "core/base", rank: 0, path: "src/core/base/" },
   { layer: "core/data", rank: 1, path: "src/core/data/" },
   { layer: "core/edit", rank: 2, path: "src/core/edit/" },
+  { layer: "core/io", rank: 3, path: "src/core/io/" },
   { layer: "core/facade", rank: 4, path: "src/core/graph-model.ts" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
