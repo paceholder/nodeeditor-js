@@ -127,6 +127,14 @@ export type {
   Unsubscribe,
 } from "./edit/events/types.js";
 export type { DefaultPolicyOptions } from "./edit/policy/default-policy.js";
+/**
+ * Default connection policy rules, checked in order: both ports exist and differ;
+ * directed ports connect output to input (orientation is normalized), undirected ports
+ * connect to undirected ports, nothing else; type keys are equal; no self-loop unless
+ * `selfLoops`; no duplicate (unordered for undirected pairs) unless `parallel`; each
+ * port's attachment limit is respected (inputs default to 1, others unlimited). Cycles
+ * are allowed.
+ */
 export { createDefaultConnectionPolicy } from "./edit/policy/default-policy.js";
 export type {
   ConnectionPlan,
@@ -142,3 +150,6 @@ export type {
 } from "./graph-model.js";
 export { createGraphModel } from "./graph-model.js";
 export * from "./io/snapshot/index.js";
+export * from "./space/geometry/index.js";
+export * from "./space/scene/index.js";
+export * from "./space/spatial-index/index.js";
