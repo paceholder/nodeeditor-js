@@ -141,5 +141,4 @@ export type {
   SubmitOptions,
 } from "./graph-model.js";
 export { createGraphModel } from "./graph-model.js";
-
-export const FORMAT_VERSION = 1;
+export * from "./io/snapshot/index.js";
