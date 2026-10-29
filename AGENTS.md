@@ -7,7 +7,9 @@ This file provides guidance to coding agents when working with code in this repo
 Early bootstrap, spec-driven with OpenSpec. Requirements live in `openspec/specs/`
 (one capability per directory); planned work lives in `openspec/changes/`. Settled
 product decisions and code conventions are in the `context` of `openspec/config.yaml` —
-read it before designing anything. `docs/archive/` holds the original AI-drafted
+read it before designing anything. `docs/architecture.md` explains the design (with
+QtNodes comparisons) and `docs/guide-*.md` walk through implemented code; update them when
+a change alters what they describe. `docs/archive/` holds the original AI-drafted
 baseline and research notes: historical input only, not authoritative.
 
 Requirements (for example Headless in-memory model or Local undo and redo) are stable — reference them in
