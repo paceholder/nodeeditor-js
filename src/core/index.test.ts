@@ -23,6 +23,15 @@ describe("core entry", () => {
     expect(core.ok(1)).toEqual({ ok: true, value: 1 });
   });
 
+  it("exports the model facade, patch helpers and adapter types", () => {
+    const model = core.createGraphModel();
+    const patch: core.Patch = { ops: [] };
+    const result: core.SubmitResult = model.submit(patch);
+    expect(result.status).toBe("accepted");
+    expect(core.invertPatch(patch)).toEqual({ ops: [] });
+    expect("createLocalAdapter" in core).toBe(false);
+  });
+
   it("keeps the store internal", () => {
     expect("createGraphStore" in core).toBe(false);
     expect("createGraphReader" in core).toBe(false);
@@ -33,5 +42,16 @@ describe("core entry", () => {
     const first = (s: GraphState): NodeRecord | undefined => s.nodes[0];
     expect(typeof read).toBe("function");
     expect(typeof first).toBe("function");
+  });
+
+  it("export commands, registry, policy and capabilities", () => {
+    const registry: core.NodeTypeRegistry = core.createNodeTypeRegistry();
+    const policy: core.ConnectionPolicy = core.createDefaultConnectionPolicy();
+    const model = core.createGraphModel({ registry, connectionPolicy: policy });
+    const command: core.Command = { kind: "undo" };
+    expect(model.can(command).available).toBe(false);
+    expect(core.defaultLimit("input")).toBe(1);
+    expect(typeof core.resolveCapability).toBe("function");
+    expect(core.findUnknownTypes(model.reader, registry)).toEqual([]);
   });
 });

@@ -20,6 +20,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "core/base", rank: 0, path: "src/core/base/" },
   { layer: "core/data", rank: 1, path: "src/core/data/" },
+  { layer: "core/edit", rank: 2, path: "src/core/edit/" },
+  { layer: "core/facade", rank: 4, path: "src/core/graph-model.ts" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
   { layer: "react", rank: 9, path: "src/react/" },
@@ -33,7 +35,10 @@ const CORE_ENTRY = "src/core/index.ts";
  * from anywhere; in exchange no library file may import them.
  */
 const TEST_SUPPORT: readonly RegExp[] = [
+  /fixtures[^/]*\.ts$/, // model and scene fixtures
   /\/test-helpers\.ts$/, // model record builders
+  /\/test-kit\.ts$/, // command and snapshot test kits
+  /\/test-setup\.ts$/, // patch test setup
 ];
 
 interface Edge {
