@@ -1,0 +1,83 @@
+schema: spec-driven
+
+context: |
+  Project: nodeeditor-js — general-purpose node editor library (TypeScript, ESM, MIT).
+  Entry points: core (headless, no DOM/React), view (Canvas2D, browser only after mount),
+  react (provider + hooks, React 19 peer dependency).
+
+  Source of truth: openspec/specs. The archived baseline (docs/archive/node-editor-library-design.md)
+  is historical input only. Requirements (...) are stable; keep them in
+  requirement titles and tests, not in commit messages. docs/spec-coverage.md maps the archive to the specs.
+
+  Neutrality: library files are application-neutral. No product names, customer names,
+  backend specifics, or domain jargon of any particular host application. Example scenarios
+  use generic wording ("physical-system schematic", "image-symbol node", "typed physical domain").
+
+  Settled decisions (2026-10-29 interview):
+  - Rendering: Canvas2D for nodes, ports, connections. Stacked canvases (background, scene,
+    interaction) redrawn only when dirty, coalesced per animation frame. DOM overlay layer only
+    for focused editors, menus, tooltips, and (later) React node bodies.
+  - Hit-testing is geometric (shape math + spatial index) in core, never canvas pixel lookups.
+    Spatial index is in-house behind an interface (no rbush dependency).
+  - Node appearance: geometry (outline, hit shape, port anchors/normals) and painter function
+    are separate registrations. Presets: image-symbol node (SVG/raster picture, ports anywhere
+    on the outline, rotate/mirror) as primary; card node as secondary.
+  - Assets: view-layer asset service; SVG and raster loaded via host resolver, rasterized into
+    zoom-bucketed ImageBitmap caches with LRU eviction. SVG->Path2D conversion is a later option.
+  - Ports carry a direction field supplied by the model: input | output | undirected. The
+    connection policy (host-replaceable) decides validity; default preset supports directed and
+    undirected same-type connections.
+  - IDs: opaque strings. Pluggable generator; default per-document counter with type prefix
+    (n1, p1, c1) and a persisted high-water mark so deleted IDs are never reused.
+  - Edits: the patch is the core primitive (+add / -remove / ~update with old and new values;
+    inverse patch = undo). Commands are planners that produce patches; convenience methods
+    (model.connect(a, b)) build and apply commands. Failures return Result objects
+    ({ ok: true, ... } | { ok: false, rejection }); exceptions only for programmer misuse.
+  - Read snapshots: deep-readonly TypeScript types; Object.freeze in dev/test builds only.
+  - Model placement: the library always keeps its own read model; authority sits behind an
+    adapter (local adapter accepts synchronously; external adapter accepts later). Pending layer
+    holds optimistic edits; rejection rolls back. Two external modes: snapshot mode (host pushes
+    full snapshots, library diffs them) and revisioned mode (changes@revision + operation IDs).
+  - Collaboration: server-authoritative; the library contains no merge/CRDT logic. Remote edits
+    arrive as external changes; pending local edits re-apply on top. Presence is an overlay hook.
+  - Graph snapshot: one validated plain-object JSON-compatible shape used for snapshot-mode input,
+    clipboard fragments, local save/load (versioned JSON), and test fixtures.
+  - React content inside nodes stays MUST but is scheduled after the symbol renderer
+    meets its budgets; Slice A only reserves the DOM overlay slot.
+  - Trimmed from R1: view aliases dropped; accessibility reduced to keyboard shortcuts for
+    select/move/delete/undo (no keyboard connection chooser, no screen-reader parity);
+    replace-node downgraded to SHOULD; heavy performance process replaced by a repeatable
+    benchmark suite (F-SMALL, F-TYPICAL, F-LARGE, F-LIVE) plus a React Flow comparison.
+    Group collapse stays SHOULD, hierarchy stays MAY.
+  - Kept in R1: composite ports, provided values, identifiable junctions, docking, orthogonal
+    routing, undirected ports.
+  - Support matrix: current and previous stable Chromium, Firefox, Safari; React 19; ES2022;
+    Node 22+.
+  - Tests: Vitest for headless tests; Vitest browser mode (Playwright provider) for real-browser
+    view tests, driving the installed Google Chrome (no bundled browser download); system
+    Safari via safaridriver as a later opt-in. Playwright Test possibly later for example flows.
+  - Demos run under a Vite dev server (dev dependency only) with live reload.
+  - Interaction tools are explicit hand-rolled state machines (discriminated-union states and a
+    pure transition function), no XState.
+
+  Code conventions (AI-legibility):
+  - Small files, 100-300 lines; one node type / tool / painter per file.
+  - Narrow interfaces, exhaustive discriminated unions, no `any` in public or hot paths.
+  - No metaprogramming, no class inheritance hierarchies; composition and registries.
+  - No module-level singletons; every instance owns its state and lifecycle.
+  - Source folders are layers, lowest first. Core: base <- data <- edit <- space / io (siblings)
+    <- graph-model.ts facade. View: platform <- render <- interact <- mount files. A module
+    imports from its own layer or a lower one, never from above; view and react reach core only
+    through src/core/index.ts. src/architecture.test.ts holds the table and enforces it.
+
+rules:
+  specs:
+    - 'Prefix each requirement title with its stable ID, e.g. "### Requirement: Stable identities".'
+    - SHOULD-level requirements append "(SHOULD)" to the title and are not R1 release gates.
+    - Write each requirement in plain English so it stands alone: define terms in the spec and never cite the archived baseline or any document the reader must open.
+  proposal:
+    - List the requirement IDs the change implements or refines.
+    - State what is out of scope for this change.
+  tasks:
+    - Every task names its verification (test file, command, or observable behavior).
+    - Tests reference requirement IDs in describe/it titles.
