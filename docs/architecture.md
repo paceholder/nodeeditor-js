@@ -13,7 +13,7 @@ describes something not implemented yet, it says **(planned)** and names the cha
 ```mermaid
 flowchart TB
   react["<b>nodeeditor-js/react</b><br/>provider, hooks, inspector integration<br/><i>React peer dependency</i>"]
-  view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, tools, overlays<br/><i>browser, only after mountView()</i>"]
+  view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays; tools <b>(planned)</b><br/>building blocks: <b>nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
   core["<b>nodeeditor-js</b> (core)<br/>records, IDs, patches, history, commands,<br/>policy, snapshot, geometry, spatial index<br/><i>headless: runs in Node</i>"]
   react -- depends on --> view
   view -- depends on --> core
@@ -45,7 +45,7 @@ gates, not style preferences:
 | `QGraphicsView`                           | `mountView()`: stacked `<canvas>` layers                          | Drawing thousands of DOM elements is too slow. |
 | `NodeGeometry` / `AbstractNodePainter`    | Separate geometry and painter registrations per node type         | Change the look without touching hit-testing, and vice versa. |
 | `NodeDelegateModelRegistry`               | Node type registry (`createNodeTypeRegistry`)                     | Model-level only: label, size, ports. Looks are registered separately. |
-| `QGraphicsItem::DeviceCoordinateCache`    | Zoom-bucketed `ImageBitmap` cache for SVG/raster symbols **(planned: add-canvas-view-foundation)** | Same idea: rasterize once, copy every frame. |
+| `QGraphicsItem::DeviceCoordinateCache`    | Zoom-bucketed `ImageBitmap` cache for SVG/raster symbols (`createAssetService`) | Same idea: rasterize once, copy every frame. |
 
 ## 3. What the model stores
 
@@ -153,15 +153,19 @@ flowchart LR
     A gap in revisions triggers resynchronization.
 - **Collaboration** is server-authoritative. The library contains no merge or CRDT logic:
   other users' edits arrive as external changes, never enter the local user's undo,
-  and pending local edits are re-applied on top of them. Presence (remote cursors) is
-  drawn through an overlay hook with data the host supplies.
+  and pending local edits are re-applied on top of them. Presence (remote cursors and
+  selections) is drawn on the interaction layer from data the host supplies
+  (`view.setPresence`).
 
 ## 6. How things get drawn
 
-Geometry, picking and the spatial index are implemented in core. The Canvas2D view that
-uses them, with its painters, layers and image cache, is **(planned: add-canvas-view-foundation)**.
+Geometry, picking and the spatial index live in core. The Canvas2D view that uses them,
+with its painters, layers and image cache, is implemented in `src/view`; see
+[guide-view.md](guide-view.md) for a tutorial. `mountView(container, { model, ... })`
+returns a handle; the view builds its own geometry scene over the model, subscribes to
+committed changes, and repaints the layers they dirty.
 
-### Geometry and painters are separate (geometry implemented; painters planned)
+### Geometry and painters are separate
 
 For each node type, two independent registrations:
 
@@ -170,13 +174,17 @@ For each node type, two independent registrations:
   translate) maps them to the world, and painting, picking, and anchors all use that same
   transform (GEO-02a). Rotated symbols can't have ports that are drawn in one place and
   clickable in another.
-- **Painter** (view, **planned**): a function that draws into a Canvas2D context, given the node and
-  its visual state (selected, hovered, level of detail).
+- **Painter** (view): an object with `paint(ctx, input)` that draws into a Canvas2D context
+  already transformed to the node's local space. The input carries the node record, its
+  body bounds, the resolved style, the level-of-detail policy, an asset drawer, and the
+  visual state (selected, hovered, diagnostics). Port glyph painters (keyed by port type
+  key) and connection painters (keyed by connection kind) are separate registries, as is
+  the background slot. An unregistered key falls back to a placeholder, a dot, a plain path.
 
 Two presets ship: an **image-symbol node** (an SVG or raster picture with ports anywhere
 on its outline; the primary preset) and a **card node** (title bar, rows of ports).
 
-### Finding what is under the mouse (implemented in core)
+### Finding what is under the mouse
 
 Picking is pure geometry in core, never "read the pixel under the cursor":
 
@@ -186,31 +194,37 @@ Picking is pure geometry in core, never "read the pixel under the cursor":
    tolerances, so a thin wire stays as easy to hit at 10% zoom as at 400%.
 3. Results come back in a deterministic order (topmost first, ties by sequence).
 
-The same index answers "what is inside the viewport?" for culling.
+The same index answers "what is inside the viewport?" for culling. The view exposes this
+as `view.pick(clientX, clientY)` and `view.clientToWorld(...)`.
 
-### Stacked canvases, redrawn only when dirty **(planned)**
+### Stacked canvases, redrawn only when dirty
 
 ```mermaid
 flowchart TB
-  overlay["DOM overlay (top)<br/>focused editors, menus, tooltips, presence"]
-  interaction["interaction canvas<br/>drag ghosts, marquee, highlights<br/><i>repaints every frame while dragging</i>"]
-  scene["scene canvas<br/>connections + nodes<br/><i>repaints on model edits</i>"]
-  background["background canvas (bottom)<br/>grid<br/><i>repaints on pan/zoom</i>"]
+  overlay["DOM overlay (top)<br/>focused editors, menus, tooltips"]
+  interaction["interaction canvas<br/>drag ghosts, marquee, highlights, presence<br/><i>repaints when invalidated</i>"]
+  scene["scene canvas<br/>connections, nodes, port glyphs<br/><i>repaints on model edits, pan, zoom, theme, assets</i>"]
+  background["background canvas (bottom)<br/>grid<br/><i>repaints on pan, zoom, theme</i>"]
   overlay ~~~ interaction ~~~ scene ~~~ background
 ```
 
 Each layer repaints only when marked dirty, at most once per animation frame. When
-nothing changes, nothing runs: there is no render loop while idle. Dragging a node
-repaints the interaction layer, not the thousands of nodes underneath.
+nothing changes, nothing runs: there is no render loop while idle. A tool preview repaints
+the interaction layer, not the thousands of nodes underneath. Each canvas has a backing
+store of `cssSize × devicePixelRatio`, resized when the container or the pixel ratio
+changes. The scene layer asks the geometry scene for items in the visible rectangle
+(culling), paints connections, nodes and port glyphs in the configured z-order, and then
+always draws selection and diagnostic decorations, whatever a painter did.
 
-### Images **(planned)**
+### Images
 
-SVG symbols are rasterized into `ImageBitmap`s once per zoom bucket (for example 1×, 2×,
-4× the device pixel ratio) and copied each frame. When zoom crosses into a new bucket,
-the nearest cached bitmap is drawn while a sharp one is prepared in the background.
-Least-recently-used bitmaps are evicted to bound memory. Raster images (PNG, WebP) use
+SVG symbols are screened for unsafe content, then rasterized into `ImageBitmap`s once per
+zoom bucket (power-of-two multiples, 1/8× to 16×, of the picture's intrinsic size, chosen
+from zoom × device pixel ratio) and copied each frame. When zoom crosses into a new
+bucket, the nearest cached bitmap is drawn while a sharp one is prepared in the background.
+Least-recently-used bitmaps are evicted under a byte budget. Raster images (PNG, WebP) use
 the same service. The library never fetches anything by itself: the host supplies a
-resolver.
+resolver, and a failed asset shows a placeholder while the node keeps its geometry.
 
 ## 7. Interaction tools **(planned: add-basic-tools)**
 
@@ -272,8 +286,26 @@ src/core/                                                            (nodeeditor
   graph-model.ts                 createGraphModel facade             implemented
   index.ts                       public entry
 src/view/                                                     (nodeeditor-js/view)
-  platform/, render/, interact/  mountView, layers, painters,        planned
-                                 assets, overlays, tools, input
+  platform/   dom/               layer stack, container metrics      implemented
+              frame-scheduler.ts, viewport-state.ts, model-binding.ts,
+              render-stats.ts
+  render/     primitives/        grid, path tracing, placeholder     implemented
+              theme/             theme tokens, style resolution      implemented
+              assets/            asset service, SVG screening,       implemented
+                                 zoom buckets, bitmap cache
+              registries/        painter contracts, registries,      implemented
+                                 fallbacks
+              presets/           image-symbol, card, port glyph and  implemented
+                                 connection painters
+              paint/             background, scene and interaction   implemented
+                                 layers, LOD
+  interact/   overlay/           DOM overlay host, presence          implemented
+              selection/, tools/, input/, commands/                  planned
+                                 selection, tools, DOM input,        (add-basic-tools)
+                                 command registry and keymap
+  view-types.ts, mount-view.ts                                       implemented
+  index.ts                       host API (nodeeditor-js/view)
+  advanced.ts                    building blocks (nodeeditor-js/view/advanced)
 src/react/                       provider and hooks                  planned (Slice B)
 ```
 
@@ -284,5 +316,7 @@ Suggested reading order for the implemented code: `base/result.ts` → `base/ids
 
 To use the library rather than read it, start with
 [guide-using-the-model.md](guide-using-the-model.md): creating a model, editing,
-events, undo, patches, and save/load through the public API. The geometry and snapshot
+events, undo, patches, and save/load through the public API. To put a model on screen, continue with
+[guide-view.md](guide-view.md): mounting a view, geometry and painter registrations,
+assets, themes, overlays, picking and render statistics. The geometry and snapshot
 formats are described in [geometry.md](geometry.md) and [format.md](format.md).

@@ -20,8 +20,8 @@ viewport point where a world point is expected. Persisted values are always worl
 local values, never rounded screen positions [GEO-02].
 
 `viewport = world * zoom + pan` and `device = viewport * dpr`. Page scroll and container
-offsets are the view's job: it hands core viewport-relative points [GEO-03 is completed in
-the canvas view change]. Cursor-anchored zoom is `zoomAt`.
+offsets are the view's job: it hands core viewport-relative points [GEO-03; see
+`clientToWorld` in [guide-view.md](guide-view.md)]. Cursor-anchored zoom is `zoomAt`.
 
 ## One transform convention [GEO-02, GEO-02a]
 

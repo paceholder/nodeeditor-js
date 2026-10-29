@@ -41,6 +41,8 @@ npm run typecheck    # whole project + core-only pass with no DOM lib + examples
 npm test             # vitest, Node project (headless tests)
 npm run test:browser # vitest browser mode in the installed Google Chrome (*.browser.test.ts)
 npm run demo         # Vite dev server for examples/plain-js with live reload
+npm run demo:build   # static production build of the demo
+npm run demo:preview # serve the built demo locally
 npx vitest run src/core/index.test.ts   # single file
 npx vitest run -t "pattern"             # by test name
 npm run lint         # biome check

@@ -1,0 +1,645 @@
+# Guide: rendering a model in the browser
+
+A tutorial for application developers: show a graph model on screen, give node types a
+look, load symbol pictures, theme the result, and read back what is under the pointer.
+Everything here uses two entry points: `nodeeditor-js` for the model, geometry and other
+core names, and `nodeeditor-js/view` for the browser view. Each name has exactly one
+import path (PKG-01). The building blocks the view is assembled from (frame scheduler,
+DOM input, tool router, layer painters, fallback painters) are in
+`nodeeditor-js/view/advanced`; mounting and customizing an editor never needs them. For the model side read [guide-using-the-model.md](guide-using-the-model.md);
+for how the layers fit together read [architecture.md](architecture.md); for the
+coordinate spaces and picking rules read [geometry.md](geometry.md).
+
+If you know QtNodes: `mountView()` plays the role of `QGraphicsView` plus the scene
+setup around it, but the "scene" is not a list of `QGraphicsItem`s. It is a derived
+projection of the model that the view builds and owns. A node painter is the counterpart
+of `QGraphicsItem::paint()` (or QtNodes' `AbstractNodePainter`), and a node geometry is the
+counterpart of `boundingRect()`/`shape()`. Interaction tools (selection, drag, connect) are
+not part of this guide: they arrive with the `add-basic-tools` change **(planned)**. What
+you get today is a correct, fast, themeable *display* with panning, zooming and picking.
+
+## 1. Mounting a view
+
+```ts
+import { createGraphModel } from "nodeeditor-js";
+import { mountView } from "nodeeditor-js/view";
+
+const model = createGraphModel();
+const container = document.getElementById("editor");
+if (!container) throw new Error("#editor is missing");
+
+const view = mountView(container, {
+  model,
+  initialViewport: { zoom: 1, panX: 130, panY: 90 },
+});
+```
+
+`mountView(container, options)` fills `container` with its own DOM and returns a
+`ViewHandle`. Give the container a size (a block with a height, or a flex child); a
+zero-size container is legal, it simply paints nothing until it has bounds.
+
+All options are optional:
+
+| Option            | Meaning |
+| ----------------- | ------- |
+| `model`           | Anything with the graph reader plus `change`/`reset` events (a `GraphModel` fits). Without it the scene stays empty. |
+| `geometry`        | A `GeometryRegistry` (outline, hit shape, port anchors per node type). A fresh one is created if omitted. |
+| `painters`        | A `PainterRegistries` set (node, port glyph, connection, background painters). A fresh one with fallbacks is created if omitted. |
+| `theme`           | A theme patch applied over `DEFAULT_THEME` (section 6). |
+| `assets`          | `{ resolve, budgetBytes?, maxSvgChars? }`: the host's asset resolver and cache budget (section 5). |
+| `zOrder`          | Paint order of `"connection"`, `"node"`, `"port"`, bottom to top. Default: connections, nodes, ports. |
+| `viewState`       | `{ isSelected(id), isHovered(id) }`; the tools change will supply the real one. Default: nothing selected. |
+| `initialViewport` | `{ zoom, panX, panY }`. |
+| `frameClock`      | Test seam replacing `requestAnimationFrame`. |
+
+Nothing touches the browser at import time, so you can import this module while
+server-rendering; the DOM work starts inside `mountView()`.
+
+The view never copies the graph. It subscribes to the model's *committed* changes, so
+undo, redo, reloads and edits from any source repaint it with no extra code. Several views
+may show one model; each owns its own viewport, theme and caches.
+
+### Disposing
+
+```ts
+view.dispose(); // idempotent
+```
+
+`dispose()` removes every observer, event listener, pending frame request, model
+subscription, cached bitmap and DOM node the view created. Call it when the host component
+unmounts (the demo does it in its hot-reload hook). `view.disposed` tells you whether it
+already happened. This is the web equivalent of destroying the `QGraphicsView` and its
+scene: there is no garbage collector for a pending animation frame or a `ResizeObserver`,
+so leaks are explicit.
+
+## 2. Why Canvas2D, and why three canvases
+
+You have two broad ways to draw a node editor in a browser:
+
+- **DOM or SVG elements, one per node and wire.** Convenient: the browser does hit testing,
+  styling and text layout, and it is the best fit for editable widgets. The cost is that
+  every element is a retained object the browser must style, lay out and composite. Thousands
+  of nodes with several ports and wires each means tens of thousands of elements, and a pan
+  or zoom touches all of them. In Qt terms: it is as if every `QGraphicsItem` were a full
+  `QWidget` with its own style sheet.
+- **Canvas2D, immediate mode.** A `<canvas>` is a bitmap you paint into with a `QPainter`-like
+  API (`ctx.fillRect`, `ctx.stroke`, `ctx.drawImage`, `ctx.setTransform`). There are no
+  per-item objects, so cost scales with what you actually draw, and we only draw what is
+  visible. The price: the browser knows nothing about your items, so hit testing, text
+  editing and accessibility are your job. We answer those with the headless geometry
+  scene (picking) and a DOM overlay (editors, menus).
+
+This library uses Canvas2D for the graph and plain DOM only for the few elements that need
+it.
+
+```mermaid
+flowchart TB
+  overlay["<b>overlay</b> (DOM div)<br/>inline editors, menus, tooltips<br/><i>pointer-transparent except attached elements</i>"]
+  interaction["<b>interaction</b> canvas<br/>drag ghosts, marquee, presence<br/><i>repaints when a tool or presence invalidates it</i>"]
+  scene["<b>scene</b> canvas<br/>connections, nodes, port glyphs<br/><i>repaints on model edits, pan, zoom, theme, assets</i>"]
+  background["<b>background</b> canvas<br/>grid<br/><i>repaints on pan, zoom, theme</i>"]
+  overlay ~~~ interaction ~~~ scene ~~~ background
+```
+
+Why split into layers? A Qt analogy is `QGraphicsView::setBackgroundBrush`/`drawForeground`
+plus item caching: the expensive part must not be redrawn when only a cheap part changes.
+Dragging a connection preview or a marquee repaints the interaction canvas, not the
+thousands of nodes underneath. The stack is a `position: relative` root `div` with three
+absolutely positioned canvases and the overlay `div`; you reach them as `view.element`,
+`view.canvases` and `view.overlayElement` if you need to attach listeners.
+
+### Redrawn only when dirty, once per frame, never when idle
+
+A browser paints on a display refresh (usually 60 times a second) and offers
+`requestAnimationFrame(cb)` to run code just before the next paint. The view uses it like
+this:
+
+1. Something changes (a model edit, a pan, a theme patch) and marks one or more layers
+   *dirty*.
+2. The first dirty mark requests one animation frame. Further marks before that frame only
+   add to the dirty set.
+3. In the frame, each dirty layer is painted once, in the order background, scene,
+   interaction, and the set is cleared.
+4. If nothing is dirty, no frame is requested. There is no render loop, so an idle editor
+   uses no CPU.
+
+Fifty model changes in one tick therefore cost one scene repaint. This is like
+`QWidget::update()` coalescing into one paint event, except that here the layers are
+separate.
+
+```mermaid
+sequenceDiagram
+  participant M as Model
+  participant B as Model binding
+  participant S as Frame scheduler
+  participant R as requestAnimationFrame
+  participant P as Layer painter
+  M->>B: "change" (committed edit)
+  B->>B: geometry scene updates its caches
+  B->>S: markDirty("scene")
+  S->>R: request one frame (only if none pending)
+  Note over S,R: more marks before the frame just join the set
+  R->>S: frame callback
+  S->>P: paint each dirty layer once, background to interaction
+  P->>P: cull to visible rect, then call node / port / connection painters
+  S->>S: clear dirty set, lay out overlay elements, record stats
+```
+
+What dirties what:
+
+| Event                                   | Dirty layers |
+| --------------------------------------- | ------------ |
+| Committed model change, `reset`, geometry registration change | scene |
+| Pan, zoom (`viewport.set/panBy/zoomAt`) | background, scene (interaction too while presence is shown) |
+| `setTheme`                              | background, scene |
+| Painter registry change                 | scene (background slot: background) |
+| Asset became ready or failed            | scene |
+| Container resized or pixel ratio changed | all three |
+| `interaction.add/invalidate`, `setPresence` | interaction |
+
+You can force a repaint with `view.invalidate("scene")` (any of `"background"`, `"scene"`,
+`"interaction"`).
+
+### Pixel ratio and Retina backing stores
+
+A canvas has two sizes: the CSS size on the page and the *backing store*, the actual grid
+of pixels. On a Retina/HiDPI display the device pixel ratio (DPR) is 2 or more: one CSS pixel
+is a 2x2 block of physical pixels. If the backing store were only CSS-sized, the browser
+would stretch it and everything would look blurry. The view therefore sizes every canvas to
+`cssSize x dpr` and applies a device matrix, so you draw in CSS-pixel and world units while
+the lines stay crisp. The DPR is watched: dragging the window to another monitor, or
+browser zoom, resizes the backing stores and repaints. `view.metrics()` returns the current
+`{ width, height, dpr }` if you want to check.
+
+## 3. Geometry and painters are separate registrations
+
+Following the QtNodes split between geometry and painter, a node type needs two independent
+registrations. Neither requires the other to change.
+
+```ts
+import {
+  createCardGeometry,
+  createGeometryRegistry,
+  createImageSymbolGeometry,
+} from "nodeeditor-js";
+import {
+  createCardPainter,
+  createConnectionPainter,
+  createImageSymbolPainter,
+  createPainterRegistries,
+  createPortGlyphPainter,
+} from "nodeeditor-js/view";
+
+const geometry = createGeometryRegistry();
+geometry.register("pump", createImageSymbolGeometry({ paintedMargin: 22 }));
+geometry.register("controller", createCardGeometry());
+
+const painters = createPainterRegistries();
+painters.nodes.register("pump", createImageSymbolPainter());
+painters.nodes.register("controller", createCardPainter());
+painters.portGlyphs.replace("pipe", createPortGlyphPainter());
+painters.connections.replace("default", createConnectionPainter({ arrowhead: true }));
+
+const view = mountView(container, { model, geometry, painters });
+```
+
+- **Geometry** (core, headless) answers body bounds, hit shape, painted bounds and port
+  anchors in node-local space. Picking and culling use it, so they work without a browser.
+- **Painters** (view) only draw. There are four slots: `nodes` keyed by node type,
+  `portGlyphs` keyed by the port's `typeKey`, `connections` keyed by connection `kind`, and a
+  single `background` slot (default: the grid, `paintGrid` from `nodeeditor-js/view/advanced`).
+- Lookups never fail. An unregistered node type gets the placeholder painter, an
+  unregistered port type a round dot, an unregistered connection kind a plain stroked path.
+- `register(key, painter)` returns a `Result` and rejects `duplicate-type`; `replace`
+  overwrites. Changing a registration after mount repaints automatically (`view.painters`
+  and `view.geometry` are the same objects you passed in).
+
+Painters are *pure*: they write pixels and nothing else, keep no state between calls and
+never write to the model. Any cache (such as text measurement) belongs to the painter
+instance, not to a module.
+
+### The image-symbol preset
+
+An image-symbol node is a picture (SVG or raster) with ports placed anywhere on it. This is
+the primary preset, meant for physical-system schematics. Three pieces cooperate:
+
+1. The node type declares its ports with a `placement`: fractions of the body box, `0..1`,
+   in the *unrotated* frame. `{ x: 0, y: 0.5 }` is the middle of the left edge,
+   `{ x: 1, y: 0.8 }` is on the right edge near the bottom.
+2. The geometry (`createImageSymbolGeometry`) turns placements into anchors, with an
+   outward normal pointing away from the nearest edge unless the placement gives one.
+3. The painter (`createImageSymbolPainter`) draws the picture to fill the node's body box.
+
+```ts
+model.registry.register({
+  type: "tank",
+  label: "Tank",
+  defaultSize: { width: 70, height: 110 },
+  ports: () => [
+    { direction: "input", typeKey: "pipe", placement: { x: 0, y: 0.25 } },
+    { direction: "output", typeKey: "pipe", placement: { x: 1, y: 0.8 } },
+  ],
+});
+model.createNode("tank", { x: 130, y: 250 }, {
+  title: "Feed tank",
+  payload: { asset: "tank-symbol" },
+});
+```
+
+The painter finds the picture through the node's payload field `asset` by default; pass
+`createImageSymbolPainter({ assetOf: (node) => ... })` to read it elsewhere. The value is an
+opaque reference your asset resolver understands (section 5), never a URL the library
+fetches itself.
+
+**Rotation and mirroring.** The node's `rotation` (quarter turns) and `mirrored` flag are
+model fields set by `model.rotateNodes([id], 1)` and `model.mirrorNodes([id])`. Painting,
+anchors and picking all use *one* transform (mirror, then rotate, then translate), and the
+painter draws in node-local space under that transform, so the picture and its ports can
+never disagree. The title is the exception by design: it is drawn upright below the node's
+on-screen extent whatever the rotation. Reserve room for it with `paintedMargin`, which
+extends the painted bounds (used for culling) without changing the hit shape.
+
+If the picture is still loading, the painter draws nothing for it. If it failed, a
+placeholder with a "missing image" label is drawn over the real bounds, so the node keeps
+its ports and connections.
+
+### The card preset
+
+A card is a rounded body with a title bar and port rows below it (or ports along the top and
+bottom edges when vertical): the conventional QtNodes look. `createCardGeometry()` and
+`createCardPainter()` ship as a pair; the painter reads an optional secondary label from the
+payload field `subtitle` (override with `secondaryOf`), fits text with a cached measurer, and
+hides the secondary label at reduced detail. Keep the bar heights in agreement: the painter's
+`titleHeight` option and the geometry's `titleHeight` both default to 28.
+
+### Placeholders
+
+`placeholderNodePainter` (a hatched, dashed box with a "?" and the title or type name) is the
+fallback for node types without a painter, so a document that contains a type your app does
+not know still opens and stays editable (NOD-07). `drawPlaceholder(...)` is exported for
+painters that want the same look for their own error state. `boxNodePainter` is a plain
+rounded box with a centered title, handy while prototyping. All three come from
+`nodeeditor-js/view/advanced`.
+
+### Writing a custom node painter
+
+A `NodePainter` is an object with one method. The context transform is already set to
+*node-local* space (origin at the body center, one unit per world unit), and the context is
+saved and restored around the call, so you do not need to undo your changes. This is
+`QGraphicsItem::paint()` with the painter already translated, rotated and clipped.
+
+```ts
+import type { Payload } from "nodeeditor-js";
+import type { NodePainter } from "nodeeditor-js/view";
+
+// The payload is host data (JSON); read the one field this painter understands.
+function levelOf(payload: Payload): number {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return 0;
+  const v = (payload as { readonly [k: string]: Payload }).level;
+  return typeof v === "number" ? Math.min(1, Math.max(0, v)) : 0;
+}
+
+// A tank body with a level bar.
+const levelTankPainter: NodePainter = {
+  paint(ctx, { node, bounds, style, detail, unit }) {
+    ctx.beginPath();
+    ctx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, style.nodeRadius);
+    ctx.fillStyle = style.nodeFill;
+    ctx.fill();
+
+    const h = bounds.h * levelOf(node.payload);
+    ctx.fillStyle = style.connectionColor;
+    ctx.fillRect(bounds.x, bounds.y + bounds.h - h, bounds.w, h);
+
+    // nodeLineWidth is in CSS pixels when theme.screenSpaceLines is on: multiply by unit.
+    ctx.lineWidth = style.nodeLineWidth * unit;
+    ctx.strokeStyle = style.nodeStroke;
+    ctx.stroke();
+
+    if (detail.title && node.title) {
+      ctx.fillStyle = style.textColor;
+      ctx.font = style.font;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(node.title, 0, 0);
+    }
+  },
+};
+
+painters.nodes.replace("tank", levelTankPainter);
+```
+
+The input object (`NodePaintInput`) carries:
+
+| Field      | Meaning |
+| ---------- | ------- |
+| `node`     | The `NodeRecord` (type, title, payload, status, ...). Read-only. |
+| `bounds`   | Body box in node-local space. |
+| `style`    | `ResolvedStyle`: theme tokens after type and entity overrides (section 6). |
+| `detail`   | `DetailPolicy`: whether to draw the title and secondary labels (section 7). |
+| `unit`     | Local units per CSS pixel when line widths are screen-space, else 1. Multiply pixel-sized strokes by it. |
+| `assets`   | `AssetDrawer`; `assets.drawAsset(ref, rect)` returns `"drawn"`, `"pending"` or `"failed"`. |
+| `state`    | `{ selected, hovered, diagnostics }` from the view state and the node's `status`. |
+
+Port glyph painters run in *world* space and receive `port`, `position`, an outward unit
+`normal`, `style`, `detail` and `unit`. Connection painters also run in world space and
+receive the `connection`, its `path` (`PathGeometry`), `style`, `detail`, `unit` and
+`selected`. Selection outlines and error/warning badges are drawn by the scene layer *after*
+your painter, so no painter or detail level can hide them.
+
+Painters should not load images or fetch anything themselves. Ask the `assets` drawer.
+
+## 4. The coordinate chain, in one paragraph
+
+Per painted node the scene layer sets one matrix, `device . viewport . node`, then calls
+your painter. So inside a node painter you work in node-local units; inside port and
+connection painters in world units; in the background painter in CSS pixels
+(`frame.viewportToDevice`). The same chain feeds picking and anchors, which is why a
+rotated symbol cannot have a port drawn in one place and clickable in another. The
+spaces are described in [geometry.md](geometry.md).
+
+## 5. Assets: pictures without the library fetching anything
+
+Painters refer to pictures by an opaque *reference* string (for example `"pump-symbol"`).
+The host decides what it means by supplying a resolver. The library never fetches a URL
+on its own, so it cannot be turned into a request proxy, and hosts keep full control over
+authentication, caching and storage.
+
+```ts
+const view = mountView(container, {
+  model,
+  assets: { resolve: resolveAsset },
+});
+
+async function resolveAsset(ref: string) {
+  const url = ASSET_URLS[ref];
+  if (!url) throw new Error(`unknown asset ${ref}`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`asset ${ref}: HTTP ${res.status}`);
+  return { kind: "svg", text: await res.text() } as const;
+}
+```
+
+The resolver returns an `AssetSource`: `{ kind: "svg", text }` or `{ kind: "blob", blob }`
+(PNG, WebP and so on). A URL is deliberately not a source kind. A rejection marks the asset
+failed.
+
+```mermaid
+flowchart TD
+  paint["painter calls assets.drawAsset(ref, rect)"] --> known{"asset known?"}
+  known -- no --> resolve["host resolver(ref)<br/>async"]
+  resolve -- rejected --> failed["failed<br/>(diagnostic, placeholder shown)"]
+  resolve -- source --> svg{"SVG?"}
+  svg -- yes --> screen{"safety screen"}
+  screen -- unsafe --> failed
+  screen -- ok --> decode["decode to an image"]
+  svg -- "no (blob)" --> decode
+  decode -- error --> failed
+  decode --> ready["ready: decoded source kept"]
+  ready --> bucket{"bitmap for this<br/>zoom bucket cached?"}
+  bucket -- yes --> draw["drawImage from cache"]
+  bucket -- no --> raster["rasterize bucket in background"]
+  raster --> near["meanwhile draw nearest cached bucket, or nothing"]
+  raster --> cache["store in LRU cache,<br/>repaint scene"]
+```
+
+Key behaviors:
+
+- **Non-blocking.** `drawAsset` never waits. It returns `"pending"` while the request is in
+  flight (the painter draws nothing or a lower-resolution bucket), and the scene repaints
+  by itself when the asset becomes ready or fails.
+- **SVG safety screening.** SVG is markup, and markup can carry active content. Before
+  decoding, the text is parsed and rejected if it is larger than `maxSvgChars` (default
+  1 MiB), declares entities, is not well-formed, or contains `script`, `foreignObject`,
+  `iframe`, `object`, `embed`, `link`, `meta`, `base` and similar elements, `on*` event
+  attributes, or any reference other than an in-document `#fragment` or inline
+  `data:image/` (including external `url(...)` and `@import`). A rejected asset gets code
+  `"unsafe"`. If your host needs a different policy, sanitize inside your resolver.
+  `screenSvg(text)` is exported if you want to run the same check yourself.
+- **Why bitmaps.** Drawing an SVG through Canvas2D means decoding and rasterizing its vector
+  data. Doing that for every node on every frame during a pan would be far too slow. Instead
+  each SVG is rasterized once into an `ImageBitmap` (a ready-to-blit pixel buffer in the
+  browser's own memory) and each frame just copies it with `drawImage`. This is the web
+  counterpart of `QGraphicsItem::DeviceCoordinateCache`: render once, blit many times, and
+  invalidate when the scale changes.
+- **Zoom buckets.** Re-rasterizing at every zoom step would defeat the cache, so bitmaps are
+  rendered only at power-of-two multiples (1/8x to 16x) of the picture's intrinsic size,
+  chosen from `zoom * devicePixelRatio`, and capped at 4096 pixels on the long side. Smooth
+  zooming reuses a handful of bitmaps. When zoom crosses into a new bucket the nearest
+  cached bitmap is drawn scaled while the sharper one is prepared, so there is no blank
+  flash.
+- **Bounded memory.** Bitmaps live in a least-recently-used cache with a byte budget
+  (`budgetBytes`, default 64 MiB, counted as `width x height x 4`, with decoded sources
+  included). Evicted bitmaps are `close()`d immediately so their memory returns at once.
+- **Failures are sticky.** A failed asset is not retried every frame. Inspect and recover
+  through the handle:
+
+```ts
+view.assets.status("pump-symbol");   // "unrequested" | "resolving" | "decoding" | "ready" | "failed"
+view.assets.diagnostics();           // [{ ref, code, message }], code: "no-resolver" | "resolve-failed" | "unsafe" | "decode-failed"
+view.assets.retry("pump-symbol");    // forget the failure and load again
+view.assets.setResolver(newResolve); // failed assets become eligible again; undefined removes the resolver
+view.assets.stats();                 // { resolves, rasterizations, cacheBytes, cacheEntries, sourceBytes }
+```
+
+Without a resolver nothing is loaded and every asset reads as failed with `"no-resolver"`.
+
+## 6. Themes and overrides
+
+A theme is plain data (`ThemeTokens`): colors, line widths, fonts, grid spacing, selection
+color, port shape, and the level-of-detail thresholds. There is no style-sheet machinery;
+think of it as a `QPalette` that painters read through `style`. Each view owns its theme,
+so two views of one model can look different.
+
+```ts
+const view = mountView(container, {
+  model,
+  theme: { background: "#101418", nodeStroke: "#9fb3c8" },
+});
+
+view.theme().connectionColor;                // read the current tokens
+view.setTheme({ gridSpacing: 40 });          // patch; scalars replace
+```
+
+`setTheme` repaints the background and scene layers and never touches geometry.
+
+Overrides tailor individual node types, port types, connection kinds or single entities:
+
+- `typeOverrides` is keyed by node type, port `typeKey`, or connection `kind`.
+- `entityOverrides` is keyed by entity ID and wins over a type override.
+- Resolution order: theme defaults, then the type override, then the entity override.
+
+```ts
+view.setTheme({
+  typeOverrides: {
+    pump: { nodeStroke: "#4caf50" },
+    signal: { connectionColor: "#ffb454" }, // connections of kind "signal"
+  },
+  entityOverrides: { n7: { nodeFill: "#5a2d2d" } },
+});
+
+// Override tables merge per key, so the call above did not drop anything else.
+// To remove an override, set its key to undefined:
+view.setTheme({ typeOverrides: { pump: undefined } });
+```
+
+Style values are in the units named in `tokens.ts`: with `screenSpaceLines: true` (the
+default) line widths and port radii are CSS pixels and stay constant on screen at any zoom;
+set it to `false` to let them scale with the graph.
+
+## 7. Level of detail
+
+At low zoom, text is unreadable noise and costs time. The view derives a `DetailPolicy`
+from the zoom and two theme thresholds: `lodReducedBelow` (default 0.6) and
+`lodMinimalBelow` (default 0.25).
+
+| Level     | Zoom (defaults) | `title` | `secondaryLabels` |
+| --------- | --------------- | ------- | ----------------- |
+| `full`    | >= 0.6          | yes     | yes |
+| `reduced` | 0.25 .. 0.6     | yes     | no  |
+| `minimal` | < 0.25          | no      | no  |
+
+Painters receive the policy as `detail` and decide what to skip. Selection, diagnostics and
+connection endpoints are typed as the literal `true` in every level: they can never be
+switched off by zoom. `detailLevel(zoom, theme)` and `detailPolicy(zoom, theme)` are exported
+from `nodeeditor-js/view/advanced` if your own code needs the same decision.
+
+## 8. Interaction layer, overlays and presence
+
+**Interaction painters** draw transient things (a connection preview, a marquee, candidate
+highlights). They are ordered and run in world space; change `ctx.setTransform` to
+`frame.viewportToDevice` to draw in CSS pixels.
+
+```ts
+const remove = view.interaction.add({
+  order: 10, // lower paints first; default 0
+  paint(ctx, frame) {
+    ctx.strokeStyle = frame.theme.selection;
+    ctx.lineWidth = 2 / frame.viewport.zoom;
+    ctx.strokeRect(0, 0, 100, 60);
+  },
+});
+view.interaction.invalidate(); // repaint just this layer after your state changed
+remove();                      // adding and removing both request a repaint
+```
+
+**Overlay elements** are real DOM nodes (an inline text editor, a context menu) that follow
+the viewport. They sit in a div above the canvases that ignores pointer input, while an
+attached element accepts it.
+
+```ts
+const input = document.createElement("input");
+const handle = view.overlay.attach(input, { kind: "node", node: pump.id });
+// Anchors: { kind: "world", point, scale? } or { kind: "node", node, scale? }.
+// A node anchor is the top-left of the node's body bounds and hides while the node is absent.
+handle.setVisible(false); // display: none, so it cannot block input
+handle.setAnchor({ kind: "world", point: point<"world">(100, 40), scale: true });
+handle.dispose();
+```
+
+By default an element keeps its size on screen; `scale: true` scales it with zoom. The
+view repositions overlay elements once per painted frame, only if any are attached.
+
+**Presence** shows other users' cursors and selections. The host supplies the data in world
+coordinates; the view draws it on the interaction layer and never touches the model or its
+history.
+
+```ts
+view.setPresence([
+  { id: "u1", kind: "cursor", at: point<"world">(220, 140), color: "#e91e63", label: "Ann" },
+  { id: "u2", kind: "selection", nodes: [pump.id], color: "#03a9f4" },
+]);
+view.setPresence([]); // clear
+```
+
+Cursor glyphs keep their size on screen; selection outlines are dashed boxes around the
+nodes' bodies. (`point` comes from `nodeeditor-js`.)
+
+## 9. Viewport, picking and coordinate conversion
+
+```ts
+view.viewport.get();                                 // { zoom, panX, panY }
+view.viewport.set({ zoom: 1, panX: 0, panY: 0 });
+view.viewport.panBy(dx, dy);                         // CSS pixels
+view.viewport.zoomAt(point<"viewport">(x, y), 1.1);  // factor, anchored at a viewport point
+```
+
+The setters return a `Result` and reject non-finite input; zoom is clamped to the supported
+range. They repaint by themselves. The viewport is `viewport = world * zoom + pan`.
+
+Pointer events give you *client* coordinates (relative to the browser window). Convert them
+with `clientToWorld`, which reads the container's bounding rect at call time, so page
+scroll and nested offsets are handled correctly:
+
+```ts
+view.element.addEventListener("pointerdown", (e) => {
+  const at = view.clientToWorld(e.clientX, e.clientY);
+  if (!at.ok) return; // container has zero size: a Result, never NaN
+  console.log(at.value.x, at.value.y);
+});
+```
+
+`pick` answers "what is under this pointer position?" using the geometry scene, not by
+reading pixels (the counterpart of `QGraphicsScene::items(pos)`):
+
+```ts
+const hits = view.pick(e.clientX, e.clientY, { tolerancePx: 6 });
+const top = hits[0];
+if (top?.kind === "port") console.log("port", top.nodeId, top.portId);
+else if (top?.kind === "node") console.log("node", top.nodeId);
+else if (top?.kind === "connection") console.log("wire", top.connectionId);
+```
+
+Candidates come best first (default order: ports, then nodes, then connections; topmost
+within a kind). An empty array means nothing is there, or the view is not measurable, or no
+model is bound. **Tolerances are CSS pixels** and are divided by the current zoom
+internally, so a thin wire is as easy to hit at 10% zoom as at 400%. `tolerancePx` (default
+4) is the connection hit distance; port capture radius comes from the geometry (default 8).
+Pass `order` to change the interactive priority per call. You do not pass `zoom`; the view
+supplies it.
+
+## 10. Render statistics
+
+```ts
+const s = view.renderStats();
+s.layers.scene.lastPaintMs;      // duration of the last paint of each layer
+s.nodes;                         // { painted, culled } at the last scene paint
+s.paths;                         // { painted, culled } for connections
+s.framesPainted;                 // frames in which at least one layer painted
+s.lastPaintedInputSeq;           // see noteInput
+```
+
+`renderStats()` is cheap and contains counts and timings only, never scene data.
+"Culled" means in the model but outside the visible rectangle, so it shows that off-screen
+nodes cost nothing to paint. To measure latency from input to pixels, tag the input you
+are handling with `view.noteInput(seq)`; `lastPaintedInputSeq` reports it once a frame
+that began after the call has painted. `view.geometryStats()` reports the geometry scene's
+work counters (useful to check that a theme change recomputed no geometry), and
+`view.invalidate(...)` plus `view.assets.stats()` complete the debugging surface.
+
+## 11. A complete minimal example
+
+[examples/plain-js/main.ts](../examples/plain-js/main.ts) is a runnable demo: it builds a
+small physical-system schematic with three image-symbol node types and a card node, resolves
+SVG files through a host resolver, mounts the view, and adds panning (pointer drag) and
+cursor-anchored zoom (wheel) with a few lines of listeners:
+
+```ts
+view.element.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    const box = view.element.getBoundingClientRect();
+    view.viewport.zoomAt(
+      point<"viewport">(e.clientX - box.left, e.clientY - box.top),
+      Math.exp(-e.deltaY * 0.0015),
+    );
+  },
+  { passive: false },
+);
+```
+
+Run it with `npm run demo` (dev server with live reload), `npm run demo:build` (static
+build), or `npm run demo:preview` (serve the build). The demo also edits the model from
+the keyboard (`m` moves a node, `e` toggles an error status, `z`/`y` undo/redo) to show
+that the view repaints from committed changes alone.
