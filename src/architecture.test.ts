@@ -21,6 +21,7 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "core/base", rank: 0, path: "src/core/base/" },
   { layer: "core/data", rank: 1, path: "src/core/data/" },
   { layer: "core/edit", rank: 2, path: "src/core/edit/" },
+  { layer: "core/space", rank: 3, path: "src/core/space/" },
   { layer: "core/io", rank: 3, path: "src/core/io/" },
   { layer: "core/facade", rank: 4, path: "src/core/graph-model.ts" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
@@ -40,6 +41,7 @@ const TEST_SUPPORT: readonly RegExp[] = [
   /\/test-helpers\.ts$/, // model record builders
   /\/test-kit\.ts$/, // command and snapshot test kits
   /\/test-setup\.ts$/, // patch test setup
+  /\/test-utils\.ts$/, // geometry seeded RNG
 ];
 
 interface Edge {
