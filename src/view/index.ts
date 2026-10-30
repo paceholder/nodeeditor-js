@@ -89,6 +89,7 @@ export type {
 } from "./render/assets/asset-types.js";
 export type { SvgInfo, SvgScreen } from "./render/assets/svg-safety.js";
 export { screenSvg } from "./render/assets/svg-safety.js";
+export type { GestureBitmapOptions } from "./render/paint/gesture-bitmap.js";
 export type { InteractionPainter } from "./render/paint/interaction-layer.js";
 export type {
   DetailLevel,

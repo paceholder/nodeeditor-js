@@ -166,15 +166,25 @@ line width, and the scene layer sets those explicitly before each glyph.
 
 ### D5. Opt-in gesture bitmap reuse (LAY-05)
 
-New mount option: `gestureBitmap?: { minVisible?: number; settleMs?: number }`. It is off
-when absent. The defaults are `minVisible: 3000` (visible nodes plus connections) and
-`settleMs: 120`. When it is on:
+New mount option: `gestureBitmap?: { minVisible?: number; settleMs?: number;
+maxZoomRatio?: number; maxUncovered?: number }`. It is off when absent. The defaults are
+`minVisible: 3000` (visible nodes plus connections), `settleMs: 120`, `maxZoomRatio: 1.25`
+and `maxUncovered: 0.25`. When it is on:
 
 - After each exact scene paint, the scene canvas is copied into an offscreen
   canvas, and the viewport it was painted with is recorded.
 - A frame whose only dirty reason is a viewport change, when the visible count is at
   least `minVisible`, draws the stored copy with the viewport delta transform instead of
   repainting. The background layer (grid) is cheap and still repaints exactly.
+- Staleness limit: the copy is reused only while the zoom ratio to the stored frame stays
+  within [1 / `maxZoomRatio`, `maxZoomRatio`] (default [0.8, 1.25]) and the fraction of
+  the view the transformed copy does not cover is at most `maxUncovered` (default 0.25).
+  Otherwise the frame paints exactly, which also refreshes the copy. Without this bound a
+  gesture that never pauses never reaches the settle repaint: in the perf demo the zoom
+  sweep showed the fit-all frame scaled up more than 3x (nodes blurred to blocks, wires
+  to a haze), and 4 s into the continuous pan the copy had slid off screen, leaving only
+  the grid. With the bound, the view is never more than the bounded zoom ratio and
+  uncovered area away from an exact frame.
 - One timer (re)starts on each viewport change. When it fires, it marks the scene dirty
   for an exact repaint. It is cleared by that repaint and by `dispose()`, so idle stays
   at zero frames (PERF-02d).
@@ -182,8 +192,9 @@ when absent. The defaults are `minVisible: 3000` (visible nodes plus connections
   resize forces an exact repaint on the next frame.
 - Picking never uses the bitmap: it always reads the geometry scene.
 
-Areas the stored frame did not cover show only the background until the settle repaint.
-That trade-off is acceptable for an opt-in option, and the guide documents it.
+Areas the stored frame did not cover (at most `maxUncovered` of the view) show only the
+background until the next exact frame, and zooming in up to `maxZoomRatio` softens the
+copy. That trade-off is acceptable for an opt-in option, and the guide documents it.
 
 ### D6. Benchmarks and baseline
 

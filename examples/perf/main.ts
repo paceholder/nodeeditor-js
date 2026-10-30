@@ -32,6 +32,7 @@ const byId = <T extends HTMLElement>(id: string): T => {
 const host = byId("editor");
 const fixtureSelect = byId<HTMLSelectElement>("fixture");
 const countInput = byId<HTMLInputElement>("count");
+const bitmapInput = byId<HTMLInputElement>("bitmap");
 const loadButton = byId<HTMLButtonElement>("load");
 const stopButton = byId<HTMLButtonElement>("stop");
 const status = byId("status");
@@ -73,6 +74,7 @@ function setBusy(busy: boolean): void {
   for (const b of actionButtons)
     b.disabled = busy || running !== undefined || !loaded;
   stopButton.disabled = running === undefined;
+  bitmapInput.disabled = busy || running !== undefined;
 }
 
 function unload(): void {
@@ -82,6 +84,38 @@ function unload(): void {
   loaded.view.dispose();
   loaded.model.dispose();
   loaded = undefined;
+}
+
+/** Mount a view of `model` with the current options, and its sampler and panel. */
+async function attach(model: GraphModel): Promise<ViewHandle> {
+  const view = mountFixtureView(host, model, {
+    ...(bitmapInput.checked ? { gestureBitmap: {} } : {}),
+  });
+  await nextFrame();
+  view.element.focus();
+  const sampler = createFrameSampler(view);
+  const panel = createStatsPanel(byId("stats"), view, sampler);
+  panel.setModelSize(
+    model.reader.nodes().length,
+    model.reader.connections().length,
+  );
+  loaded = { view, model, sampler, panel };
+  return view;
+}
+
+/** Remount the loaded model with the current options, keeping the viewport. */
+async function remount(): Promise<void> {
+  if (!loaded || running) return;
+  const { model, view, sampler, panel } = loaded;
+  const viewport = view.viewport.get();
+  panel.dispose();
+  sampler.dispose();
+  view.dispose();
+  loaded = undefined;
+  setBusy(true);
+  const next = await attach(model);
+  next.viewport.set(viewport);
+  setBusy(false);
 }
 
 async function load(spec: FixtureSpec): Promise<void> {
@@ -94,8 +128,7 @@ async function load(spec: FixtureSpec): Promise<void> {
   const t1 = performance.now();
   const model = createFixtureModel(snapshot);
   const t2 = performance.now();
-  const view = mountFixtureView(host, model);
-  await nextFrame();
+  const view = await attach(model);
   view.commands.run(COMMAND_IDS.fitAll);
   // Fit-all of a huge graph leaves nodes a few pixels wide; start at a readable zoom.
   if (view.viewport.get().zoom < 0.25) {
@@ -105,14 +138,6 @@ async function load(spec: FixtureSpec): Promise<void> {
       0.4 / view.viewport.get().zoom,
     );
   }
-  view.element.focus();
-  const sampler = createFrameSampler(view);
-  const panel = createStatsPanel(byId("stats"), view, sampler);
-  panel.setModelSize(
-    model.reader.nodes().length,
-    model.reader.connections().length,
-  );
-  loaded = { view, model, sampler, panel };
   status.textContent = `${spec.name}: generated in ${(t1 - t0).toFixed(0)} ms, loaded in ${(t2 - t1).toFixed(0)} ms`;
   setBusy(false);
 }
@@ -141,7 +166,10 @@ for (const action of STRESS_ACTIONS) {
         sampler: current.sampler,
         signal: running.signal,
       });
-      addLogLine(`${status.textContent?.split(":")[0] ?? ""} - ${line}`);
+      const bitmap = bitmapInput.checked ? ", bitmap" : "";
+      addLogLine(
+        `${status.textContent?.split(":")[0] ?? ""}${bitmap} - ${line}`,
+      );
     } finally {
       running = undefined;
       setBusy(false);
@@ -152,14 +180,17 @@ for (const action of STRESS_ACTIONS) {
 }
 
 stopButton.addEventListener("click", () => running?.abort());
+bitmapInput.addEventListener("change", () => void remount());
 loadButton.addEventListener("click", () => void load(specFromControls()));
 fixtureSelect.addEventListener("change", () => {
   countInput.disabled = fixtureSelect.value !== "custom";
 });
 countInput.disabled = true;
 
-// ?fixture=F-LARGE or ?nodes=20000 pre-selects what loads at start.
+// ?fixture=F-LARGE or ?nodes=20000 pre-selects what loads at start; ?bitmap=1 turns
+// the gesture bitmap on.
 const params = new URLSearchParams(location.search);
+bitmapInput.checked = params.get("bitmap") === "1";
 const nodes = Number(params.get("nodes"));
 if (nodes > 0) {
   fixtureSelect.value = "custom";
