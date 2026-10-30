@@ -73,3 +73,66 @@ The overview navigation target rule (frame interval p95 <= 33.3 ms, pick p95 <= 
 the boundary for frames: p95 is two display periods. Culled F-LARGE in the same run: pan
 16.7 / 16.7 ms at DPR 1 and 2 (the DPR 2 miss of 16.8 ms is gone in this sample), drag
 pick p95 1.0 ms (DPR 1) and 0.8 ms (DPR 2). Baseline-quality numbers come in task 7.3.
+
+## After group 6
+
+Gesture bitmap reuse (D5) was measured with the perf demo (`examples/perf`, production
+build via `vite preview`, installed Chrome headless through Playwright, 1440 x 900,
+F-LARGE). Each row is one 12 s stress run. The toggle is the demo's "Gesture bitmap"
+checkbox (`gestureBitmap: {}`), so the defaults apply: `minVisible` 3000, `settleMs` 120,
+`maxZoomRatio` 1.25 and `maxUncovered` 0.25. "Exact / reused" counts scene frames since
+mount (`renderStats().scenePaints`), including the wheel steps that set the start zoom.
+No console errors or warnings appeared in any run, dev server or preview.
+
+### First version, without the staleness limit
+
+A continuous gesture never rests, so the settle repaint never came and the stored copy
+only grew staler:
+
+- In the zoom sweep, the fit-all frame was scaled up 3x or more, so nodes became blurred
+  blocks and wires a blue haze.
+- In the continuous pan, the copy slid off screen, and 4 s in the view showed only the
+  grid.
+
+| Run | DPR | Off: fps, p95 / p99 (ms) | On: fps, p95 / p99 (ms) | On: exact / reused |
+| --- | --- | --- | --- | --- |
+| Zoom sweep | 1 | 54, 33.3 / 33.4 | 60, 16.7 / 16.8 | 4 / 709 |
+| Zoom sweep | 2 | 52, 33.4 / 33.4 | 60, 16.8 / 16.8 | 4 / 708 |
+| Pan at zoom 0.21 (minimal) | 1 | 58, 16.8 / 33.4 | 60, 16.7 / 16.8 | 16 / 716 |
+| Pan at zoom 0.1 (overview) | 1 | 58, 16.8 / 33.3 | 60, 16.8 / 16.8 | 21 / 726 |
+
+### With the staleness limit (final)
+
+A frame reuses the copy only while the zoom ratio to it stays within [0.8, 1.25] and at
+most a quarter of the view is uncovered. Otherwise the frame is exact, which also
+refreshes the copy.
+
+| Run | DPR | Off: fps, p95 / p99 (ms) | On: fps, p95 / p99 (ms) | On: exact / reused |
+| --- | --- | --- | --- | --- |
+| Zoom sweep (fit-all to 1:1 and back) | 1 | 51, 33.4 / 50.0 | 59, 16.8 / 33.3 | 355 / 342 |
+| Zoom sweep | 2 | 49, 33.4 / 50.1 | 58, 16.8 / 33.4 | 357 / 348 |
+| Pan at zoom 0.4 (reduced, culled) | 1 | 59, 16.8 / 16.8 | 59, 16.7 / 16.8 | 707 / 0 |
+| Pan at zoom 0.4 (reduced, culled) | 2 | 60, 16.7 / 16.8 | 60, 16.7 / 16.8 | 711 / 0 |
+| Pan at zoom 0.21 (minimal) | 1 | 57, 16.8 / 33.4 | 60, 16.8 / 16.8 | 504 / 222 |
+| Pan at zoom 0.1 (overview, fit-all) | 1 | 58, 16.8 / 33.3 | 60, 16.7 / 16.8 | 548 / 200 |
+| Pan at zoom 0.1 (overview, fit-all) | 2 | 58, 16.8 / 33.4 | 60, 16.8 / 16.8 | 563 / 197 |
+
+Most exact frames in the "on" runs are cheap: they come where fewer than `minVisible`
+entities are visible, which happens when the sweep is zoomed in or the circular pan
+passes the graph's edge. In those frames reuse is off, and the exact paint is fast
+anyway. The bitmap carries the expensive large-visible-set frames between bound
+crossings.
+
+Where it helps:
+
+- It brings the zoom sweep p95 from 33 ms to 16.8 ms at both DPRs.
+- It removes the 33 ms p99 frames in the minimal and overview pans.
+- It never engages in the culled pan at 0.4 (about 3k entities, at or under
+  `minVisible`).
+
+Seen in the demo with the option on:
+
+- Mid-sweep at zoom 0.31, 4.4k entities visible, a reused frame: the image is readable,
+  with labels slightly soft (at most 1.25x upscaling).
+- 4 s into the pan at zoom 0.23: the graph is drawn, and the empty lower part is the
+  graph's edge. The exact frame after Stop shows the same edge.

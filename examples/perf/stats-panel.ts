@@ -57,6 +57,10 @@ export function createStatsPanel(
     set("interaction", `${fixed(stats.layers.interaction.lastPaintMs, 2)} ms`);
     set("nodes", `${stats.nodes.painted} / ${stats.nodes.culled}`);
     set("paths", `${stats.paths.painted} / ${stats.paths.culled}`);
+    set(
+      "scenePaints",
+      `${stats.scenePaints.exact} / ${stats.scenePaints.reused}`,
+    );
     set("model", `${model.nodes} nodes, ${model.connections} connections`);
     set("framesPainted", String(stats.framesPainted));
     const vp = view.viewport.get();

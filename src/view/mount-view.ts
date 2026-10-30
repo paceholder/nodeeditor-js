@@ -18,11 +18,13 @@ import { createLayerStack } from "./platform/dom/layer-stack.js";
 import {
   createFrameScheduler,
   type FrameClock,
+  type LayerName,
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
 import { createViewportState } from "./platform/viewport-state.js";
 import { createAssetService } from "./render/assets/asset-service.js";
+import { createGestureBitmap } from "./render/paint/gesture-bitmap.js";
 import { createInteractionLayer } from "./render/paint/interaction-layer.js";
 import { createLayerPainter } from "./render/paint/layer-painter.js";
 import { portsVisible } from "./render/paint/level-of-detail.js";
@@ -62,15 +64,28 @@ export function mountView(
   const assets = createAssetService(options.assets);
   const stats = createStatsRecorder();
   let theme = mergeTheme(DEFAULT_THEME, options.theme ?? {});
-  const interaction = createInteractionLayer(() =>
-    scheduler.markDirty("interaction"),
-  );
+  // Opt-in gesture bitmap. Every scene mark except a viewport change forces
+  // an exact repaint, so `markDirty` below is the path for all other sources.
+  const bitmap = options.gestureBitmap
+    ? createGestureBitmap({
+        options: options.gestureBitmap,
+        createCanvas: () => container.ownerDocument.createElement("canvas"),
+        setTimer: (fn, ms) => win.setTimeout(fn, ms),
+        clearTimer: (h) => win.clearTimeout(h),
+        settle: () => scheduler.markDirty("scene"),
+      })
+    : undefined;
+  const markDirty = (...layers: readonly LayerName[]): void => {
+    if (bitmap && layers.includes("scene")) bitmap.invalidate();
+    scheduler.markDirty(...layers);
+  };
+  const interaction = createInteractionLayer(() => markDirty("interaction"));
 
   const binding: ModelBinding | undefined = options.model
     ? bindModel(options.model, {
         geometry,
         zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
-        markDirty: (...layers) => scheduler.markDirty(...layers),
+        markDirty: (...layers) => markDirty(...layers),
       })
     : undefined;
   const reader = options.model?.reader;
@@ -90,7 +105,7 @@ export function mountView(
   const selection = createSelectionModel();
   const offSelection = [
     ...(options.model ? [selection.bindToModel(options.model)] : []),
-    selection.on(() => scheduler.markDirty("scene")),
+    selection.on(() => markDirty("scene")),
   ];
   let hovered: string | undefined;
   const viewState: ViewState = {
@@ -118,8 +133,21 @@ export function mountView(
       // Zero-size containers wait for measurable bounds.
       if (!metrics.isMeasurable()) return;
       const t0 = win.performance.now();
+      const sceneCanvas = stack.canvases.scene;
+      if (
+        layer === "scene" &&
+        bitmap?.reuse(sceneCanvas, viewport.get(), backing.dpr)
+      ) {
+        stats.layerPainted(layer, win.performance.now() - t0);
+        stats.sceneReused();
+        return;
+      }
       const painted = paintLayer(layer);
       stats.layerPainted(layer, win.performance.now() - t0);
+      if (painted) {
+        const visible = painted.nodes + painted.connections;
+        bitmap?.captured(sceneCanvas, viewport.get(), backing.dpr, visible);
+      }
       if (painted && reader) {
         stats.scenePainted(painted, {
           nodes: reader.nodes().length,
@@ -136,7 +164,7 @@ export function mountView(
   const previews = createPreviewHost({
     interaction,
     hidden,
-    invalidateScene: () => scheduler.markDirty("scene"),
+    invalidateScene: () => markDirty("scene"),
     bound: () =>
       reader && scene
         ? {
@@ -149,8 +177,7 @@ export function mountView(
           }
         : undefined,
   });
-  const dirtyAll = (): void =>
-    scheduler.markDirty("background", "scene", "interaction");
+  const dirtyAll = (): void => markDirty("background", "scene", "interaction");
 
   const metrics: ContainerMetrics = observeContainer(stack.root, () => {
     if (!metrics.isMeasurable()) return;
@@ -169,6 +196,8 @@ export function mountView(
   const viewport = createViewportState(
     metrics,
     () => {
+      // The only viewport-only scene reason: the next frame may reuse the bitmap.
+      bitmap?.viewportChanged();
       scheduler.markDirty("background", "scene");
       // Presence is positioned in world space, so it follows the viewport.
       if (presence.active) scheduler.markDirty("interaction");
@@ -188,19 +217,19 @@ export function mountView(
     setHovered(id) {
       if (id === hovered) return;
       hovered = id;
-      scheduler.markDirty("scene");
+      markDirty("scene");
     },
     input: options.input ?? {},
     hidePortsBelow: () => theme.lodHidePortsBelow,
   });
 
   const offPainters = [
-    painters.nodes.onChange(() => scheduler.markDirty("scene")),
-    painters.portGlyphs.onChange(() => scheduler.markDirty("scene")),
-    painters.connections.onChange(() => scheduler.markDirty("scene")),
-    painters.background.onChange(() => scheduler.markDirty("background")),
+    painters.nodes.onChange(() => markDirty("scene")),
+    painters.portGlyphs.onChange(() => markDirty("scene")),
+    painters.connections.onChange(() => markDirty("scene")),
+    painters.background.onChange(() => markDirty("background")),
     // A ready or failed asset repaints the scene.
-    assets.onChange(() => scheduler.markDirty("scene")),
+    assets.onChange(() => markDirty("scene")),
   ];
 
   return {
@@ -248,7 +277,7 @@ export function mountView(
     theme: () => theme,
     setTheme(patch) {
       theme = mergeTheme(theme, patch);
-      scheduler.markDirty("background", "scene");
+      markDirty("background", "scene");
     },
     viewport: {
       get: viewport.get,
@@ -265,7 +294,7 @@ export function mountView(
       const ports = portsVisible(zoom, theme);
       return scene.pick(at.value, { ports, ...opts, zoom });
     },
-    invalidate: (...layers) => scheduler.markDirty(...layers),
+    invalidate: (...layers) => markDirty(...layers),
     renderStats: stats.snapshot,
     noteInput: stats.noteInput,
     geometryStats: () => scene?.stats(),
@@ -287,6 +316,7 @@ export function mountView(
       previews.dispose();
       binding?.dispose();
       scheduler.dispose();
+      bitmap?.dispose();
       overlay.dispose();
       assets.dispose();
       metrics.dispose();

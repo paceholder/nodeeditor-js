@@ -26,6 +26,7 @@
         border-radius: 4px; padding: 3px 7px;
       }
       input { width: 76px; }
+      input[type="checkbox"] { width: auto; margin: 0; }
       button { cursor: pointer; }
       button:hover:not(:disabled) { background: #3a4250; }
       button:disabled { opacity: 0.45; cursor: default; }
@@ -59,6 +60,9 @@
         <input id="count" type="number" min="10" max="50000" step="1000" value="20000" />
         <button id="load" type="button">Load</button>
       </div>
+      <div class="row">
+        <label><input id="bitmap" type="checkbox" /> Gesture bitmap</label>
+      </div>
       <div id="status" aria-live="polite"></div>
       <h2>Stress</h2>
       <div class="row" id="actions"></div>
@@ -89,6 +93,7 @@
       <dl>
         <dt>Nodes painted / culled</dt><dd data-stat="nodes">-</dd>
         <dt>Paths painted / culled</dt><dd data-stat="paths">-</dd>
+        <dt>Scene frames exact / reused</dt><dd data-stat="scenePaints">-</dd>
         <dt>Model</dt><dd data-stat="model">-</dd>
         <dt>Zoom</dt><dd data-stat="zoom">-</dd>
         <dt>Device pixel ratio</dt><dd data-stat="dpr">-</dd>

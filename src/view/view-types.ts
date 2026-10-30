@@ -27,6 +27,7 @@ import type { RenderStats } from "./platform/render-stats.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { AssetService } from "./render/assets/asset-service.js";
 import type { AssetOptions } from "./render/assets/asset-types.js";
+import type { GestureBitmapOptions } from "./render/paint/gesture-bitmap.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import type { ViewState } from "./render/paint/scene-layer.js";
 import type { PainterRegistries } from "./render/registries/painters.js";
@@ -68,6 +69,15 @@ export interface ViewOptions {
    * allows selection, pan and zoom.
    */
   readonly input?: false | InputOptions;
+  /**
+   * Opt-in gesture bitmap reuse (off when absent): while only the viewport
+   * changes and at least `minVisible` entities were visible, the scene layer redraws its
+   * last exact frame transformed instead of repainting, and repaints exactly once the
+   * viewport has rested for `settleMs`. Uncovered areas show the background until then.
+   * Reuse stops (the frame is exact) once the zoom ratio to the stored frame exceeds
+   * `maxZoomRatio` either way or more than `maxUncovered` of the view is uncovered.
+   */
+  readonly gestureBitmap?: GestureBitmapOptions;
   /** Test seam: replaces `requestAnimationFrame`. */
   readonly frameClock?: FrameClock;
 }

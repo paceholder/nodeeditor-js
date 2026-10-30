@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Gesture bitmap reuse (SHOULD)
-The view SHOULD offer an option, off by default, that during a pan or zoom gesture with a large visible set redraws the last painted scene frame translated and scaled to the current viewport instead of repainting every entity, and repaints exactly once the viewport has not changed for a short settle time. While the option is on, picking, selection and committed model changes SHALL behave exactly as without it, and any model change or selection change SHALL trigger an exact repaint.
+The view SHOULD offer an option, off by default, that during a pan or zoom gesture with a large visible set redraws the last painted scene frame translated and scaled to the current viewport instead of repainting every entity, and repaints exactly once the viewport has not changed for a short settle time. While the option is on, picking, selection and committed model changes SHALL behave exactly as without it, and any model change or selection change SHALL trigger an exact repaint. Reuse SHALL stay within a bounded zoom ratio and uncovered area; beyond either, the frame is exact.
 
 #### Scenario: Option off by default
 - **WHEN** a view is mounted without the option
@@ -10,6 +10,10 @@ The view SHOULD offer an option, off by default, that during a pan or zoom gestu
 #### Scenario: Settle repaint
 - **WHEN** the option is on and a zoom gesture over F-LARGE at fit-all stops
 - **THEN** the scene is repainted exactly within the settle time, and no further frames are requested afterwards
+
+#### Scenario: Long continuous gesture
+- **WHEN** the option is on and a zoom or pan continues without pause
+- **THEN** exact frames are painted whenever the bounds are exceeded, so the view is never more than the bounded zoom ratio away from an exact frame
 
 #### Scenario: Change during a gesture
 - **WHEN** the option is on and a model change arrives during a pan

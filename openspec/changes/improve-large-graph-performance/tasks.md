@@ -30,10 +30,10 @@
 
 ## 6. Gesture bitmap reuse (D5)
 
-- [ ] 6.1 Add the `gestureBitmap` mount option and offscreen copy of the last exact scene frame; verify a browser test (the gesture bitmap reuse rule "Option off by default") that without the option every pan frame increments the exact scene paint counter
-- [ ] 6.2 Draw the transformed copy for viewport-only frames at or above `minVisible`, with the settle timer; verify browser tests (the gesture bitmap reuse rule "Settle repaint") that after a zoom stops an exact repaint happens within `settleMs` plus one frame and no animation frames are requested for 2 s afterwards, and that `dispose()` clears the timer
-- [ ] 6.3 Force exact frames on model, selection, hover, theme, asset and resize changes and keep picking geometric; verify browser tests (the gesture bitmap reuse rule "Change during a gesture") that a model change mid-pan shows on the next frame and `view.pick` results are identical with the option on and off
-- [ ] 6.4 Add a "Gesture bitmap" toggle to `examples/perf`; verify by running `npm run demo:perf` in headless Chrome (Playwright, `channel: "chrome"`) with no console errors and the zoom sweep reporting higher fps with the toggle on
+- [x] 6.1 Add the `gestureBitmap` mount option and offscreen copy of the last exact scene frame; verify a browser test (the gesture bitmap reuse rule "Option off by default") that without the option every pan frame increments the exact scene paint counter
+- [x] 6.2 Draw the transformed copy for viewport-only frames at or above `minVisible`, with the settle timer; verify browser tests (the gesture bitmap reuse rule "Settle repaint") that after a zoom stops an exact repaint happens within `settleMs` plus one frame and no animation frames are requested for 2 s afterwards, and that `dispose()` clears the timer
+- [x] 6.3 Force exact frames on model, selection, hover, theme, asset and resize changes and keep picking geometric; verify browser tests (the gesture bitmap reuse rule "Change during a gesture") that a model change mid-pan shows on the next frame and `view.pick` results are identical with the option on and off
+- [x] 6.4 Add a "Gesture bitmap" toggle to `examples/perf`; verify by running `npm run demo:perf` in headless Chrome (Playwright, `channel: "chrome"`) with no console errors and the zoom sweep reporting higher fps with the toggle on
 
 ## 7. Verification and baseline
 
