@@ -29,13 +29,25 @@ export interface ToolContextDeps {
   readonly selection: ReadonlySelection;
   readonly viewport: () => Viewport;
   readonly can: (action: CapabilityAction, id: NodeId) => Availability;
-  readonly options?: Partial<ToolOptions>;
+  /** Read on every gesture step, so a getter lets options change at runtime. */
+  readonly options?: Partial<ToolOptions> | (() => Partial<ToolOptions>);
   /** Dry-run planner of the model (`GraphModel.plan`); without it nothing can connect. */
   readonly plan?: (command: Command) => PlanResult;
 }
 
 export function createToolContext(deps: ToolContextDeps): () => ToolContext {
-  const options = resolveToolOptions(deps.options);
+  const source = deps.options;
+  let resolvedFrom: Partial<ToolOptions> | undefined;
+  let options = resolveToolOptions();
+  // Re-resolve only when the getter hands back a different object.
+  const currentOptions = (): ToolOptions => {
+    const over = typeof source === "function" ? source() : source;
+    if (over !== resolvedFrom) {
+      resolvedFrom = over;
+      options = resolveToolOptions(over);
+    }
+    return options;
+  };
   // Evaluations are valid for one revision; any committed change drops them.
   let cache = new Map<string, ConnectionEvaluation>();
   let cacheRevision = deps.reader.revision();
@@ -60,6 +72,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
   };
   return () => {
     const viewport = deps.viewport();
+    const options = currentOptions();
     return {
       pick: (world) =>
         deps.scene.pick(world, {

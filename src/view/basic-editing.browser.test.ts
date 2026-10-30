@@ -102,7 +102,7 @@ async function setup() {
 }
 
 describe("basic editing", () => {
-  it("pan, zoom, marquee, move two nodes, connect, undo and redo: one history entry per gesture", async () => {
+  it("pan, zoom, Shift-marquee, move two nodes, connect, undo and redo: one history entry per gesture", async () => {
     const { model, view, byTitle, anchor, pointer } = await setup();
     const changes: Array<{ origin: string; ops: number }> = [];
     model.on("change", (e) =>
@@ -122,8 +122,17 @@ describe("basic editing", () => {
     expect(view.commands.run("view.resetView").ok).toBe(true);
     expect(view.viewport.get()).toEqual({ zoom: 1, panX: 0, panY: 0 });
 
-    // Marquee left to right selects the pump and the valve, not the controller.
-    pointer.drag([120, 60], [480, 240]);
+    // A plain drag on empty canvas pans too (emptyDrag: "pan" is the default). The
+    // helper takes world points, so one move keeps the screen delta exact.
+    pointer.down(600, 450);
+    pointer.move(570, 440);
+    pointer.up(600, 450);
+    expect(view.viewport.get()).toEqual({ zoom: 1, panX: -30, panY: -10 });
+    expect(model.reader.revision()).toBe(revision);
+    expect(view.commands.run("view.resetView").ok).toBe(true);
+
+    // Shift-marquee left to right selects the pump and the valve, not the controller.
+    pointer.drag([120, 60], [480, 240], { shift: true });
     expect(view.selection.keys()).toHaveLength(2);
     expect(view.selection.has(`n:${byTitle("Pump").id}`)).toBe(true);
     expect(view.selection.has(`n:${byTitle("Valve").id}`)).toBe(true);
@@ -179,5 +188,20 @@ describe("basic editing", () => {
     key(view.element, "z", { ctrl: true });
     expect(model.reader.nodes()).toHaveLength(3);
     expect(model.reader.connections()).toHaveLength(1);
+  });
+
+  it("grid snapping turns on and off at runtime", async () => {
+    const { model, view, byTitle, pointer } = await setup();
+    const pos = () => model.reader.getNode(byTitle("Pump").id)?.position;
+    expect(view.toolOptions().gridStep).toBeUndefined();
+
+    view.setToolOptions({ gridStep: 20 });
+    pointer.drag([200, 150], [213, 157], {}, 6);
+    expect(pos()).toEqual({ x: 220, y: 160 });
+
+    view.setToolOptions({ gridStep: undefined });
+    expect(view.toolOptions().gridStep).toBeUndefined();
+    pointer.drag([225, 165], [231, 170], {}, 6);
+    expect(pos()).toEqual({ x: 226, y: 165 });
   });
 });

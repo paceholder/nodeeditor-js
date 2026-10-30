@@ -40,6 +40,7 @@ export {
 } from "./interact/selection/selection-model.js";
 export { connectTool } from "./interact/tools/connect-tool.js";
 export { defaultToolSlots } from "./interact/tools/default-tools.js";
+export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";
 export { marqueeTool } from "./interact/tools/marquee-tool.js";
 export { panTool } from "./interact/tools/pan-tool.js";
 export { selectMoveTool } from "./interact/tools/select-move-tool.js";

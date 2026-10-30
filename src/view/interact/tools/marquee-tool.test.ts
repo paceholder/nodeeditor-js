@@ -17,6 +17,8 @@ const fixture = () =>
       cornerNode("c", 200, 0),
     ],
     connections: [["c1", "a", "aR", "b", "bL"]],
+    // These cases drive the marquee with plain drags; the Shift entry is tested below.
+    options: { emptyDrag: "marquee" },
   });
 
 const nodesOf = (h: ReturnType<typeof fixture>) =>
@@ -51,7 +53,7 @@ describe("marquee tool", () => {
   it("the marquee option overrides the direction convention", () => {
     const h = createToolHarness({
       nodes: [cornerNode("a", 0, 0), cornerNode("b", 100, 0)],
-      options: { marquee: "intersect" },
+      options: { marquee: "intersect", emptyDrag: "marquee" },
     });
     h.down({ x: -10, y: -10 });
     h.move({ x: 130, y: 50 });
