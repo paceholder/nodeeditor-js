@@ -76,7 +76,10 @@ describe("PKG-01 one import path per public name", () => {
 
 describe("PKG-01 building blocks are separate", () => {
   it("mounts the examples without importing nodeeditor-js/view/advanced", () => {
-    const files = [...listFiles("examples/plain-js")];
+    const files = [
+      ...listFiles("examples/plain-js"),
+      ...listFiles("examples/perf"),
+    ];
     expect(files.length).toBeGreaterThan(0);
     const offenders = files.filter((f) =>
       readFileSync(join(ROOT, f), "utf8").includes(

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "nodeeditor-js": ["./src/core/index.ts"],
+      "nodeeditor-js/view": ["./src/view/index.ts"],
+      "nodeeditor-js/view/advanced": ["./src/view/advanced.ts"]
+    },
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["bench", "scripts"]
+}

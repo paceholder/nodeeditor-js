@@ -1,0 +1,4 @@
+/** Injected by the browser project of vitest.bench.config.ts (`BENCH_QUICK=1`). */
+declare const __BENCH_QUICK__: boolean;
+/** Headed runs: the device pixel ratio to emulate through CDP; 0 when the context does it. */
+declare const __BENCH_EMULATE_DPR__: number;

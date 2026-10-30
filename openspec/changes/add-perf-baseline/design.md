@@ -4,7 +4,7 @@
 
 See proposal.md for motivation. The browser test setup comes from
 `add-canvas-view-foundation`, which adds a Vitest `browser` project running
-`*.browser.test.ts` in Chromium through the Playwright provider and emulates DPR with
+`*.browser.test.ts` in the installed Google Chrome (Chromium-based, `channel: "chrome"`, no browser download) through the Playwright provider and emulates DPR with
 `deviceScaleFactor`. Fixtures use the `GraphSnapshot` from `add-graph-snapshot`. The budgets
 come from the performance spec: PERF-02, PERF-02a, and PERF-02c.
 
@@ -34,7 +34,8 @@ bench/
     prng.ts                 mulberry32 seeded PRNG
     fixture-specs.ts        F-SMALL / F-TYPICAL / F-LARGE / F-LIVE parameters
     generate-fixture.ts     spec + seed -> GraphSnapshot
-    fixture-types.ts        node-type keys and geometry/painter registrations used by fixtures
+    fixture-types.ts        node-type and geometry registrations used by fixtures (runtime imports;
+                            the generator itself imports types only, so demos can reuse it)
     generate-fixture.test.ts
   headless/
     snapshot.bench.ts       validate / load / export / diff on F-LARGE
@@ -66,8 +67,8 @@ repository.
   zoom 1 shows about 100 nodes, and culled F-LARGE shows up to 1k nodes at the zoom used by
   the workloads.
 - Node types: 70% image-symbol and 30% card. Image-symbol nodes get random quarter-turn
-  rotation and mirroring. Card nodes have 2–6 ports and image-symbol nodes 2–4 ports, so
-  the average is about four ports per node.
+  rotation and mirroring. Card nodes have 2–6 ports and image-symbol nodes 3–5 ports, so
+  the average is about four ports per node (2–4 would average 3.4, below the 3.5–4.5 check).
 - Ports: 60% are typed undirected ports with one of four type keys; the rest are directed
   input and output ports.
 - Connections pick a compatible port on a node within a small grid neighbourhood. This
@@ -177,8 +178,9 @@ hand-computed values.
 
 | Script | Command |
 | --- | --- |
-| `bench` | `vitest bench --config bench/vitest.bench.config.ts --project node` |
-| `bench:browser` | `npm run build && vitest run --config bench/vitest.bench.config.ts --project browser` |
+| `bench` | `npm run build && vitest bench --config bench/vitest.bench.config.ts --project "node (bench)"` (vitest 5 suffixes bench projects with "(bench)"; headless benches load `dist/` as plain Node ESM so the module runner adds no overhead) |
+| `bench:browser` | `npm run build && vitest run --config bench/vitest.bench.config.ts --project "browser*"` |
+| `test:bench` | `vitest run --config bench/vitest.bench.config.ts --project unit` (tests under `bench/` and `scripts/`; `npm test` excludes them) |
 | `bench:size` | `node scripts/bundle-size.mjs` |
 | `bench:baseline` | runs all three without quick mode, then `write-baseline.ts` |
 

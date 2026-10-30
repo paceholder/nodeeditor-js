@@ -33,7 +33,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit && tsc -p tsconfig.examples.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit && tsc -p tsconfig.examples.json --noEmit && tsc -p tsconfig.bench.json --noEmit",
     "test": "vitest run --project node",
     "test:watch": "vitest",
     "lint": "biome check .",
@@ -41,7 +41,14 @@
     "test:browser": "vitest run --project browser",
     "demo": "vite --config examples/plain-js/vite.config.ts",
     "demo:build": "vite build --config examples/plain-js/vite.config.ts",
-    "demo:preview": "vite preview --config examples/plain-js/vite.config.ts"
+    "demo:preview": "vite preview --config examples/plain-js/vite.config.ts",
+    "test:bench": "vitest run --config bench/vitest.bench.config.ts --project unit",
+    "bench": "npm run build && vitest bench --config bench/vitest.bench.config.ts --project \"node (bench)\" --reporter=verbose",
+    "bench:browser": "npm run build && vitest run --config bench/vitest.bench.config.ts --project \"browser*\"",
+    "bench:size": "node scripts/bundle-size.mjs",
+    "bench:baseline": "node scripts/baseline.mjs",
+    "demo:perf": "vite --config examples/perf/vite.config.ts",
+    "demo:perf:build": "vite build --config examples/perf/vite.config.ts"
   },
   "peerDependencies": {
     "react": ">=19",
@@ -57,9 +64,11 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/browser-playwright": "^5.0.5",
+    "esbuild": "^0.28.2",
     "playwright": "^1.64.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
