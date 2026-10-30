@@ -283,3 +283,37 @@ describe("connect tool: candidate states", () => {
     expect(calls).toBe(2);
   });
 });
+
+describe("LAY-04 ports hidden when zoomed out", () => {
+  const harness = (hidePortsBelow: number) =>
+    createToolHarness({
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+      viewport: { zoom: 0.1, panX: 0, panY: 0 },
+      hidePortsBelow,
+    });
+
+  it("LAY-04 a press on a hidden port anchor selects and moves the node, never connects", () => {
+    const h = harness(0.25);
+    // a.R sits at (40, 10); just inside the body.
+    h.down({ x: 39, y: 10 });
+    expect(h.router.activeTool).toBe("select-move");
+    h.move({ x: 200, y: 200 });
+    h.up({ x: 200, y: 200 });
+    expect(h.log.commits.map((c) => c.kind)).toEqual(["moveNodes"]);
+    expect(h.model.reader.connections()).toHaveLength(0);
+  });
+
+  it("LAY-04 a press beside a hidden port on empty canvas pans", () => {
+    const h = harness(0.25);
+    // Outside the body, inside the 8 px capture radius (80 world units at zoom 0.1).
+    h.down({ x: 60, y: 10 });
+    expect(h.router.activeTool).toBe("empty-pan");
+    h.up({ x: 60, y: 10 });
+  });
+
+  it("LAY-04 a threshold of 0 keeps ports at every zoom", () => {
+    const h = harness(0);
+    h.down({ x: 60, y: 10 });
+    expect(h.router.activeTool).toBe("connect");
+  });
+});

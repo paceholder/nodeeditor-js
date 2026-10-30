@@ -80,7 +80,8 @@ export interface ViewHandle {
   ): Result<Point<"world">, Rejection>;
   /**
    * Hit candidates under a client position, best first; empty when the position is not
-   * measurable or no model is bound. Tolerances are CSS pixels (GEO-05).
+   * measurable or no model is bound. Tolerances are CSS pixels (GEO-05). Below the
+   * theme's `lodHidePortsBelow` ports are left out unless `opts.ports` says otherwise.
    */
   pick(
     clientX: number,

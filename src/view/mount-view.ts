@@ -25,6 +25,7 @@ import { createViewportState } from "./platform/viewport-state.js";
 import { createAssetService } from "./render/assets/asset-service.js";
 import { createInteractionLayer } from "./render/paint/interaction-layer.js";
 import { createLayerPainter } from "./render/paint/layer-painter.js";
+import { portsVisible } from "./render/paint/level-of-detail.js";
 import {
   createHiddenIds,
   createPreviewHost,
@@ -190,6 +191,7 @@ export function mountView(
       scheduler.markDirty("scene");
     },
     input: options.input ?? {},
+    hidePortsBelow: () => theme.lodHidePortsBelow,
   });
 
   const offPainters = [
@@ -258,7 +260,10 @@ export function mountView(
     pick(clientX, clientY, opts) {
       const at = viewport.clientToWorld(clientX, clientY);
       if (!at.ok || !scene) return [];
-      return scene.pick(at.value, { ...opts, zoom: viewport.get().zoom });
+      const zoom = viewport.get().zoom;
+      // Hidden ports are not pickable unless the caller asks (LAY-04).
+      const ports = portsVisible(zoom, theme);
+      return scene.pick(at.value, { ports, ...opts, zoom });
     },
     invalidate: (...layers) => scheduler.markDirty(...layers),
     renderStats: stats.snapshot,

@@ -58,6 +58,8 @@ export interface HarnessOptions {
   readonly viewport?: Viewport;
   readonly tools?: readonly ToolSlot[];
   readonly options?: Partial<ToolOptions>;
+  /** Port-hiding zoom (the theme's `lodHidePortsBelow`); omitted keeps ports pickable. */
+  readonly hidePortsBelow?: number;
 }
 
 export interface ToolHarness {
@@ -126,6 +128,9 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     can: capabilityProbe(model),
     plan: model.plan,
     ...(opts.options ? { options: opts.options } : {}),
+    ...(opts.hidePortsBelow !== undefined
+      ? { hidePortsBelow: () => opts.hidePortsBelow ?? 0 }
+      : {}),
   });
   const log: ToolHarness["log"] = {
     commits: [],

@@ -33,6 +33,11 @@ export interface ToolContextDeps {
   readonly options?: Partial<ToolOptions> | (() => Partial<ToolOptions>);
   /** Dry-run planner of the model (`GraphModel.plan`); without it nothing can connect. */
   readonly plan?: (command: Command) => PlanResult;
+  /**
+   * Zoom below which ports are hidden (the theme's `lodHidePortsBelow`, LAY-04). Picks
+   * then skip ports, so a press there selects, moves or pans. Omitted: ports always count.
+   */
+  readonly hidePortsBelow?: () => number;
 }
 
 export function createToolContext(deps: ToolContextDeps): () => ToolContext {
@@ -73,11 +78,13 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
   return () => {
     const viewport = deps.viewport();
     const options = currentOptions();
+    const ports = viewport.zoom >= (deps.hidePortsBelow?.() ?? 0);
     return {
       pick: (world) =>
         deps.scene.pick(world, {
           zoom: viewport.zoom,
           tolerancePx: options.pickTolerancePx,
+          ports,
         }),
       reader: deps.reader,
       scene: deps.scene,

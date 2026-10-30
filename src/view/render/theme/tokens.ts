@@ -47,6 +47,13 @@ export interface ThemeTokens extends StyleTokens {
   readonly lodReducedBelow: number;
   /** Zoom below which the level is `minimal`. */
   readonly lodMinimalBelow: number;
+  /** Zoom below which the level is `overview`: batched outlines, no painters (D3). */
+  readonly lodOverviewBelow: number;
+  /**
+   * Zoom below which ports are neither painted nor picked (LAY-04); 0 keeps them at
+   * every zoom.
+   */
+  readonly lodHidePortsBelow: number;
   /** Overrides by node type, port type key, or connection kind. */
   readonly typeOverrides: Readonly<Record<string, Partial<StyleTokens>>>;
   /** Overrides by entity ID; they win over type overrides. */
@@ -90,6 +97,8 @@ export const DEFAULT_THEME: ThemeTokens = {
   screenSpaceLines: true,
   lodReducedBelow: 0.6,
   lodMinimalBelow: 0.25,
+  lodOverviewBelow: 0.15,
+  lodHidePortsBelow: 0.25,
   typeOverrides: {},
   entityOverrides: {},
 };

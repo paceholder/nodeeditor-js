@@ -5,7 +5,8 @@
  * rectangle (already in paint order), then paint by z-layer in the configured order. Each
  * node gets one composed matrix (device . viewport . node) set once; connections and port
  * glyphs paint in world space. Painters come from the registries and can be swapped
- * independently of geometry.
+ * independently of geometry. At the `overview` detail level nodes and connections are
+ * drawn in style batches by `overview-painter.ts` instead (D3).
  */
 import {
   type ConnectionEntry,
@@ -26,7 +27,15 @@ import {
   drawNodeBadges,
   drawNodeSelection,
 } from "./decorations.js";
-import { type DetailPolicy, detailPolicy } from "./level-of-detail.js";
+import {
+  type DetailPolicy,
+  detailPolicy,
+  portsVisible,
+} from "./level-of-detail.js";
+import {
+  paintOverviewConnections,
+  paintOverviewNodes,
+} from "./overview-painter.js";
 
 /** View-local state the tools will own; this change only reads it. */
 export interface ViewState {
@@ -123,6 +132,11 @@ function paintNodes(
   }
 }
 
+/**
+ * Port glyphs run without a `save`/`restore` each (D4): the layer sets the state the
+ * built-in glyphs use before every call and restores once at the end, so nothing leaks
+ * into later layers.
+ */
 function paintPorts(
   ctx: CanvasRenderingContext2D,
   deps: SceneLayerDeps,
@@ -131,24 +145,31 @@ function paintPorts(
   detail: DetailPolicy,
   unit: number,
 ): void {
+  ctx.save();
   setMatrix(ctx, frame.worldToDevice);
   for (const e of list) {
     const ports = deps.reader.portsOf(e.id);
     for (const anchor of e.anchors) {
       const port = ports.find((p) => p.id === anchor.portId);
       if (!port) continue;
-      ctx.save();
+      const style = resolveStyle(frame.theme, {
+        type: port.typeKey,
+        id: port.id,
+      });
+      ctx.fillStyle = style.portFill;
+      ctx.strokeStyle = style.portStroke;
+      ctx.lineWidth = unit;
       deps.painters.portGlyphs.get(port.typeKey).paint(ctx, {
         port,
         position: anchor.position,
         normal: anchor.normal,
-        style: resolveStyle(frame.theme, { type: port.typeKey, id: port.id }),
+        style,
         detail,
         unit,
       });
-      ctx.restore();
     }
   }
+  ctx.restore();
 }
 
 /** Paint pre-resolved entries by z-layer. Shared by the scene and move previews. */
@@ -159,18 +180,27 @@ export function paintEntries(
   nodes: readonly NodeEntry[],
   connections: readonly ConnectionEntry[],
 ): void {
-  const detail = detailPolicy(frame.viewport.zoom, frame.theme);
-  const unit = frame.theme.screenSpaceLines ? 1 / frame.viewport.zoom : 1;
+  const zoom = frame.viewport.zoom;
+  const detail = detailPolicy(zoom, frame.theme);
+  const unit = frame.theme.screenSpaceLines ? 1 / zoom : 1;
+  // Overview draws nodes and connections in style batches, without painters (D3).
+  const overview = detail.level === "overview";
   for (const layer of deps.zOrder) {
     switch (layer) {
       case "connection":
-        paintConnections(ctx, deps, frame, connections, detail, unit);
+        if (overview)
+          paintOverviewConnections(ctx, frame, connections, deps.state, unit);
+        else paintConnections(ctx, deps, frame, connections, detail, unit);
         break;
       case "node":
-        paintNodes(ctx, deps, frame, nodes, detail, unit);
+        if (overview) paintOverviewNodes(ctx, frame, nodes, deps.state, unit);
+        else paintNodes(ctx, deps, frame, nodes, detail, unit);
         break;
       case "port":
-        paintPorts(ctx, deps, frame, nodes, detail, unit);
+        // Hidden when zoomed out (LAY-04); picking skips them below the same zoom.
+        // A threshold under the overview zoom (such as 0) keeps them at overview too.
+        if (portsVisible(zoom, frame.theme))
+          paintPorts(ctx, deps, frame, nodes, detail, unit);
         break;
     }
   }
