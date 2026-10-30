@@ -189,9 +189,12 @@ on its outline; the primary preset) and a **card node** (title bar, rows of port
 Picking is pure geometry in core, never "read the pixel under the cursor":
 
 1. **Broad phase**: an in-house dynamic AABB tree (like QGraphicsScene's BSP index)
-   returns the few items whose bounding boxes contain the point.
-2. **Narrow phase**: an exact test against each candidate's shape or path, with screen-space
-   tolerances, so a thin wire stays as easy to hit at 10% zoom as at 400%.
+   returns the few items whose bounding boxes contain the point. A wire is indexed as
+   several pieces that follow the curve, not as one big box, so a long wire is returned
+   only near its stroke ([geometry.md](geometry.md)).
+2. **Narrow phase**: an exact test against each candidate's shape, or the distance to the
+   nearby pieces of a path, with screen-space tolerances, so a thin wire stays as easy to
+   hit at 10% zoom as at 400%. Below a zoom threshold ports are hidden and not picked.
 3. Results come back in a deterministic order (topmost first, ties by sequence).
 
 The same index answers "what is inside the viewport?" for culling. The view exposes this
@@ -215,6 +218,13 @@ store of `cssSize × devicePixelRatio`, resized when the container or the pixel 
 changes. The scene layer asks the geometry scene for items in the visible rectangle
 (culling), paints connections, nodes and port glyphs in the configured z-order, and then
 always draws selection and diagnostic decorations, whatever a painter did.
+
+Level of detail is a theme decision by zoom: painters are told to drop titles and labels
+when zoomed out, ports disappear below `lodHidePortsBelow`, and below `lodOverviewBelow`
+the scene layer draws nodes and wires itself in a few style batches, calling no painters.
+An opt-in `gestureBitmap` mount option reuses the last frame as a picture during pans and
+zooms of large visible sets, within limits on blur and uncovered area. The view guide
+explains the trade-offs.
 
 ### Images
 
@@ -299,7 +309,8 @@ src/view/                                                     (nodeeditor-js/vie
               presets/           image-symbol, card, port glyph and  implemented
                                  connection painters
               paint/             background, scene and interaction   implemented
-                                 layers, LOD, previews
+                                 layers, LOD, overview, gesture
+                                 bitmap, previews
   interact/   selection/         selection model                     implemented
               tools/             tool contract, router, tools        implemented
               input/             DOM input adapter, effect runner    implemented

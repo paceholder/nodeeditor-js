@@ -37,7 +37,7 @@ export function controlPolygonLength(path: PathGeometry): number {
   return length;
 }
 
-/** Pieces to index: one for a line, `ceil(length / 160)` clamped to [1, 12] for a cubic. */
+/** Pieces to index: one for a line, `ceil(length / PIECE_LENGTH)` clamped to [1, MAX_PIECES] for a cubic. */
 export function pieceCount(path: PathGeometry): number {
   if (path.kind === "line") return 1;
   const k = Math.ceil(controlPolygonLength(path) / PIECE_LENGTH);

@@ -71,6 +71,29 @@ missed target.
   and status before and now for each row, and bundle sizes.
 - Status allows float noise: a p95 of 16.70000000001 against a 16.7 target is met.
 
+## Overview workloads
+
+The culled workloads above keep about 1k nodes on screen. Two more cover the opposite
+case, the whole F-LARGE graph on screen (PERF-02e):
+
+- `overview-pan` pans and `overview-zoom` sweeps the zoom between 0.8 and 1.25 times the
+  fit-all zoom (about 0.1). Every node and wire is visible, the view is at the `overview`
+  level (below `lodOverviewBelow`, 0.15) and ports are hidden (below `lodHidePortsBelow`,
+  0.25), so these rows measure the batched overview painting and picking with
+  `ports: false`.
+- `gestureBitmap` stays off, so every measured frame is an exact repaint. The target is
+  p95 <= 33.3 ms (one dropped frame at 60 Hz), labeled and non-failing; pick stays at 2 ms.
+- `bench/browser/overview-batching.browser.test.ts` (PERF-03) counts `fill` and `stroke`
+  calls of one overview frame of F-TYPICAL through an instrumented 2D context: they are
+  bounded by the number of distinct styles plus the selected and diagnostic entities, not
+  by the entity count. It runs with `npm run bench:browser` and writes no results.
+- Headless, `npm run bench` adds pick at fit-all zoom (with and without ports) and two
+  fit-all culling queries: the bare world box, which misses the full-view cache, and the
+  fit-all viewport, which is what the view asks for and hits it.
+
+The perf demo has a "Gesture bitmap" checkbox (or `?bitmap=1`) to compare stress runs with
+reuse on and off.
+
 ## Fixtures
 
 `bench/fixtures/` holds a mulberry32 PRNG, the specs (`F-SMALL` 100 nodes and 200

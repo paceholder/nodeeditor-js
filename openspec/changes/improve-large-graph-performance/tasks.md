@@ -44,4 +44,4 @@
 
 ## 8. Documentation (separate commit)
 
-- [ ] 8.1 Update `docs/guide-view.md` (overview level, port hiding, gesture bitmap option and its blur trade-off, `DetailLevel` switch note), `docs/geometry.md` (segment-indexed paths, `ports` pick option) and `bench/README.md` (overview workloads); verify every new option and token named in the code is mentioned, by grepping the docs for `lodOverviewBelow`, `lodHidePortsBelow`, `gestureBitmap` and `ports:`
+- [x] 8.1 Update `docs/guide-view.md` (overview level, port hiding, gesture bitmap option and its blur trade-off, `DetailLevel` switch note), `docs/geometry.md` (segment-indexed paths, `ports` pick option) and `bench/README.md` (overview workloads); verify every new option and token named in the code is mentioned, by grepping the docs for `lodOverviewBelow`, `lodHidePortsBelow`, `gestureBitmap` and `ports:`
