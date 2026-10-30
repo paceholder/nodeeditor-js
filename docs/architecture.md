@@ -228,7 +228,7 @@ resolver, and a failed asset shows a placeholder while the node keeps its geomet
 
 ## 7. Interaction tools
 
-Each tool (select/move, marquee, connect, pan, plus wheel zoom) is an explicit state
+Each tool (select/move, marquee, connect, pan, empty-canvas pan, plus wheel zoom) is an explicit state
 machine; [interaction.md](interaction.md) lists the gestures, commands and keymap. The move
 tool, for example:
 
