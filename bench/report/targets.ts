@@ -41,13 +41,21 @@ export function targetFor(
   return TARGETS[metric];
 }
 
+/**
+ * Samples are sums and differences of `performance.now()` values, so a p95 that is exactly
+ * at the target can come out as 16.70000000001. Comparisons allow this float noise.
+ */
+const FLOAT_SLACK = 1e-6;
+
 export function statusOf(
   summary: Pick<Summary, "p95" | "p99">,
   target: Target | undefined,
 ): TargetStatus {
   if (!target || (target.p95 === undefined && target.p99 === undefined))
     return "no-target";
-  if (target.p95 !== undefined && summary.p95 > target.p95) return "missed";
-  if (target.p99 !== undefined && summary.p99 > target.p99) return "missed";
+  if (target.p95 !== undefined && summary.p95 > target.p95 + FLOAT_SLACK)
+    return "missed";
+  if (target.p99 !== undefined && summary.p99 > target.p99 + FLOAT_SLACK)
+    return "missed";
   return "met";
 }

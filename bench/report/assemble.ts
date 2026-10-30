@@ -36,6 +36,7 @@ export const METHOD_NOTES: readonly string[] = [
   "Pointer-to-preview latency approximates presentation time: the first animation frame after the one that painted the input's preview, minus the event's dispatch time. Events are dispatched at a random phase of the frame (seeded), as device input arrives. The floor is one display period and the ceiling two, so on a 60 Hz display the 33 ms target means no dropped frame; a 120 Hz display (the headed Mac) has more headroom.",
   "Picking time is one ViewHandle.pick call per frame at the pointer position, timed with performance.now() (100 microsecond resolution in this browser).",
   "F-LARGE workloads keep the zoom at or above 0.4 so at most about 1k nodes are visible; F-TYPICAL pan and drag run at zoom 1, its zoom sweep covers 0.25 to 2.",
+  "overview-pan and overview-zoom run F-LARGE at fit-all zoom with every node visible, the sweep from 0.8 to 1.25 times the fit zoom; their frame-interval target is p95 <= 33.3 ms. Gesture bitmap reuse is off, so every frame is an exact repaint.",
 ];
 
 export function assemble(dir: string, date: string): Baseline {

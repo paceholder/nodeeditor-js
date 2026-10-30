@@ -1,8 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { latestBaseline } from "./previous.js";
 import { summarize } from "./stats.js";
+import { statusOf } from "./targets.js";
 import type { Baseline } from "./types.js";
 import {
   renderSummary,
@@ -65,6 +67,12 @@ describe("baseline report", () => {
     expect(validate?.status).toBe("no-target");
   });
 
+  it("treats a percentile at the target up to float noise as met", () => {
+    const target = { p95: 16.7, p99: 33.3 };
+    expect(statusOf({ p95: 16.70000000001164, p99: 16.8 }, target)).toBe("met");
+    expect(statusOf({ p95: 16.8, p99: 16.8 }, target)).toBe("missed");
+  });
+
   it("accepts a schema-valid baseline and rejects a broken one", () => {
     expect(validateBaseline(sample())).toEqual([]);
     expect(validateBaseline({ schema: 2 }).length).toBeGreaterThan(0);
@@ -91,6 +99,58 @@ describe("baseline report", () => {
         "Missed targets",
       );
       expect(() => writeBaseline(dir, sample(true))).toThrow(/quick/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("never overwrites a baseline file and honours a suffix", () => {
+    const dir = mkdtempSync(join(tmpdir(), "baseline-"));
+    try {
+      const first = writeBaseline(dir, sample());
+      const second = writeBaseline(dir, sample());
+      const named = writeBaseline(dir, sample(), { suffix: "perf" });
+      const again = writeBaseline(dir, sample(), { suffix: "perf" });
+      expect(first.endsWith("2026-10-30-chrome.json")).toBe(true);
+      expect(second.endsWith("2026-10-30-chrome-2.json")).toBe(true);
+      expect(named.endsWith("2026-10-30-chrome-perf.json")).toBe(true);
+      expect(again.endsWith("2026-10-30-chrome-perf-2.json")).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("compares with the latest earlier baseline in the summary", () => {
+    const dir = mkdtempSync(join(tmpdir(), "baseline-"));
+    try {
+      const old = { ...sample(), date: "2026-10-01", commit: "old111" };
+      writeFileSync(join(dir, "2026-10-01-chrome.json"), JSON.stringify(old));
+      writeFileSync(join(dir, "broken.json"), JSON.stringify({ schema: 9 }));
+      const previous = latestBaseline(dir);
+      expect(previous?.name).toBe("2026-10-01-chrome.json");
+      const now = sample();
+      const extra = toResult({
+        workload: "overview-pan",
+        fixture: "F-LARGE",
+        runtime: "browser",
+        metric: "frameIntervalMs",
+        dpr: 1,
+        summary: summarize([16, 17, 33]),
+      });
+      const text = renderSummary(
+        { ...now, results: [...now.results, extra] },
+        previous,
+      );
+      expect(text).toContain("## Comparison with 2026-10-01-chrome.json");
+      expect(text).toContain("commit old111");
+      expect(text).toMatch(
+        /\| browser \| drag \| F-LARGE \| 2 \| frameIntervalMs \| 40\.00 \| 40\.00 \|/,
+      );
+      expect(text).toMatch(
+        /\| overview-pan \| F-LARGE \| 1 \| frameIntervalMs \| - \|/,
+      );
+      expect(text).toContain("| core | 1.0 | 1.0 |");
+      expect(() => latestBaseline(dir, "missing.json")).toThrow(/not found/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
