@@ -136,3 +136,67 @@ Seen in the demo with the option on:
   with labels slightly soft (at most 1.25x upscaling).
 - 4 s into the pan at zoom 0.23: the graph is drawn, and the empty lower part is the
   graph's edge. The exact frame after Stop shows the same edge.
+
+## Task 7.1: culled F-LARGE pan at DPR 2 (not closed, reported)
+
+### Profile
+
+Perf demo (`examples/perf`, production build without minification so names survive,
+`vite preview`), headless installed Chrome 156, 1440 x 900, DPR 2, F-LARGE at zoom 0.4
+(about 680 nodes and 1.8k paths visible, `reduced` level, ports shown), "Continuous pan",
+CPU profile at 100 µs sampling over 6 s (about 360 frames). The run itself reported 60
+fps, p95 16.7 ms, p99 16.8 ms at 60 Hz.
+
+Main-thread JavaScript per frame is about 9 ms (profiler on), almost all in the scene
+paint:
+
+| Inclusive part of the scene paint | Share | Per frame (ms) |
+| --- | --- | --- |
+| `paintConnections` (painter per wire) | 37% | 3.3 |
+| `paintNodes` (painter per node) | 24% | 2.2 |
+| `paintPorts` (glyph per port, no save/restore since 4.3) | 17% | 1.5 |
+| `queryRect` (culled query, not the fit-all cache) | 17% | 1.6 |
+| rest (grid, frame setup) | 5% | 0.4 |
+
+Top self costs: canvas `save` 356 ms and `restore` 217 ms (together about 18% of frame
+JavaScript; 437 ms of it is the per-wire `save`/`restore` in `paintConnections`), then
+`fill`, `stroke`, `arc`, the painter bodies, and the AABB tree walk.
+
+The largest remaining cost is the per-entity `save`/`restore` around node and connection
+painters. Design D4 keeps it on purpose ("painters still get `save`/`restore`, because
+they may change any state"); removing it is a painter contract change and out of this
+change's scope. The second is the culled `queryRect` (sorting the ~2.5k visible
+entries each frame); speeding it up further is not a small fix. Nothing was changed.
+
+### Runs
+
+Full `npm run bench:browser` (headless, 60 Hz, 3 x 30 s per workload), 14:26 to 14:53:
+culled F-LARGE pan frame interval p50 / p95 / p99 16.7 / 16.7 / 16.8 ms at DPR 2 and
+16.7 / 16.8 / 16.8 ms at DPR 1. At 60 Hz the p95 is one display period plus timestamp
+jitter (F-TYPICAL pan shows the same 16.8), so the headless run cannot fail the workload
+in a meaningful way. The DPR 2 p95 came out as 16.70000000001 and was reported as missed by
+float noise; the status check now allows 1e-6 (commit 78a5079). The overview workloads:
+p95 33.3 / 33.4 ms (DPR 1), 16.8 / 33.4 ms (DPR 2) for pan / zoom.
+
+Headed baseline (`BENCH_BASELINE_SUFFIX=perf npm run bench:baseline`, 120 Hz display),
+14:57 to 15:22, against the 2026-10-30 baseline (p95 / p99 ms):
+
+| Row | 2026-10-30 | This run |
+| --- | --- | --- |
+| pan F-LARGE DPR 2 frame interval | 16.8 / 25.0 (missed) | 25.0 / 33.3 (missed) |
+| pan F-LARGE DPR 2 latency | 24.0 / 30.0 | 35.6 / 52.4 (missed) |
+| pan F-LARGE DPR 1 frame interval | 9.7 / 16.6 | 10.3 / 17.5 |
+| drag F-LARGE DPR 1 / 2 pick | 2.7 / 2.7 (missed) | 0.5 / 0.7 (met) |
+| overview-pan DPR 1 / 2 frame interval | - | 24.9 / 25.0 (met) |
+| overview-zoom DPR 1 / 2 frame interval | - | 33.8 / 33.3 (DPR 1 missed) |
+| node: snapshot validate (untouched code) | 75.8 | 275 |
+| node: snapshot load (untouched code) | 203 | 368 |
+| node: culling query at zoom 0.5 | 0.99 | 3.06 (missed) |
+
+This run is not baseline quality: the machine was loaded by other processes during it
+(load average 10 to 12 on 8 cores, 15 to 25% idle, mostly a separately running Chrome and
+a Python process). Rows for code this change did not touch (snapshot validate, load and
+diff) came out 1.8 to 3.6 times slower than on 2026-10-30, so the DPR 2 pan regression
+cannot be attributed to the change from this run. It was not committed; the files are kept
+outside the repository. The baseline has to be rerun on an idle machine before 7.3 and the
+7.1 verdict on the headed 120 Hz display.
