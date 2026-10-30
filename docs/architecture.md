@@ -13,7 +13,7 @@ describes something not implemented yet, it says **(planned)** and names the cha
 ```mermaid
 flowchart TB
   react["<b>nodeeditor-js/react</b><br/>provider, hooks, inspector integration<br/><i>React peer dependency</i>"]
-  view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays; tools <b>(planned)</b><br/>building blocks: <b>nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
+  view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays, tools, DOM input<br/>building blocks: <b>nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
   core["<b>nodeeditor-js</b> (core)<br/>records, IDs, patches, history, commands,<br/>policy, snapshot, geometry, spatial index<br/><i>headless: runs in Node</i>"]
   react -- depends on --> view
   view -- depends on --> core
@@ -226,10 +226,11 @@ Least-recently-used bitmaps are evicted under a byte budget. Raster images (PNG,
 the same service. The library never fetches anything by itself: the host supplies a
 resolver, and a failed asset shows a placeholder while the node keeps its geometry.
 
-## 7. Interaction tools **(planned: add-basic-tools)**
+## 7. Interaction tools
 
-Each tool (select, marquee, move, connect, pan, zoom) is an explicit state machine. The
-move tool, for example:
+Each tool (select/move, marquee, connect, pan, plus wheel zoom) is an explicit state
+machine; [interaction.md](interaction.md) lists the gestures, commands and keymap. The move
+tool, for example:
 
 ```mermaid
 stateDiagram-v2
@@ -298,12 +299,14 @@ src/view/                                                     (nodeeditor-js/vie
               presets/           image-symbol, card, port glyph and  implemented
                                  connection painters
               paint/             background, scene and interaction   implemented
-                                 layers, LOD
-  interact/   overlay/           DOM overlay host, presence          implemented
-              selection/, tools/, input/, commands/                  planned
-                                 selection, tools, DOM input,        (add-basic-tools)
-                                 command registry and keymap
-  view-types.ts, mount-view.ts                                       implemented
+                                 layers, LOD, previews
+  interact/   selection/         selection model                     implemented
+              tools/             tool contract, router, tools        implemented
+              input/             DOM input adapter, effect runner    implemented
+              commands/          command registry, keymap, view      implemented
+                                 commands
+              overlay/           DOM overlay host, presence          implemented
+  view-types.ts, view-editing.ts, mount-view.ts                      implemented
   index.ts                       host API (nodeeditor-js/view)
   advanced.ts                    building blocks (nodeeditor-js/view/advanced)
 src/react/                       provider and hooks                  planned (Slice B)

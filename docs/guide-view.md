@@ -14,9 +14,9 @@ If you know QtNodes: `mountView()` plays the role of `QGraphicsView` plus the sc
 setup around it, but the "scene" is not a list of `QGraphicsItem`s. It is a derived
 projection of the model that the view builds and owns. A node painter is the counterpart
 of `QGraphicsItem::paint()` (or QtNodes' `AbstractNodePainter`), and a node geometry is the
-counterpart of `boundingRect()`/`shape()`. Interaction tools (selection, drag, connect) are
-not part of this guide: they arrive with the `add-basic-tools` change **(planned)**. What
-you get today is a correct, fast, themeable *display* with panning, zooming and picking.
+counterpart of `boundingRect()`/`shape()`. Interaction tools (selection, drag, connect,
+shortcuts) are not part of this guide: see [interaction.md](interaction.md). This guide
+covers the correct, fast, themeable *display*, panning, zooming and picking.
 
 ## 1. Mounting a view
 
@@ -48,7 +48,8 @@ All options are optional:
 | `theme`           | A theme patch applied over `DEFAULT_THEME` (section 6). |
 | `assets`          | `{ resolve, budgetBytes?, maxSvgChars? }`: the host's asset resolver and cache budget (section 5). |
 | `zOrder`          | Paint order of `"connection"`, `"node"`, `"port"`, bottom to top. Default: connections, nodes, ports. |
-| `viewState`       | `{ isSelected(id), isHovered(id) }`; the tools change will supply the real one. Default: nothing selected. |
+| `viewState`       | `{ isSelected(id), isHovered(id) }` merged with the view's own selection and hover. Default: nothing extra. |
+| `input`           | Tools, keymap and platform, or `false` for none (see [interaction.md](interaction.md)). Default: the built-in tools and keymap. |
 | `initialViewport` | `{ zoom, panX, panY }`. |
 | `frameClock`      | Test seam replacing `requestAnimationFrame`. |
 
