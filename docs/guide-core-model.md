@@ -212,5 +212,5 @@ freezing cost. The `readonly` types still catch writes at compile time.
 
 - `src/core/data/model/*.test.ts`: each requirement ID has tests named after it.
 - [guide-using-the-model.md](guide-using-the-model.md): the public API on top of this store.
-- `openspec/changes/add-patches-and-history/design.md`: how patches, events and undo sit
+- `openspec/changes/archive/2026-10-30-add-patches-and-history/design.md`: how patches, events and undo sit
   on top of this store.

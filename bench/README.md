@@ -33,7 +33,7 @@ per-suite output goes to `bench/.results/` (git-ignored).
 ## Reading the baseline
 
 `bench/baseline/<date>-chrome.json` follows the schema in
-`openspec/changes/add-perf-baseline/design.md` (D6): commit, build mode, machine, browser
+`openspec/changes/archive/2026-10-30-add-perf-baseline/design.md` (D6): commit, build mode, machine, browser
 and version, headless or headed, and one row per workload, fixture, device pixel ratio and
 metric with `p50`, `p95`, `p99`, sample count, visible node and path counts, the target,
 and `met`, `missed` or `no-target`. `SUMMARY.md` renders the same data and lists every
