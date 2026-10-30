@@ -18,7 +18,7 @@ step), like a `QUndoCommand` pushed once per mouse release instead of once per m
 | ----- | ---- |
 | DOM input adapter (`attachDomInput`) | The only code that sees DOM events. Converts them to `ToolInput`, executes the effects, maps every cancellation source to `cancel`. |
 | Tool router (`createToolRouter`) | Holds the single active gesture, picks the tool on press by fixed precedence, ignores other pointers while a gesture runs. |
-| Tools | `pan`, `connect`, `select-move`, `marquee`: `{ idle, accepts, transition, isIdle }` over a discriminated-union state. |
+| Tools | `pan`, `connect`, `select-move`, `empty-pan`, `marquee`: `{ idle, accepts, transition, isIdle }` over a discriminated-union state. |
 | Effect runner (`createEffectRunner`) | Executes `capture`/`release`, `preview`, `commit`, `select`, `viewport` and `cursor` effects in order. |
 | Selection model | View-local, ordered, with a primary entry. Dropped entities leave it when the model commits their removal. |
 | Command registry | Stable command IDs shared by shortcuts, the API and (later) menus. |
@@ -30,13 +30,19 @@ step), like a `QUndoCommand` pushed once per mouse release instead of once per m
 | Click a node or connection | Replace the selection. |
 | Shift+click | Add to the selection. |
 | Ctrl/Cmd+click | Toggle in the selection. |
-| Click empty canvas | Clear the selection. |
+| Click empty canvas | Clear the selection (Shift or Ctrl/Cmd keeps it). |
 | Drag a node | Move it, or the whole selection if it was selected. Moves snap to `gridStep` when set; hold Alt to suppress snapping. Locked nodes in the selection stay put and are marked with a padlock. |
 | Drag from a port | Connect (section 4). |
-| Drag empty canvas | Marquee selection (section 3). |
-| Middle-button drag, or Space + drag | Pan. |
+| Drag empty canvas | Pan. |
+| Shift or Ctrl/Cmd + drag empty canvas | Marquee selection (section 3). |
+| Middle-button drag, or Space + drag | Pan, also over nodes. |
 | Wheel | Zoom around the cursor (section 5). |
 | Right button | Not claimed: the browser's context menu works as usual. |
+
+People pan far more often than they rubber-band, so a plain drag on empty canvas pans, as
+in React Flow and QtNodes, and the marquee takes a modifier. `emptyDrag: "marquee"`
+switches to the CAD-style convention instead: a plain drag draws the marquee and panning
+needs Space or the middle button.
 
 Pressing a port without dragging selects its node. A press that moves less than the drag
 threshold (3 CSS px for a mouse, 6 for touch and pen) is a click, not a drag.
@@ -54,7 +60,9 @@ mode never depends on color alone:
 
 - **Left to right** (solid outline): selects entities *fully contained* in the rectangle.
 - **Right to left** (dashed outline): selects entities the rectangle *touches*.
-- Shift adds to the selection; Ctrl/Cmd toggles.
+- Shift adds to the selection; Ctrl/Cmd toggles. Either one also starts the marquee
+  while `emptyDrag` is `"pan"` (the default); without a modifier the marquee replaces the
+  selection, which only happens with `emptyDrag: "marquee"`.
 
 The `marquee` tool option fixes one mode for every drag: `"direction"` (default),
 `"contain"` or `"intersect"`.
@@ -154,7 +162,7 @@ running: one gesture is one history entry.
 mountView(container, {
   model,
   input: {
-    toolOptions: { gridStep: 20, marquee: "direction", wheel: "zoom" },
+    toolOptions: { gridStep: 20, emptyDrag: "pan", marquee: "direction", wheel: "zoom" },
     keymap: [...DEFAULT_KEYMAP],
     platform: "other",
   },
@@ -162,9 +170,16 @@ mountView(container, {
 ```
 
 `toolOptions` also holds `dragThresholdPx`, `pickTolerancePx` and `wheelSensitivity`.
+Snapping is off unless `gridStep` is set. Options can change while the view runs:
+`view.setToolOptions({ gridStep: undefined })` turns snapping off from the next input
+event, patches merge key by key, and `view.toolOptions()` returns what is in effect (the
+plain demo's "Snap to grid" checkbox and G key do exactly this).
+
 `input.tools` replaces the tool list (router precedence order); `defaultToolSlots()` gives
-the built-in order: pan, connect, select-move, marquee. Connect sits before select-move so
-a press on a port connects instead of moving the node. Editing needs a model that offers
+the built-in order: pan, connect, select-move, empty-pan, marquee. Connect sits before
+select-move so a press on a port connects instead of moving the node; empty-pan only sees
+presses nothing else claimed, and lets Shift or Ctrl/Cmd presses fall through to the
+marquee. Editing needs a model that offers
 the command API (a `GraphModel` does); a read-only model still allows selection, pan and
 zoom. The `view.selection` handle reads and changes the selection, and fires events the
 view uses to repaint outlines.
