@@ -167,20 +167,32 @@ const moveSelection: StressAction = {
       .slice(0, MAX_SELECTED);
     view.selection.replace(onScreen.map((n) => nodeKey(n.id)));
     await nextFrame();
-    // Grab the selected node nearest the centre.
+    // Grab the selected node nearest the centre: aim at node centres, nearest first, and
+    // confirm with one pick each. (A blind pick grid would cost seconds when zoomed out.)
     const rect = view.element.getBoundingClientRect();
     const c = center(view);
-    let grab: { x: number; y: number; d: number } | undefined;
-    for (let dy = -200; dy <= 200; dy += 5) {
-      for (let dx = -200; dx <= 200; dx += 5) {
-        const hit = view.pick(rect.left + c.x + dx, rect.top + c.y + dy)[0];
-        const d = dx * dx + dy * dy;
-        if (
-          hit?.kind === "node" &&
-          view.selection.has(nodeKey(hit.nodeId)) &&
-          (!grab || d < grab.d)
-        )
-          grab = { x: rect.left + c.x + dx, y: rect.top + c.y + dy, d };
+    const toClient = (x: number, y: number) => ({
+      x: rect.left + x * vp.zoom + vp.panX,
+      y: rect.top + y * vp.zoom + vp.panY,
+    });
+    const byDistance = onScreen
+      .map((n) => {
+        const p = toClient(
+          n.position.x + n.size.width / 2,
+          n.position.y + n.size.height / 2,
+        );
+        return {
+          p,
+          d: (p.x - rect.left - c.x) ** 2 + (p.y - rect.top - c.y) ** 2,
+        };
+      })
+      .sort((a, b) => a.d - b.d);
+    let grab: { x: number; y: number } | undefined;
+    for (const { p } of byDistance.slice(0, 50)) {
+      const hit = view.pick(p.x, p.y)[0];
+      if (hit?.kind === "node" && view.selection.has(nodeKey(hit.nodeId))) {
+        grab = p;
+        break;
       }
     }
     if (!grab)
