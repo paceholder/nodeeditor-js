@@ -63,6 +63,13 @@ missed target.
   fit-all zoom, with every node visible; the zoom sweep covers 0.8 to 1.25 times the fit
   zoom. Their frame-interval target is p95 <= 33.3 ms, labeled and non-failing.
 - Provenance includes `+dirty` after the commit when the working tree had changes.
+- A baseline file is never overwritten. A second run on the same day gets a counter
+  (`<date>-chrome-2.json`), or a name given with `BENCH_BASELINE_SUFFIX=perf`
+  (`<date>-chrome-perf.json`).
+- `SUMMARY.md` ends with a comparison against the newest earlier baseline (latest `date`,
+  then file modification time), or the file named by `BENCH_BASELINE_COMPARE`: p95, p99
+  and status before and now for each row, and bundle sizes.
+- Status allows float noise: a p95 of 16.70000000001 against a 16.7 target is met.
 
 ## Fixtures
 

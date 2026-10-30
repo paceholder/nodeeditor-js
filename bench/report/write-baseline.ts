@@ -3,8 +3,9 @@
  * only full-duration runs may become the committed baseline. Numbers are never pooled
  * across DPRs or browsers; each result row stands alone.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { type PreviousBaseline, renderComparison } from "./compare.js";
 import type { Summary } from "./stats.js";
 import { statusOf, targetFor } from "./targets.js";
 import type { Baseline, BenchResult } from "./types.js";
@@ -78,8 +79,14 @@ function targetText(r: BenchResult): string {
   return t.label ? `${parts.join(", ")} (${t.label})` : parts.join(", ");
 }
 
-/** Markdown summary: provenance, result tables, bundle table, missed targets. */
-export function renderSummary(b: Baseline): string {
+/**
+ * Markdown summary: provenance, result tables, bundle table, the comparison with an
+ * earlier baseline when one is given, notes and missed targets.
+ */
+export function renderSummary(
+  b: Baseline,
+  previous?: PreviousBaseline,
+): string {
   const out: string[] = [
     `# Performance baseline ${b.date}`,
     "",
@@ -124,6 +131,7 @@ export function renderSummary(b: Baseline): string {
           `bundle ${e.entry}: ${kib(e.gzipBytes)} KiB (budget ${kib(e.budgetBytes ?? 0)} KiB)`,
       ),
   ];
+  if (previous) out.push("", ...renderComparison(b, previous));
   if (b.notes && b.notes.length > 0) {
     out.push("", "## Notes", "");
     for (const note of b.notes) out.push(`- ${note}`);
@@ -135,20 +143,39 @@ export function renderSummary(b: Baseline): string {
   return out.join("\n");
 }
 
-/** File name for a baseline: `<yyyy-mm-dd>-<browser>.json`. */
-export function baselineFileName(b: Baseline): string {
-  return `${b.date}-${b.browser.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`;
+/** File name for a baseline: `<yyyy-mm-dd>-<browser>[-<suffix>].json`. */
+export function baselineFileName(b: Baseline, suffix?: string): string {
+  const browser = b.browser.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `${b.date}-${browser}${suffix ? `-${suffix}` : ""}.json`;
 }
 
-/** Write JSON and SUMMARY.md into `dir`. Throws for quick or schema-invalid runs. */
-export function writeBaseline(dir: string, b: Baseline): string {
+export interface WriteOptions {
+  /** Appended to the file name, e.g. `perf` gives `2026-10-30-chrome-perf.json`. */
+  readonly suffix?: string;
+  /** Earlier baseline to compare with in SUMMARY.md. */
+  readonly previous?: PreviousBaseline;
+}
+
+/**
+ * Write JSON and SUMMARY.md into `dir`. Throws for quick or schema-invalid runs. An
+ * existing baseline file is never overwritten: a counter (`-2`, `-3`, ...) is added.
+ */
+export function writeBaseline(
+  dir: string,
+  b: Baseline,
+  options: WriteOptions = {},
+): string {
   if (b.quick) throw new Error("quick runs are never written as a baseline");
   const problems = validateBaseline(b);
   if (problems.length > 0)
     throw new Error(`invalid baseline: ${problems.join("; ")}`);
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, baselineFileName(b));
+  let file = join(dir, baselineFileName(b, options.suffix));
+  for (let n = 2; existsSync(file); n++) {
+    const suffix = [options.suffix, n].filter(Boolean).join("-");
+    file = join(dir, baselineFileName(b, suffix));
+  }
   writeFileSync(file, `${JSON.stringify(b, null, 2)}\n`);
-  writeFileSync(join(dir, "SUMMARY.md"), renderSummary(b));
+  writeFileSync(join(dir, "SUMMARY.md"), renderSummary(b, options.previous));
   return file;
 }
