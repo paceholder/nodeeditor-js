@@ -38,7 +38,7 @@
 ## 7. Verification and baseline
 
 - [ ] 7.1 Profile the culled F-LARGE pan at DPR 2 after groups 2–5; fix the top remaining cost if it is in the library, and verify with a full `npm run bench:browser` run that p95 ≤ 16.7 ms; if still missed, report the profile and numbers to the user before continuing
-- [ ] 7.2 Run the gates: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:bench`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass
+- [x] 7.2 Run the gates: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:bench`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass
 - [ ] 7.3 Record a new baseline with `npm run bench:baseline` (headed installed Chrome); verify the new `bench/baseline/<date>-chrome.json` and `SUMMARY.md` show drag pick, overview and DPR 2 pan status, and compare them with 2026-10-30 in the summary
 - [ ] 7.4 Re-run the perf demo stresses (zoom sweep, pan, move, live stream) on F-LARGE and 20k nodes in headless Chrome and note the before/after numbers in `bench/README.md`
 
