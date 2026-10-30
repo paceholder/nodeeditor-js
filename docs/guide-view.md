@@ -51,6 +51,7 @@ All options are optional:
 | `viewState`       | `{ isSelected(id), isHovered(id) }` merged with the view's own selection and hover. Default: nothing extra. |
 | `input`           | Tools, keymap and platform, or `false` for none (see [interaction.md](interaction.md)). Default: the built-in tools and keymap. |
 | `initialViewport` | `{ zoom, panX, panY }`. |
+| `gestureBitmap`   | `{ minVisible?, settleMs?, maxZoomRatio?, maxUncovered? }`: reuse the last scene frame as a picture while panning or zooming a large visible set (section 7). Off when absent. |
 | `frameClock`      | Test seam replacing `requestAnimationFrame`. |
 
 Nothing touches the browser at import time, so you can import this module while
@@ -343,7 +344,15 @@ The input object (`NodePaintInput`) carries:
 | `state`    | `{ selected, hovered, diagnostics }` from the view state and the node's `status`. |
 
 Port glyph painters run in *world* space and receive `port`, `position`, an outward unit
-`normal`, `style`, `detail` and `unit`. Connection painters also run in world space and
+`normal`, `style`, `detail` and `unit`. Unlike node and connection painters they are **not**
+wrapped in their own `save`/`restore`: a canvas `save`/`restore` pair copies and restores
+the whole drawing state (transform, clip, colors, line style, font, shadow, ...), and with
+tens of thousands of ports on screen that copy was a measurable part of the frame. The
+scene layer sets `fillStyle` (the port fill), `strokeStyle` (the port stroke) and
+`lineWidth` (`unit`) before every glyph and restores once after all ports. A glyph painter
+may change those three freely; if it changes anything else (the transform, a clip, line
+dash, global alpha, a shadow), it must restore that itself before returning, or wrap its
+own body in `ctx.save()`/`ctx.restore()`. Connection painters also run in world space and
 receive the `connection`, its `path` (`PathGeometry`), `style`, `detail`, `unit` and
 `selected`. Selection outlines and error/warning badges are drawn by the scene layer *after*
 your painter, so no painter or detail level can hide them.
@@ -491,19 +500,116 @@ set it to `false` to let them scale with the graph.
 ## 7. Level of detail
 
 At low zoom, text is unreadable noise and costs time. The view derives a `DetailPolicy`
-from the zoom and two theme thresholds: `lodReducedBelow` (default 0.6) and
-`lodMinimalBelow` (default 0.25).
+from the zoom and three theme thresholds: `lodReducedBelow` (default 0.6),
+`lodMinimalBelow` (default 0.25) and `lodOverviewBelow` (default 0.15).
 
-| Level     | Zoom (defaults) | `title` | `secondaryLabels` |
-| --------- | --------------- | ------- | ----------------- |
-| `full`    | >= 0.6          | yes     | yes |
-| `reduced` | 0.25 .. 0.6     | yes     | no  |
-| `minimal` | < 0.25          | no      | no  |
+| Level      | Zoom (defaults) | `title` | `secondaryLabels` | Who draws |
+| ---------- | --------------- | ------- | ----------------- | --------- |
+| `full`     | >= 0.6          | yes     | yes | your painters |
+| `reduced`  | 0.25 .. 0.6     | yes     | no  | your painters |
+| `minimal`  | 0.15 .. 0.25    | no      | no  | your painters |
+| `overview` | < 0.15          | no      | no  | the scene layer, in batches |
 
 Painters receive the policy as `detail` and decide what to skip. Selection, diagnostics and
 connection endpoints are typed as the literal `true` in every level: they can never be
 switched off by zoom. `detailLevel(zoom, theme)` and `detailPolicy(zoom, theme)` are exported
 from `nodeeditor-js/view/advanced` if your own code needs the same decision.
+
+`DetailLevel` is the union `"full" | "reduced" | "minimal" | "overview"`. If your code has an
+exhaustive `switch` over it (with a `never` check in the default branch), adding `overview`
+made that switch fail to compile until you add the case. That is intended: the compiler
+points at every place that has to decide what the new level means. A painter itself never
+sees `overview`, because no painter is called at that level.
+
+### The overview level
+
+When the whole graph fits on screen, F-LARGE (10k nodes, 20k wires) puts every entity in
+the visible set, and even a trivial painter call per entity adds up. Below
+`lodOverviewBelow` the scene layer therefore stops calling node and connection painters and
+draws the graph itself:
+
+- **Nodes** are their hit bounds (a plain rectangle), grouped by resolved fill, stroke and
+  line width. Each group becomes one path that is filled once and stroked once.
+- **Connections** are grouped by resolved stroke style and stroked once per group. A cubic
+  only a few CSS pixels long on screen becomes a straight line. Paths still end at the
+  port anchors.
+- **Selection outlines and diagnostic badges** are drawn per entity after each layer's
+  batches, so they stay visible on top.
+
+Why batch? In Canvas2D every `fill()` or `stroke()` call is a separate rasterization
+request with its own fixed cost, comparable to issuing one `QPainter::drawPath` per item
+instead of one per style. Adding thousands of rectangles to one path and filling it once
+lets the browser rasterize them in one go, and the state (colors, line width) is set once
+per group instead of per entity. Groups keep the order in which their first member
+appears in the paint order, so the output is deterministic; the price is that, inside the
+overview, z-order holds between the node and connection layers but not across style
+groups. At that zoom nodes are a few pixels big, so overlaps are not readable anyway.
+
+Theme overrides still apply (a type override that changes `nodeFill` gives that type its
+own group). The overview does not look like your custom painter output: icons, rounded
+corners and titles are gone. Set `lodOverviewBelow` to 0 to keep your painters at every
+zoom, at the cost of slower fit-all frames.
+
+### Ports hidden when zoomed out
+
+Below `lodHidePortsBelow` (default 0.25) ports disappear: no glyph is painted, and picking
+skips them. A port glyph is a few CSS pixels wide, so far out it is not a usable target
+anyway, and every visible port costs a painter call.
+
+Picking follows the picture. A press on a spot where a hidden port would be does not start a
+connection; the tools see what lies underneath instead: the node (the press selects and
+moves it) or, outside the node's body, the empty canvas (the press pans). `view.pick` does
+the same unless you pass `ports: true` (section 9). Zooming back in brings the ports back.
+
+Setting `lodHidePortsBelow` to 0 keeps ports painted and pickable at every zoom, for hosts
+whose users connect while zoomed far out. Connections stay visible at every level.
+
+### Reusing the last frame during a gesture (opt-in)
+
+Even batched, an exact frame with 30k visible entities takes longer than one display
+period. Interactive drawing programs hide that cost with a trick: while the user is panning
+or zooming, they move a picture of the last frame instead of redrawing, and redraw properly
+when the gesture rests. `gestureBitmap` enables this:
+
+```ts
+const view = mountView(container, { model, gestureBitmap: {} }); // defaults
+```
+
+How it works:
+
+1. After each exact scene paint with at least `minVisible` (default 3000) visible nodes
+   plus connections, the scene canvas is copied into an offscreen canvas together with the
+   viewport it was painted with.
+2. A frame whose only reason to repaint the scene is a viewport change draws that copy,
+   shifted and scaled to the new viewport (one `drawImage`), instead of painting every
+   entity.
+3. A timer, restarted on every viewport change, asks for an exact repaint once the
+   viewport has rested for `settleMs` (default 120 ms). After that the view is idle again
+   and requests no frames.
+4. Anything other than the viewport (a model edit, selection, hover, theme, an asset, a
+   resize) forces an exact frame at once. Picking never looks at the copy; it always uses
+   the geometry.
+
+The trade-off is fidelity during the gesture:
+
+- **Blur.** Zooming in scales the copy up, so lines and text get soft. `maxZoomRatio`
+  (default 1.25) bounds that: once the zoom differs from the copy's zoom by more than this
+  factor either way (0.8 to 1.25 by default), the frame is exact and becomes the new copy.
+- **Uncovered areas.** Panning moves the copy, and the strip that scrolls into view was
+  never painted; it shows only the background grid. `maxUncovered` (default 0.25) bounds
+  that: once more than this fraction of the view would be uncovered, the frame is exact.
+  Zooming out leaves an uncovered border in the same way.
+
+A gesture that never rests (a long continuous pan or zoom sweep) therefore alternates:
+cheap reused frames between bound crossings, an exact frame at each crossing. Raising the
+limits gives more reused frames and a staler picture; lowering them gives sharper frames
+and more exact paints. With fewer than `minVisible` entities on screen the exact paint is
+fast anyway and the copy is not used.
+
+It is off by default, because what the user sees mid-gesture is then not an exact
+rendering of the model. Turn it on when large visible sets are common and a brief blur is
+acceptable. `renderStats().scenePaints` counts `{ exact, reused }` scene frames so you can
+see how often it engages.
 
 ## 8. Interaction layer, overlays and presence
 
@@ -597,7 +703,9 @@ model is bound. **Tolerances are CSS pixels** and are divided by the current zoo
 internally, so a thin wire is as easy to hit at 10% zoom as at 400%. `tolerancePx` (default
 4) is the connection hit distance; port capture radius comes from the geometry (default 8).
 Pass `order` to change the interactive priority per call. You do not pass `zoom`; the view
-supplies it.
+supplies it. Below the theme's `lodHidePortsBelow` the view also passes `ports: false`, so
+hidden ports are never returned; pass `{ ports: true }` to score them anyway (for example,
+for a tooltip that names the port under the pointer at any zoom).
 
 ## 10. Render statistics
 
@@ -606,6 +714,7 @@ const s = view.renderStats();
 s.layers.scene.lastPaintMs;      // duration of the last paint of each layer
 s.nodes;                         // { painted, culled } at the last scene paint
 s.paths;                         // { painted, culled } for connections
+s.scenePaints;                   // { exact, reused } scene frames (reused: gestureBitmap)
 s.framesPainted;                 // frames in which at least one layer painted
 s.lastPaintedInputSeq;           // see noteInput
 ```

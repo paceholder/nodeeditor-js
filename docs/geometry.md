@@ -87,6 +87,36 @@ Presets:
 builder puts control points at `anchor + normal * k`, `k = clamp(distance / 2, 20, 200)`.
 Orthogonal routing is a later change.
 
+### Segment-indexed paths
+
+A long wire's bounding box is mostly empty space: a cubic from the left edge of the graph
+to the right edge has a box covering half the world, although its stroke touches only a
+thin band. If the index held one box per wire, every pick and every culling query anywhere
+in that box would return the wire, and zoomed out almost every query returns almost every
+wire. So a path is indexed as **pieces**:
+
+- `pieceCount(path)`: a line is one piece; a cubic gets `ceil(L / 800)` pieces, clamped to
+  1..12, where `L` is the control-polygon length in world units (an upper bound of the
+  arc length). Short wires stay one entry; the index grows by about 1.5x on F-LARGE.
+- `splitPath(path)` splits at equal parameter steps with de Casteljau subdivision, so each
+  piece is an exact cubic with its own control points. By the convex hull property the box
+  around a piece's four control points contains that piece, and the union of the piece
+  boxes contains the whole path.
+- The geometry scene indexes piece `i` of connection `c` under the key `c:<id>#<i>`, each
+  box grown by the painted margin (stroke width, arrowheads).
+
+```mermaid
+flowchart LR
+  path["cubic wire<br/>(one painted path)"] --> split["splitPath: de Casteljau<br/>at t = 0, 1/k, 2/k, ..."]
+  split --> p0["piece 0<br/>control box"]
+  split --> p1["piece 1<br/>control box"]
+  split --> p2["piece k-1<br/>control box"]
+  p0 & p1 & p2 --> index["AABB tree<br/>one key per piece"]
+```
+
+The wire is still one entity everywhere else: it is painted once, picked as one
+connection, and a query returns it once (the first matching piece wins, no set needed).
+
 ## Spatial index
 
 `SpatialIndex<K>` supports insert, update, remove, rectangle query and point query with
@@ -102,18 +132,56 @@ incident connections only; z-order and other record-only changes recompute nothi
 `reset` rebuilds everything. `queryRect` returns culling sets by painted bounds in paint
 order (layers bottom to top, default `connection, node, port`; nodes by `(z, seq)`).
 
+For a path, the culling bounds are its margin-grown piece boxes: a path is drawn
+when at least one piece box meets the view, and culled when none does, even if its overall
+box overlaps the view. An S-curve that passes beside the viewport, with its box reaching
+into it, is therefore not painted. This is tighter than before and never drops a visible
+stroke, because the piece boxes together contain the whole stroke.
+
+A query that contains every indexed box (the fit-all viewport) returns the whole scene in
+paint order. Its result is cached and keyed by a counter that every index write bumps, so
+repeated fit-all frames (an overview pan) do not re-sort 30k entries; any edit, move or
+z change invalidates it.
+
 ## Picking
 
-`scene.pick(worldPoint, { zoom, tolerancePx?, order? })`:
+`scene.pick(worldPoint, { zoom, tolerancePx?, order?, ports? })`:
 
 1. Broad phase: a point query with radius `max(tolerancePx, largest capture radius) / zoom`.
+   It returns node entries and connection *pieces*.
 2. Precise phase: port capture distance, node hit shape (the point mapped to local space),
-   and path distance.
+   and path distance. Path distance is measured only on the returned pieces; a connection
+   is a hit as soon as one of its pieces is within tolerance, and its other pieces are
+   skipped. A long wire whose overall box contains the
+   point but whose pieces do not costs no distance computation at all.
 3. Tolerances are CSS pixels, divided by zoom, so they never scale with graph zoom. Port
    capture radius defaults to 8 CSS pixels.
 4. Candidates are ordered by interactive layer (default: reverse of the paint layer order,
    so `port`, `node`, `connection`), then paint order descending, then nearest port, then
    ID. Hosts override the order per scene (`layerOrder`) or per call (`order`).
 
+`ports: false` (default `true`) leaves ports out: capture radii no longer widen the broad
+phase and no port candidate is returned, so a point on a port anchor yields the node under
+it. The view passes `ports: false` while ports are hidden below the theme's
+`lodHidePortsBelow` (see the view guide), so picking matches what is painted.
+
 Hits are `{ kind: "port", nodeId, portId }`, `{ kind: "node", nodeId }`, or
 `{ kind: "connection", connectionId }`; the `member` field is reserved for bundled paths.
+
+### Compared with QtNodes
+
+`QGraphicsScene` indexes each item by its `boundingRect()` in a BSP tree, and an item query
+then tests `shape()`, a `QPainterPath`, for containment. For a wire that means one box per
+wire (large and mostly empty for a long curve) and a path containment test against the
+stroked outline. Here the two steps are:
+
+- **Rough step: curve pieces in the index.** Each wire contributes several small boxes
+  that follow the curve, so a query near the pointer or a view rectangle returns only the
+  wires that actually pass nearby.
+- **Exact step: curve distance on the nearby pieces.** Instead of building a stroked
+  outline and testing containment, the picker computes the distance from the point to
+  each returned piece (subdivision plus a Newton step) and compares it with the tolerance.
+  For 20k wires that is cheaper than stroking paths, and the tolerance stays a number in
+  CSS pixels (divided by the zoom), so a wire is as easy to hit at 10% zoom as at 400%. In
+  Qt the equivalent needs a `QPainterPathStroker` whose width you rescale with the view
+  transform.
