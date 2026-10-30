@@ -9,6 +9,7 @@
 import { createGeometryRegistry, DEFAULT_VIEWPORT } from "../core/index.js";
 import { createOverlayHost } from "./interact/overlay/overlay-host.js";
 import { createPresence } from "./interact/overlay/presence.js";
+import { createSelectionModel } from "./interact/selection/selection-model.js";
 import {
   type ContainerMetrics,
   observeContainer,
@@ -25,14 +26,20 @@ import { createAssetService } from "./render/assets/asset-service.js";
 import { createInteractionLayer } from "./render/paint/interaction-layer.js";
 import { createLayerPainter } from "./render/paint/layer-painter.js";
 import {
+  createHiddenIds,
+  createPreviewHost,
+} from "./render/paint/previews/preview-host.js";
+import {
   DEFAULT_Z_ORDER,
   EMPTY_VIEW_STATE,
+  type ViewState,
 } from "./render/paint/scene-layer.js";
 import { createPainterRegistries } from "./render/registries/painters.js";
 import { DEFAULT_THEME, mergeTheme } from "./render/theme/tokens.js";
+import { attachEditing, type Editing } from "./view-editing.js";
 import type { ViewHandle, ViewOptions } from "./view-types.js";
 
-export type { ViewHandle, ViewOptions } from "./view-types.js";
+export type { InputOptions, ViewHandle, ViewOptions } from "./view-types.js";
 
 export function mountView(
   container: HTMLElement,
@@ -75,6 +82,22 @@ export function mountView(
     scene: () => scene,
   });
 
+  // Entities a drag preview draws itself are hidden from the scene layer (D6).
+  const hidden = createHiddenIds();
+  const baseState = options.viewState ?? EMPTY_VIEW_STATE;
+  // The view's own selection and hover feed the painters next to any host-supplied state.
+  const selection = createSelectionModel();
+  const offSelection = [
+    ...(options.model ? [selection.bindToModel(options.model)] : []),
+    selection.on(() => scheduler.markDirty("scene")),
+  ];
+  let hovered: string | undefined;
+  const viewState: ViewState = {
+    isSelected: (id) => selection.isSelected(id) || baseState.isSelected(id),
+    isHovered: (id) => id === hovered || baseState.isHovered(id),
+    isHidden: (id) => hidden.isHidden(id) || baseState.isHidden?.(id) === true,
+  };
+
   const paintLayer = createLayerPainter({
     canvases: stack.canvases,
     backing: () => backing,
@@ -84,7 +107,7 @@ export function mountView(
     interaction,
     assets,
     zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
-    viewState: options.viewState ?? EMPTY_VIEW_STATE,
+    viewState,
     bound: () => (reader && scene ? { reader, scene } : undefined),
   });
 
@@ -109,6 +132,22 @@ export function mountView(
     },
   );
   interaction.add(presence.painter);
+  const previews = createPreviewHost({
+    interaction,
+    hidden,
+    invalidateScene: () => scheduler.markDirty("scene"),
+    bound: () =>
+      reader && scene
+        ? {
+            reader,
+            scene,
+            painters,
+            zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
+            state: viewState,
+            assets,
+          }
+        : undefined,
+  });
   const dirtyAll = (): void =>
     scheduler.markDirty("background", "scene", "interaction");
 
@@ -136,6 +175,23 @@ export function mountView(
     options.initialViewport ?? DEFAULT_VIEWPORT,
   );
 
+  const editing: Editing = attachEditing({
+    root: stack.root,
+    overlay: stack.overlay,
+    model: options.model,
+    scene,
+    selection,
+    viewport,
+    size: () => metrics.size(),
+    setPreview: previews.set,
+    setHovered(id) {
+      if (id === hovered) return;
+      hovered = id;
+      scheduler.markDirty("scene");
+    },
+    input: options.input ?? {},
+  });
+
   const offPainters = [
     painters.nodes.onChange(() => scheduler.markDirty("scene")),
     painters.portGlyphs.onChange(() => scheduler.markDirty("scene")),
@@ -157,6 +213,30 @@ export function mountView(
     },
     interaction: { add: interaction.add, invalidate: interaction.invalidate },
     overlay: { attach: overlay.attach },
+    setToolPreview: previews.set,
+    selection: {
+      keys: selection.keys,
+      has: selection.has,
+      get size() {
+        return selection.size;
+      },
+      primary: selection.primary,
+      nodeIds: selection.nodeIds,
+      connectionIds: selection.connectionIds,
+      isSelected: selection.isSelected,
+      apply: selection.apply,
+      replace: selection.replace,
+      add: selection.add,
+      toggle: selection.toggle,
+      clear: selection.clear,
+      on: selection.on,
+    },
+    commands: {
+      run: editing.commands.run,
+      availability: editing.commands.availability,
+      list: editing.commands.list,
+      register: editing.commands.register,
+    },
     setPresence(entries) {
       presence.set(entries);
       interaction.invalidate();
@@ -193,6 +273,11 @@ export function mountView(
       if (disposed) return;
       disposed = true;
       for (const off of offPainters) off();
+      // First: a gesture in flight is cancelled while everything it touches still exists.
+      editing.dispose();
+      for (const off of offSelection) off();
+      selection.dispose();
+      previews.dispose();
       binding?.dispose();
       scheduler.dispose();
       overlay.dispose();

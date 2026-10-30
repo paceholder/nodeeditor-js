@@ -28,6 +28,7 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "view/render", rank: 6, path: "src/view/render/" },
   { layer: "view/interact", rank: 7, path: "src/view/interact/" },
   { layer: "view/mount", rank: 8, path: "src/view/view-types.ts" },
+  { layer: "view/mount", rank: 8, path: "src/view/view-editing.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/mount-view.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/advanced.ts" },
@@ -42,12 +43,14 @@ const CORE_ENTRY = "src/core/index.ts";
  * from anywhere; in exchange no library file may import them.
  */
 const TEST_SUPPORT: readonly RegExp[] = [
+  /\/test-support\//, // view tool harness
   /\/test-support\.ts$/, // view test hosts
   /fixtures[^/]*\.ts$/, // model and scene fixtures
   /\/test-helpers\.ts$/, // model record builders
   /\/test-kit\.ts$/, // command and snapshot test kits
   /\/test-setup\.ts$/, // patch test setup
   /\/test-utils\.ts$/, // geometry seeded RNG
+  /\/input-test-support\.ts$/, // synthetic DOM input events
   /\/browser-support\.ts$/, // browser test hosts and frame waits
 ];
 

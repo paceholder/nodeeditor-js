@@ -32,6 +32,11 @@ import { type DetailPolicy, detailPolicy } from "./level-of-detail.js";
 export interface ViewState {
   isSelected(id: string): boolean;
   isHovered(id: string): boolean;
+  /**
+   * Entities the scene layer skips (moved nodes while a drag preview draws them on the
+   * interaction layer, D6). Omitted means nothing is hidden.
+   */
+  isHidden?(id: string): boolean;
 }
 
 export const EMPTY_VIEW_STATE: ViewState = {
@@ -146,22 +151,14 @@ function paintPorts(
   }
 }
 
-export function paintScene(
+/** Paint pre-resolved entries by z-layer. Shared by the scene and move previews. */
+export function paintEntries(
   ctx: CanvasRenderingContext2D,
   deps: SceneLayerDeps,
   frame: PaintFrame,
-): ScenePaintStats {
-  const nodes: NodeEntry[] = [];
-  const connections: ConnectionEntry[] = [];
-  for (const item of deps.scene.queryRect(frame.visibleWorld, "painted")) {
-    if (item.kind === "node") {
-      const e = deps.scene.node(item.id);
-      if (e) nodes.push(e);
-    } else {
-      const e = deps.scene.connection(item.id);
-      if (e) connections.push(e);
-    }
-  }
+  nodes: readonly NodeEntry[],
+  connections: readonly ConnectionEntry[],
+): void {
   const detail = detailPolicy(frame.viewport.zoom, frame.theme);
   const unit = frame.theme.screenSpaceLines ? 1 / frame.viewport.zoom : 1;
   for (const layer of deps.zOrder) {
@@ -177,5 +174,26 @@ export function paintScene(
         break;
     }
   }
+}
+
+export function paintScene(
+  ctx: CanvasRenderingContext2D,
+  deps: SceneLayerDeps,
+  frame: PaintFrame,
+): ScenePaintStats {
+  const nodes: NodeEntry[] = [];
+  const connections: ConnectionEntry[] = [];
+  const hidden = deps.state.isHidden;
+  for (const item of deps.scene.queryRect(frame.visibleWorld, "painted")) {
+    if (hidden?.(item.id)) continue;
+    if (item.kind === "node") {
+      const e = deps.scene.node(item.id);
+      if (e) nodes.push(e);
+    } else {
+      const e = deps.scene.connection(item.id);
+      if (e) connections.push(e);
+    }
+  }
+  paintEntries(ctx, deps, frame, nodes, connections);
   return { nodes: nodes.length, connections: connections.length };
 }

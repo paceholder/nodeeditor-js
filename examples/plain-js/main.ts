@@ -4,14 +4,15 @@ import {
   createGraphModel,
   createImageSymbolGeometry,
   type NodeRecord,
-  point,
 } from "nodeeditor-js";
 import {
+  COMMAND_IDS,
   createCardPainter,
   createConnectionPainter,
   createImageSymbolPainter,
   createPainterRegistries,
   createPortGlyphPainter,
+  DEFAULT_KEYMAP,
   mountView,
 } from "nodeeditor-js/view";
 import pumpUrl from "./pump.svg?url";
@@ -82,9 +83,16 @@ model.registry.register({
   defaultSize: { width: 150, height: 110 },
   ports: () => [
     { direction: "input", typeKey: "pipe", label: "feed" },
-    { direction: "input", typeKey: "pipe", label: "setpoint" },
-    { direction: "output", typeKey: "pipe", label: "status" },
+    // A second port type, so some connections are refused: pipes and signals don't mix.
+    { direction: "input", typeKey: "signal", label: "setpoint" },
+    { direction: "output", typeKey: "signal", label: "status" },
   ],
+});
+model.registry.register({
+  type: "sensor",
+  label: "Sensor",
+  defaultSize: { width: 150, height: 80 },
+  ports: () => [{ direction: "output", typeKey: "signal", label: "level" }],
 });
 
 function add(
@@ -114,6 +122,7 @@ const valve = add("valve", "Valve", 500, 280, { asset: "valve-symbol" });
 // Beside the tank, wired sideways, so no label sits on a wire.
 const vent = add("valve", "Vent valve", -20, 222, { asset: "valve-symbol" });
 const ctrl = add("controller", "Controller", 740, 270, { subtitle: "demo" });
+add("sensor", "Level sensor", 740, 90, { subtitle: "signal" });
 
 model.connect(port(tank, "output"), port(pump, "input"));
 model.connect(port(pump, "output"), port(valve, "input"));
@@ -126,12 +135,18 @@ for (const s of symbols) {
   geometry.register(s.type, createImageSymbolGeometry({ paintedMargin: 22 }));
 }
 geometry.register("controller", createCardGeometry());
+geometry.register("sensor", createCardGeometry());
 
 const painters = createPainterRegistries();
 for (const s of symbols)
   painters.nodes.register(s.type, createImageSymbolPainter());
 painters.nodes.register("controller", createCardPainter());
+painters.nodes.register("sensor", createCardPainter());
 painters.portGlyphs.replace("pipe", createPortGlyphPainter());
+painters.portGlyphs.replace(
+  "signal",
+  createPortGlyphPainter({ labelFont: "11px system-ui, sans-serif" }),
+);
 painters.connections.replace(
   "default",
   createConnectionPainter({ arrowhead: true }),
@@ -144,41 +159,30 @@ const view = mountView(container, {
   geometry,
   painters,
   assets: { resolve: resolveAsset },
-  initialViewport: { zoom: 1, panX: 130, panY: 90 },
-});
-
-// Pan with the mouse and zoom with the wheel, only so the demo is explorable; real tools
-// arrive with the interaction change.
-let drag: { x: number; y: number } | undefined;
-view.element.addEventListener("pointerdown", (e) => {
-  drag = { x: e.clientX, y: e.clientY };
-  view.element.setPointerCapture(e.pointerId);
-});
-view.element.addEventListener("pointermove", (e) => {
-  if (!drag) return;
-  view.viewport.panBy(e.clientX - drag.x, e.clientY - drag.y);
-  drag = { x: e.clientX, y: e.clientY };
-});
-view.element.addEventListener("pointerup", () => {
-  drag = undefined;
-});
-view.element.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    const box = view.element.getBoundingClientRect();
-    view.viewport.zoomAt(
-      point<"viewport">(e.clientX - box.left, e.clientY - box.top),
-      Math.exp(-e.deltaY * 0.0015),
-    );
+  // Signal ports are square and amber, so the two port types read apart.
+  theme: {
+    typeOverrides: { signal: { portShape: "square", portFill: "#f2b84b" } },
   },
-  { passive: false },
-);
+  initialViewport: { zoom: 1, panX: 130, panY: 90 },
+  // Input is built in: select, marquee, move, connect, pan, wheel zoom and the default
+  // keymap. Moves snap to the 20-unit grid; Alt suppresses it. F is this demo's extra key.
+  input: {
+    toolOptions: { gridStep: 20 },
+    keymap: [
+      ...DEFAULT_KEYMAP,
+      { chord: "F", command: COMMAND_IDS.fitAll },
+      { chord: "Shift+F", command: COMMAND_IDS.fitSelection },
+    ],
+  },
+});
+view.element.focus();
 
-// Live updates: these keys edit the model through commands; the view only listens to
-// committed changes, so it repaints by itself. Undo/redo go through the same path.
+// Live updates: M and E edit the model from outside the view through commands; the view
+// only listens to committed changes, so it repaints by itself. They join the same undo
+// history as the gestures (Ctrl/Cmd+Z, provided by the library keymap).
 const here = (n: NodeRecord) => model.reader.getNode(n.id)?.position;
 window.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.key.toLowerCase()) {
     case "m": {
       const at = here(pump);
@@ -194,12 +198,6 @@ window.addEventListener("keydown", (e) => {
         status:
           model.reader.getNode(valve.id)?.status === "error" ? "ok" : "error",
       });
-      break;
-    case "z":
-      model.undo();
-      break;
-    case "y":
-      model.redo();
       break;
   }
 });
