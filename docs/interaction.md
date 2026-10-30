@@ -153,7 +153,8 @@ running: one gesture is one history entry.
   editors included) are left alone, and so are keys during IME composition.
 - Pointer presses on host DOM placed in the overlay start no gesture.
 - Cancellation sources: `pointercancel`, `lostpointercapture`, Escape, window `blur`, the
-  document becoming hidden, and `dispose()`. Each ends the gesture with nothing committed.
+  document becoming hidden, a model `reset` (the whole document replaced, for example by
+  `loadSnapshot`), and `dispose()`. Each ends the gesture with nothing committed.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
 
 ## 8. Options
