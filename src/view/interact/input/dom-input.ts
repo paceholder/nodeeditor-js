@@ -43,6 +43,8 @@ export interface DomInputDeps {
 export interface DomInput {
   /** Tell the active tool that entities left the model (it cancels if it uses them). */
   entitiesRemoved(ids: readonly string[]): void;
+  /** Tell the active tool the document was replaced: any gesture in flight cancels. */
+  modelReset(): void;
   dispose(): void;
 }
 
@@ -271,6 +273,9 @@ export function attachDomInput(
       if (router.activePointer !== undefined && ids.length > 0) {
         send({ type: "entities-removed", ids });
       }
+    },
+    modelReset() {
+      cancel("reset");
     },
     dispose() {
       if (disposed) return;

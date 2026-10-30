@@ -111,6 +111,22 @@ describe("DOM input adapter: cancellation", () => {
     expect(posOf(s.model, "a")).toEqual({ x: 100, y: 100 });
   });
 
+  it("a document reset in the middle of a gesture cancels it", () => {
+    const s = setup();
+    startDrag(s);
+    const n = s.model.reader.getNode(nodeId("a"));
+    const ports = s.model.reader.portsOf(nodeId("a"));
+    if (!n) throw new Error("fixture");
+    s.model.replaceDocument({
+      nodes: [n],
+      ports,
+      connections: [],
+      idCursor: s.model.idCursor(),
+    });
+    const revision = s.model.reader.revision();
+    expectCleanAfter(s, revision);
+  });
+
   it("unclaimed right-button presses keep the browser default", () => {
     const s = setup();
     const down = s.pointer.down(100, 100, {}, 2);

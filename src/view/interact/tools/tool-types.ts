@@ -72,7 +72,9 @@ export type CancelReason =
   | "escape"
   | "blur"
   | "hidden"
-  | "dispose";
+  | "dispose"
+  /** The whole document was replaced (a `reset` event). */
+  | "reset";
 
 export type ToolInput =
   | PointerInput

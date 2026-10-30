@@ -170,6 +170,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     const live = input;
     offs.push(
       model.on("change", (e) => live.entitiesRemoved(removedIds(e.patch.ops))),
+      model.on("reset", () => live.modelReset()),
     );
   }
 
