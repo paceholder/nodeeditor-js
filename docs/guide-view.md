@@ -515,6 +515,25 @@ connection endpoints are typed as the literal `true` in every level: they can ne
 switched off by zoom. `detailLevel(zoom, theme)` and `detailPolicy(zoom, theme)` are exported
 from `nodeeditor-js/view/advanced` if your own code needs the same decision.
 
+The same thresholds as a strip, zooming out from left to right. Ports follow a fourth,
+separate token, `lodHidePortsBelow`; its default happens to equal `lodMinimalBelow`, but
+the two can be set independently.
+
+```mermaid
+flowchart LR
+  subgraph detail["detail level"]
+    direction LR
+    full["full<br/>zoom ≥ 0.6<br/>titles, secondary labels"] -- "below 0.6" --> reduced["reduced<br/>titles only"]
+    reduced -- "below 0.25" --> minimal["minimal<br/>no text"]
+    minimal -- "below 0.15" --> overview["overview<br/>scene layer batches,<br/>no painters"]
+  end
+  subgraph ports["ports (lodHidePortsBelow)"]
+    direction LR
+    shown["zoom ≥ 0.25<br/>painted and pickable"] -- "below 0.25" --> hidden["not painted,<br/>not picked"]
+  end
+  always["every level: selection, diagnostics,<br/>connection endpoints, connections"]
+```
+
 `DetailLevel` is the union `"full" | "reduced" | "minimal" | "overview"`. If your code has an
 exhaustive `switch` over it (with a `never` check in the default branch), adding `overview`
 made that switch fail to compile until you add the case. That is intended: the compiler

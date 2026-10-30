@@ -132,6 +132,32 @@ incident connections only; z-order and other record-only changes recompute nothi
 `reset` rebuilds everything. `queryRect` returns culling sets by painted bounds in paint
 order (layers bottom to top, default `connection, node, port`; nodes by `(z, seq)`).
 
+The whole pipeline, from a committed change to the two consumers. Solid arrows are the
+incremental path a typical edit takes; the split of a wire into pieces is drawn in
+[Segment-indexed paths](#segment-indexed-paths-perf-04-idx-03) above.
+
+```mermaid
+flowchart LR
+  change["change event<br/>(committed patch)"] --> touched{"what did<br/>it touch?"}
+  touched -- "node position, size,<br/>rotation, ports" --> ng["node geometry<br/>transform, bounds, anchors"]
+  touched -- "z or other<br/>record fields" --> rec["refresh cached record<br/>(no geometry work)"]
+  touched -- "connection op" --> cp
+  reset["reset event"] -.-> all["rebuild every entry"]
+  ng -- "incident wires only" --> cp["connection paths<br/>(splitPath into pieces)"]
+  ng --> idx["scene index (AABB tree)<br/>n:#lt;id#gt; per node<br/>c:#lt;id#gt;#35;#lt;i#gt; per wire piece"]
+  cp --> idx
+  all -.-> idx
+  idx --> q["queryRect<br/>painting, culling"]
+  idx --> p["pick / pickAt<br/>pointer"]
+  idx -- "every write bumps version" --> cache["fit-all cache<br/>keyed by index version"]
+  q -. "rect contains the whole extent" .-> cache
+```
+
+In QtNodes `QGraphicsScene` does this bookkeeping itself: an item calls
+`prepareGeometryChange()` and the BSP index updates that item. Here the scene is an
+explicit cache that listens to the same `change` events as every other observer, which is
+why it can be built and tested in Node.
+
 For a path, the culling bounds are its margin-grown piece boxes (IDX-03): a path is drawn
 when at least one piece box meets the view, and culled when none does, even if its overall
 box overlaps the view. An S-curve that passes beside the viewport, with its box reaching
