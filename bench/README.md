@@ -59,6 +59,9 @@ missed target.
   paint. The target is zero.
 - F-LARGE workloads stay at zoom 0.4 or more so that about 1k nodes or fewer are visible
   ("culled F-LARGE"); the visible column shows the maximum painted counts observed.
+- `overview-pan` and `overview-zoom` (F-LARGE only) run the same scripts at
+  fit-all zoom, with every node visible; the zoom sweep covers 0.8 to 1.25 times the fit
+  zoom. Their frame-interval target is p95 <= 33.3 ms, labeled and non-failing.
 - Provenance includes `+dirty` after the commit when the working tree had changes.
 
 ## Fixtures

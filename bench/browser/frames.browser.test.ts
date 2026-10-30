@@ -10,6 +10,7 @@ import {
   F_LARGE,
   F_TYPICAL,
   type FixtureSpec,
+  worldSize,
 } from "../fixtures/fixture-specs.js";
 import {
   browserInfo,
@@ -22,8 +23,14 @@ import {
   saveBrowserResult,
   settle,
   toInputs,
+  VIEW_SIZE,
 } from "./harness.js";
-import { WORKLOADS, type WorkloadConfig } from "./workloads.js";
+import {
+  OVERVIEW_WORKLOADS,
+  WORKLOADS,
+  type WorkloadConfig,
+  type WorkloadName,
+} from "./workloads.js";
 
 /**
  * Per fixture: the starting zoom and the zoom sweep range. F-LARGE stays at or above 0.4
@@ -50,25 +57,47 @@ const CASES: ReadonlyArray<{
   },
 ];
 
+/**
+ * fit-all zoom (every node visible, 5% margin) and the zoom sweep around it.
+ * Gesture bitmap reuse does not exist yet, so every measured frame is a full repaint.
+ */
+function overviewCase(spec: FixtureSpec): {
+  zoom: number;
+  cfg: WorkloadConfig;
+} {
+  const { w, h } = worldSize(spec);
+  const zoom = Math.min(VIEW_SIZE.width / w, VIEW_SIZE.height / h) * 0.95;
+  return { zoom, cfg: { zoomRange: [zoom * 0.8, zoom * 1.25] } };
+}
+
 describe("browser frame workloads", () => {
   for (const c of CASES) {
-    it(`${c.spec.name} pan, zoom and drag`, {
+    const overview = overviewCase(c.spec);
+    const runAll = c.spec === F_LARGE;
+    const names: readonly WorkloadName[] = runAll
+      ? [...WORKLOADS, ...OVERVIEW_WORKLOADS]
+      : WORKLOADS;
+    it(`${c.spec.name} pan, zoom and drag${runAll ? ", overview pan and zoom" : ""}`, {
       timeout: 30 * 60_000,
     }, async () => {
       const rows = [];
-      for (const workload of WORKLOADS) {
+      for (const workload of names) {
+        const isOverview = workload.startsWith("overview-");
+        const cfg = isOverview ? overview.cfg : c.cfg;
         const mounted = await mountFixture(
           c.spec,
           DEFAULT_SEED,
-          workload === "zoom"
-            ? Math.sqrt(c.cfg.zoomRange[0] * c.cfg.zoomRange[1])
-            : c.zoom,
+          workload === "zoom" || workload === "overview-zoom"
+            ? Math.sqrt(cfg.zoomRange[0] * cfg.zoomRange[1])
+            : isOverview
+              ? overview.zoom
+              : c.zoom,
         );
         try {
           const runs = [];
           for (let i = 0; i < REPEATS; i++) {
             runs.push(
-              await runWorkload(mounted.view, workload, c.cfg, DURATION_MS),
+              await runWorkload(mounted.view, workload, cfg, DURATION_MS),
             );
             await settle(500);
           }
@@ -77,7 +106,9 @@ describe("browser frame workloads", () => {
           expect(merged.latencyMs.length).toBeGreaterThan(0);
           expect(merged.pickMs.length).toBeGreaterThan(0);
           expect(merged.nodes).toBeGreaterThan(0);
-          if (c.spec === F_LARGE)
+          if (isOverview)
+            expect(merged.nodes).toBeGreaterThan(c.spec.nodes * 0.9);
+          else if (c.spec === F_LARGE)
             expect(merged.nodes).toBeLessThanOrEqual(c.maxVisibleNodes);
           rows.push(...toInputs(workload, c.spec.name, merged));
         } finally {
