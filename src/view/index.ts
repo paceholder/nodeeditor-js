@@ -3,12 +3,70 @@
 // building blocks from `nodeeditor-js/view/advanced`; no name has two paths.
 // Browser APIs may only be touched during explicit mount, never at import time.
 
+export type { NudgeArgs } from "./interact/commands/builtin-commands.js";
+export { COMMAND_IDS } from "./interact/commands/builtin-commands.js";
+export type {
+  CommandContext,
+  CommandInfo,
+  CommandOutcome,
+  CommandRegistry,
+  EditorCommand,
+} from "./interact/commands/command-registry.js";
+export type { EditableModel } from "./interact/commands/editable-model.js";
+export type {
+  KeyBinding,
+  KeyLike,
+  Keymap,
+  Platform,
+  ResolvedKey,
+} from "./interact/commands/keymap.js";
+export { DEFAULT_KEYMAP } from "./interact/commands/keymap.js";
+export { VIEW_COMMAND_IDS } from "./interact/commands/view-commands.js";
 export type {
   OverlayAnchor,
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";
 export type { PresenceEntry } from "./interact/overlay/presence.js";
-export type { ViewHandle, ViewOptions } from "./mount-view.js";
+export type {
+  ReadonlySelection,
+  SelectionChange,
+  SelectionEvent,
+  SelectionKey,
+  SelectionModel,
+} from "./interact/selection/selection-model.js";
+export {
+  connectionKey,
+  nodeKey,
+} from "./interact/selection/selection-model.js";
+export { connectTool } from "./interact/tools/connect-tool.js";
+export { defaultToolSlots } from "./interact/tools/default-tools.js";
+export { marqueeTool } from "./interact/tools/marquee-tool.js";
+export { panTool } from "./interact/tools/pan-tool.js";
+export { selectMoveTool } from "./interact/tools/select-move-tool.js";
+export type { ToolOptions } from "./interact/tools/thresholds.js";
+export { DEFAULT_TOOL_OPTIONS } from "./interact/tools/thresholds.js";
+export type { ToolSlot } from "./interact/tools/tool-router.js";
+export { toolSlot } from "./interact/tools/tool-router.js";
+export type {
+  CancelReason,
+  CandidateState,
+  ConnectCandidate,
+  ConnectionEvaluation,
+  CursorKind,
+  Modifiers,
+  PointerInput,
+  PressInfo,
+  Tool,
+  ToolContext,
+  ToolEffect,
+  ToolInput,
+  ToolPreview,
+  Transition,
+  ViewportOp,
+} from "./interact/tools/tool-types.js";
+export { NO_MODIFIERS } from "./interact/tools/tool-types.js";
+export { wheelZoom } from "./interact/tools/wheel-zoom.js";
+export type { InputOptions, ViewHandle, ViewOptions } from "./mount-view.js";
 export { mountView } from "./mount-view.js";
 export type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
 export type { ViewModel } from "./platform/model-binding.js";

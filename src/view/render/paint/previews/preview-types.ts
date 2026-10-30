@@ -1,0 +1,60 @@
+/**
+ * Preview data shapes: what a gesture asks the interaction layer to
+ * draw. Tools produce them and the preview painters consume them, so they live with the
+ * painters and tools import them from here. Never serialized.
+ */
+import type {
+  Endpoint,
+  NodeId,
+  Point,
+  Rect,
+  RejectionCode,
+  Vec2,
+} from "../../../../core/index.js";
+
+/** How a drop target is presented while connecting (D7). */
+export type CandidateState =
+  | "compatible"
+  | "incompatible"
+  | "occupied"
+  | "unavailable"
+  | "pending";
+
+export interface ConnectionEvaluation {
+  readonly state: CandidateState;
+  /** Compatible, and the port already carries connections its limit still allows. */
+  readonly occupiedMark: boolean;
+  /** The policy's reason for any state other than `compatible`. */
+  readonly reason: string | undefined;
+  readonly code: RejectionCode | undefined;
+}
+
+export interface ConnectCandidate {
+  readonly endpoint: Endpoint;
+  readonly evaluation: ConnectionEvaluation;
+}
+
+/** A gesture preview, drawn on the interaction layer only; never serialized. */
+export type ToolPreview =
+  | {
+      readonly kind: "marquee";
+      readonly rect: Rect<"world">;
+      /** `contain` paints solid, `intersect` dashed. */
+      readonly mode: "contain" | "intersect";
+    }
+  | {
+      readonly kind: "move";
+      readonly offset: Vec2;
+      readonly moving: readonly NodeId[];
+      /** Selected nodes that stay put because a capability denies the move. */
+      readonly locked: readonly NodeId[];
+    }
+  | {
+      readonly kind: "connect";
+      readonly source: Endpoint;
+      readonly pointer: Point<"world">;
+      /** Nearest compatible candidate the path snaps to; release there connects. */
+      readonly target: Endpoint | undefined;
+      /** Ports inside the capture radius, nearest first; the first one is hovered. */
+      readonly candidates: readonly ConnectCandidate[];
+    };

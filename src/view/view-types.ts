@@ -10,11 +10,17 @@ import type {
   SceneStats,
   Viewport,
 } from "../core/index.js";
+import type { CommandRegistry } from "./interact/commands/command-registry.js";
+import type { KeyBinding, Platform } from "./interact/commands/keymap.js";
 import type {
   OverlayAnchor,
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";
 import type { PresenceEntry } from "./interact/overlay/presence.js";
+import type { SelectionModel } from "./interact/selection/selection-model.js";
+import type { ToolOptions } from "./interact/tools/thresholds.js";
+import type { ToolSlot } from "./interact/tools/tool-router.js";
+import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
 import type { ViewModel } from "./platform/model-binding.js";
 import type { RenderStats } from "./platform/render-stats.js";
@@ -25,6 +31,17 @@ import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import type { ViewState } from "./render/paint/scene-layer.js";
 import type { PainterRegistries } from "./render/registries/painters.js";
 import type { ThemeInput, ThemeTokens } from "./render/theme/tokens.js";
+
+/** Pointer, wheel and keyboard input of a mounted view. */
+export interface InputOptions {
+  /** Tools in router precedence order; the built-in tools when omitted. */
+  readonly tools?: readonly ToolSlot[];
+  readonly toolOptions?: Partial<ToolOptions>;
+  /** Replaces the default keymap. */
+  readonly keymap?: readonly KeyBinding[];
+  /** `Mod` is Cmd on macOS and Ctrl elsewhere; detected from `navigator` when omitted. */
+  readonly platform?: Platform;
+}
 
 export interface ViewOptions {
   /**
@@ -42,9 +59,15 @@ export interface ViewOptions {
   readonly theme?: ThemeInput;
   /** Host asset resolver and cache budget; without a resolver nothing is fetched. */
   readonly assets?: AssetOptions;
-  /** Selection/hover state; the tools change supplies the real one. */
+  /** Selection/hover/hidden state; the selection model is the intended source. */
   readonly viewState?: ViewState;
   readonly initialViewport?: Viewport;
+  /**
+   * Input handling: default tools and keymap when omitted, none with `false`. Editing
+   * needs a model with the command API (a `GraphModel` fits); a read-only model still
+   * allows selection, pan and zoom.
+   */
+  readonly input?: false | InputOptions;
   /** Test seam: replaces `requestAnimationFrame`. */
   readonly frameClock?: FrameClock;
 }
@@ -74,6 +97,22 @@ export interface ViewHandle {
   readonly overlay: {
     attach(element: HTMLElement, anchor: OverlayAnchor): OverlayHandle;
   };
+  /**
+   * Show or clear a tool gesture preview (marquee, move ghosts). Repaints the interaction
+   * layer only; the scene layer repaints when a move preview starts or ends. Previews are
+   * never serialized and never reach the model.
+   */
+  setToolPreview(preview: ToolPreview | null): void;
+  /**
+   * This view's selection. Entities that leave the model drop out of it, and
+   * changes repaint the scene layer.
+   */
+  readonly selection: Omit<SelectionModel, "dispose" | "bindToModel">;
+  /** Editor commands under stable IDs: the API, shortcuts and menus share them. */
+  readonly commands: Pick<
+    CommandRegistry,
+    "run" | "availability" | "list" | "register"
+  >;
   /** Replace remote cursors/selections; repaints the interaction layer only. */
   setPresence(entries: readonly PresenceEntry[]): void;
   /** The view's asset service: diagnostics, retry, resolver replacement. */

@@ -11,6 +11,7 @@
       #hint {
         position: fixed; left: 12px; top: 10px; margin: 0;
         font: 12px/1.5 system-ui, sans-serif; color: #aeb6c4; pointer-events: none;
+        max-width: 560px;
       }
       #hint kbd { color: #e6e9ef; }
     </style>
@@ -18,9 +19,13 @@
   <body>
     <div id="editor"></div>
     <p id="hint">
-      Drag to pan, wheel to zoom. Edit the model:
-      <kbd>M</kbd> move pump, <kbd>E</kbd> toggle valve error,
-      <kbd>Z</kbd> undo, <kbd>Y</kbd> redo.
+      <kbd>Click</kbd> / <kbd>Shift+click</kbd> select; drag empty space for a marquee
+      (right-to-left also selects what it touches); drag a node to move it
+      (<kbd>Alt</kbd> skips the grid); drag from a port to connect (red cross = refused,
+      pipe and signal ports don't mix). <kbd>Del</kbd> delete, <kbd>Ctrl/Cmd+Z</kbd> undo,
+      <kbd>Ctrl/Cmd+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redo, arrows nudge, <kbd>F</kbd>
+      fit all, wheel zoom, middle-drag or <kbd>Space</kbd>+drag pan.
+      Outside edits: <kbd>M</kbd> move pump, <kbd>E</kbd> toggle valve error.
     </p>
     <script type="module" src="./main.ts"></script>
   </body>
