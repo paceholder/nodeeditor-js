@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>nodeeditor-js performance demo</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1e2024; }
+      #editor { position: fixed; inset: 0; }
+      .panel {
+        position: fixed; top: 10px; margin: 0; padding: 10px 12px;
+        font: 12px/1.5 system-ui, sans-serif; color: #c4cad6;
+        background: rgba(30, 32, 36, 0.88); border: 1px solid #3a404c; border-radius: 6px;
+      }
+      #controls { left: 10px; width: 292px; }
+      #stats { right: 10px; width: 300px; }
+      .panel h2 {
+        margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+        text-transform: uppercase; color: #8d97a8;
+      }
+      .panel h2:not(:first-child) { margin-top: 10px; }
+      .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+      select, input, button {
+        font: inherit; color: #e6e9ef; background: #2f3540; border: 1px solid #4a5160;
+        border-radius: 4px; padding: 3px 7px;
+      }
+      input { width: 76px; }
+      button { cursor: pointer; }
+      button:hover:not(:disabled) { background: #3a4250; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #stop:not(:disabled) { border-color: #c9615b; }
+      dl { display: grid; grid-template-columns: 1fr auto; gap: 1px 12px; margin: 0; }
+      dt { color: #8d97a8; }
+      dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: #e6e9ef; }
+      #status { color: #8d97a8; min-height: 1.5em; }
+      #log {
+        margin: 0; padding: 0; list-style: none; max-height: 190px; overflow: auto;
+        font-size: 11px; color: #aeb6c4;
+      }
+      #log li { padding: 3px 0; border-top: 1px solid #343a45; }
+      #hint { margin: 8px 0 0; font-size: 11px; color: #8d97a8; }
+    </style>
+  </head>
+  <body>
+    <div id="editor"></div>
+    <section id="controls" class="panel">
+      <h2>Graph</h2>
+      <div class="row">
+        <select id="fixture" aria-label="Fixture">
+          <option value="F-SMALL">F-SMALL (100 nodes)</option>
+          <option value="F-TYPICAL" selected>F-TYPICAL (1k nodes)</option>
+          <option value="F-LARGE">F-LARGE (10k nodes)</option>
+          <option value="custom">Custom size</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="count">Nodes</label>
+        <input id="count" type="number" min="10" max="50000" step="1000" value="20000" />
+        <button id="load" type="button">Load</button>
+      </div>
+      <div id="status" aria-live="polite"></div>
+      <h2>Stress</h2>
+      <div class="row" id="actions"></div>
+      <div class="row"><button id="stop" type="button" disabled>Stop</button></div>
+      <p id="hint">
+        Same default tools as the plain demo: drag to marquee or move, middle-drag or
+        Space+drag to pan, wheel to zoom, <kbd>F</kbd> fits all.
+      </p>
+    </section>
+    <section id="stats" class="panel" aria-label="Live statistics">
+      <h2>Frames</h2>
+      <dl>
+        <dt>Painted frames per second</dt><dd data-stat="paintedFps">-</dd>
+        <dt>Frame rate (recent)</dt><dd data-stat="fps">-</dd>
+        <dt>Interval p50 / p95</dt><dd><span data-stat="p50">-</span> / <span data-stat="p95">-</span></dd>
+        <dt>Worst interval</dt><dd data-stat="worst">-</dd>
+        <dt>Slow frames (&gt; 16.7 ms)</dt><dd data-stat="slow">-</dd>
+        <dt>Frames painted in total</dt><dd data-stat="framesPainted">0</dd>
+      </dl>
+      <h2>Last paint per layer</h2>
+      <dl>
+        <dt>Background</dt><dd data-stat="background">-</dd>
+        <dt>Scene</dt><dd data-stat="scene">-</dd>
+        <dt>Interaction</dt><dd data-stat="interaction">-</dd>
+      </dl>
+      <h2>Scene</h2>
+      <dl>
+        <dt>Nodes painted / culled</dt><dd data-stat="nodes">-</dd>
+        <dt>Paths painted / culled</dt><dd data-stat="paths">-</dd>
+        <dt>Model</dt><dd data-stat="model">-</dd>
+        <dt>Zoom</dt><dd data-stat="zoom">-</dd>
+        <dt>Device pixel ratio</dt><dd data-stat="dpr">-</dd>
+      </dl>
+      <h2>Stress results</h2>
+      <ul id="log"></ul>
+    </section>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
