@@ -1,0 +1,903 @@
+{
+  "schema": 1,
+  "commit": "69cc8b014f07",
+  "date": "2026-10-30",
+  "build": "production",
+  "quick": false,
+  "machine": {
+    "os": "darwin 25.6.0",
+    "cpu": "Apple M1 Pro",
+    "cores": 8,
+    "memoryGiB": 16
+  },
+  "browser": {
+    "name": "chrome",
+    "version": "156.0.8078.80",
+    "headless": false
+  },
+  "notes": [
+    "Frame interval is the gap between consecutive requestAnimationFrame timestamps while a scripted workload dispatches one input event per frame. Pooled over 3 repeats of 30 s after a 1 s warm-up each; never pooled across DPRs.",
+    "Pointer-to-preview latency approximates presentation time: the first animation frame after the one that painted the input's preview, minus the event's dispatch time. Events are dispatched at a random phase of the frame (seeded), as device input arrives. The floor is one display period and the ceiling two, so on a 60 Hz display the 33 ms target means no dropped frame; a 120 Hz display (the headed Mac) has more headroom.",
+    "Picking time is one ViewHandle.pick call per frame at the pointer position, timed with performance.now() (100 microsecond resolution in this browser).",
+    "F-LARGE workloads keep the zoom at or above 0.4 so at most about 1k nodes are visible; F-TYPICAL pan and drag run at zoom 1, its zoom sweep covers 0.25 to 2.",
+    "Browser ran headed on a real display."
+  ],
+  "results": [
+    {
+      "workload": "snapshot validate",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "validateMs",
+      "p50": 54.968291999999906,
+      "p95": 75.830375,
+      "p99": 75.830375,
+      "samples": 15,
+      "status": "no-target"
+    },
+    {
+      "workload": "snapshot load",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "loadMs",
+      "p50": 180.207042,
+      "p95": 203.4581250000001,
+      "p99": 203.4581250000001,
+      "samples": 15,
+      "status": "no-target"
+    },
+    {
+      "workload": "snapshot export",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "exportMs",
+      "p50": 12.37433400000009,
+      "p95": 20.544165999999677,
+      "p99": 20.544165999999677,
+      "samples": 15,
+      "status": "no-target"
+    },
+    {
+      "workload": "snapshot diff (100 nodes moved)",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "diffMs",
+      "p50": 40.133209000000534,
+      "p95": 43.553124999999454,
+      "p99": 43.553124999999454,
+      "samples": 15,
+      "status": "no-target"
+    },
+    {
+      "workload": "scene + index build",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "projectionBuildMs",
+      "p50": 124.82554200000004,
+      "p95": 155.95595800000024,
+      "p99": 155.95595800000024,
+      "samples": 10,
+      "target": {
+        "p95": 1000
+      },
+      "status": "met"
+    },
+    {
+      "workload": "culling query 1440x900 at zoom 1",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "candidateQueryMs",
+      "p50": 0.31516700000020137,
+      "p95": 0.4438749999999345,
+      "p99": 0.5238750000003165,
+      "samples": 1659,
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "culling query 1440x900 at zoom 0.5",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "candidateQueryMs",
+      "p50": 0.7346660000002885,
+      "p95": 0.9921249999997599,
+      "p99": 1.1652920000001359,
+      "samples": 780,
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pick at random point (zoom 1)",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "pickMs",
+      "p50": 0.2582090000005337,
+      "p95": 0.5507079999997586,
+      "p99": 0.8219169999993028,
+      "samples": 1776,
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "patch apply + scene/index update",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "patchApplyMs",
+      "p50": 0.006374999999934516,
+      "p95": 0.00987499999996544,
+      "p99": 0.017708000000084212,
+      "samples": 59892,
+      "target": {
+        "p95": 4
+      },
+      "status": "met"
+    },
+    {
+      "workload": "patch apply, model only",
+      "fixture": "F-LARGE",
+      "runtime": "node",
+      "metric": "patchApplyMs",
+      "p50": 0.0018329999998059066,
+      "p95": 0.003500000000030923,
+      "p99": 0.005499999999983629,
+      "samples": 201212,
+      "target": {
+        "p95": 4
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.299999999988358,
+      "p95": 9.699999999953434,
+      "p99": 16.600000000034925,
+      "samples": 10622,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 12.799999982118607,
+      "p95": 17.099999994039536,
+      "p99": 19.799999982118607,
+      "samples": 10624,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 0.699999988079071,
+      "p95": 0.9000000059604645,
+      "p99": 1.199999988079071,
+      "samples": 10623,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.299999999988358,
+      "p95": 9.299999999988358,
+      "p99": 10.099999999976717,
+      "samples": 10795,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 11.900000005960464,
+      "p95": 16.400000005960464,
+      "p99": 17.099999994039536,
+      "samples": 10793,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 0.699999988079071,
+      "p95": 0.9000000059604645,
+      "p99": 1.0999999940395355,
+      "samples": 10795,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.300000000046566,
+      "p95": 9.599999999976717,
+      "p99": 10.199999999953434,
+      "samples": 10802,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 12.300000011920929,
+      "p95": 16.599999994039536,
+      "p99": 18.099999994039536,
+      "samples": 10800,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 1.5999999940395355,
+      "p95": 2.699999988079071,
+      "p99": 3.5,
+      "samples": 10801,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "missed"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.399999999965075,
+      "p95": 16.79999999998836,
+      "p99": 25,
+      "samples": 9046,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "missed"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 15.5,
+      "p95": 24,
+      "p99": 30,
+      "samples": 9047,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 0.699999988079071,
+      "p95": 0.9000000059604645,
+      "p99": 1.100000023841858,
+      "samples": 9045,
+      "visible": {
+        "nodes": 677,
+        "paths": 1947
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.300000000046566,
+      "p95": 16.599999999976717,
+      "p99": 23.899999999965075,
+      "samples": 9808,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 13.099999994039536,
+      "p95": 21.900000005960464,
+      "p99": 28.400000005960464,
+      "samples": 9807,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 0.7999999821186066,
+      "p95": 1.100000023841858,
+      "p99": 1.4000000059604645,
+      "samples": 9807,
+      "visible": {
+        "nodes": 665,
+        "paths": 1913
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.300000000046566,
+      "p95": 9.599999999976717,
+      "p99": 10.199999999953434,
+      "samples": 10801,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 12.400000005960464,
+      "p95": 16.69999998807907,
+      "p99": 18.30000001192093,
+      "samples": 10799,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-LARGE",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 1.5,
+      "p95": 2.7000000178813934,
+      "p99": 3.5,
+      "samples": 10799,
+      "visible": {
+        "nodes": 664,
+        "paths": 1912
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "missed"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.30000000000291,
+      "p95": 9.5,
+      "p99": 10.100000000000364,
+      "samples": 10803,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 11.700000017881393,
+      "p95": 16.400000005960464,
+      "p99": 21.099999994039536,
+      "samples": 10803,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 10803,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.300000000017462,
+      "p95": 9.599999999976717,
+      "p99": 10.299999999988358,
+      "samples": 10732,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 12.199999988079071,
+      "p95": 16.5,
+      "p99": 18,
+      "samples": 10732,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 0.10000002384185791,
+      "p95": 0.20000001788139343,
+      "p99": 0.30000001192092896,
+      "samples": 10731,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 1,
+      "p50": 8.300000000017462,
+      "p95": 9.700000000011642,
+      "p99": 10.199999999982538,
+      "samples": 10799,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 1,
+      "p50": 12.300000011920929,
+      "p95": 16.30000001192093,
+      "p99": 17.5,
+      "samples": 10798,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 1,
+      "p50": 0.29999998211860657,
+      "p95": 0.5,
+      "p99": 0.7000000178813934,
+      "samples": 10798,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.30000000000291,
+      "p95": 9.5,
+      "p99": 10.099999999998545,
+      "samples": 10804,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 11.800000011920929,
+      "p95": 16.400000005960464,
+      "p99": 21.099999994039536,
+      "samples": 10805,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "pan",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 10803,
+      "visible": {
+        "nodes": 126,
+        "paths": 412
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.300000000017462,
+      "p95": 9.599999999991269,
+      "p99": 10.300000000017462,
+      "samples": 10707,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 12.199999988079071,
+      "p95": 16.5,
+      "p99": 17.900000005960464,
+      "samples": 10707,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "zoom",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.30000001192092896,
+      "samples": 10705,
+      "visible": {
+        "nodes": 1000,
+        "paths": 2000
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "frameIntervalMs",
+      "dpr": 2,
+      "p50": 8.300000000017462,
+      "p95": 9.700000000011642,
+      "p99": 10.199999999982538,
+      "samples": 10800,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 16.7,
+        "p99": 33.3
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "latencyMs",
+      "dpr": 2,
+      "p50": 12.400000005960464,
+      "p95": 16.400000005960464,
+      "p99": 17.700000017881393,
+      "samples": 10800,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 33
+      },
+      "status": "met"
+    },
+    {
+      "workload": "drag",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "pickMs",
+      "dpr": 2,
+      "p50": 0.20000001788139343,
+      "p95": 0.5999999940395355,
+      "p99": 0.800000011920929,
+      "samples": 10798,
+      "visible": {
+        "nodes": 122,
+        "paths": 381
+      },
+      "target": {
+        "p95": 2
+      },
+      "status": "met"
+    },
+    {
+      "workload": "idle",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "idleFrameRequests",
+      "dpr": 1,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 1,
+      "target": {
+        "p95": 0,
+        "p99": 0
+      },
+      "status": "met"
+    },
+    {
+      "workload": "idle",
+      "fixture": "F-TYPICAL",
+      "runtime": "browser",
+      "metric": "idleFrameRequests",
+      "dpr": 2,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 1,
+      "target": {
+        "p95": 0,
+        "p99": 0
+      },
+      "status": "met"
+    }
+  ],
+  "bundle": [
+    {
+      "entry": "core",
+      "gzipBytes": 26767,
+      "budgetBytes": 76800,
+      "status": "met"
+    },
+    {
+      "entry": "view",
+      "gzipBytes": 46258,
+      "budgetBytes": 153600,
+      "status": "met"
+    },
+    {
+      "entry": "react",
+      "gzipBytes": 46258,
+      "budgetBytes": null,
+      "status": "no-target"
+    }
+  ]
+}
