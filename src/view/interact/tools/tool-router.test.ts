@@ -97,9 +97,15 @@ describe("tool router", () => {
     expect(h.router.activeTool).toBe("select-move");
   });
 
-  it("INT-05a empty canvas goes to the marquee tool; middle button pans", () => {
+  it("INT-05a a plain empty-canvas press pans; Shift or Mod starts the marquee; middle button pans", () => {
     const h = fixture();
     h.down({ x: 500, y: 500 });
+    expect(h.router.activeTool).toBe("empty-pan");
+    h.up({ x: 500, y: 500 });
+    h.down({ x: 500, y: 500 }, { modifiers: { shift: true } });
+    expect(h.router.activeTool).toBe("marquee");
+    h.up({ x: 500, y: 500 });
+    h.down({ x: 500, y: 500 }, { modifiers: { mod: true } });
     expect(h.router.activeTool).toBe("marquee");
     h.up({ x: 500, y: 500 });
     h.down({ x: 20, y: 10 }, { button: 1 });

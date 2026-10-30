@@ -34,6 +34,10 @@ import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
 import {
+  resolveToolOptions,
+  type ToolOptions,
+} from "./interact/tools/thresholds.js";
+import {
   capabilityProbe,
   createToolContext,
 } from "./interact/tools/tool-context.js";
@@ -59,6 +63,8 @@ export interface EditingDeps {
 
 export interface Editing {
   readonly commands: CommandRegistry;
+  toolOptions(): ToolOptions;
+  setToolOptions(patch: Partial<ToolOptions>): void;
   dispose(): void;
 }
 
@@ -112,13 +118,15 @@ export function attachEditing(deps: EditingDeps): Editing {
 
   const offs: Array<() => void> = [];
   let input: DomInput | undefined;
+  // One object per change, so the tool context re-resolves only after `setToolOptions`.
+  let toolOptions: Partial<ToolOptions> =
+    (deps.input !== false && deps.input?.toolOptions) || {};
   if (deps.input !== false && model && reader && scene) {
     const options = deps.input ?? {};
     const platform =
       options.platform ??
       detectPlatform(deps.root.ownerDocument.defaultView?.navigator);
     const keymap = createKeymap(platform, options.keymap ?? DEFAULT_KEYMAP);
-    const step = options.toolOptions?.gridStep ?? 1;
     const router = createToolRouter(options.tools ?? defaultToolSlots());
     const context = createToolContext({
       reader,
@@ -129,7 +137,7 @@ export function attachEditing(deps: EditingDeps): Editing {
         ? capabilityProbe(editable)
         : () => ({ available: false, reason: NO_MODEL }),
       ...(editable ? { plan: editable.plan } : {}),
-      ...(options.toolOptions ? { options: options.toolOptions } : {}),
+      options: () => toolOptions,
     });
     input = attachDomInput(deps.root, {
       router,
@@ -152,7 +160,7 @@ export function attachEditing(deps: EditingDeps): Editing {
         return v.ok && w.ok ? { viewport: v.value, world: w.value } : undefined;
       },
       onKey(event) {
-        const resolved = keymap.resolve(event, step);
+        const resolved = keymap.resolve(event, toolOptions.gridStep ?? 1);
         if (!resolved) return false;
         commands.run(resolved.command, resolved.args);
         return true;
@@ -167,6 +175,10 @@ export function attachEditing(deps: EditingDeps): Editing {
 
   return {
     commands,
+    toolOptions: () => resolveToolOptions(toolOptions),
+    setToolOptions(patch) {
+      toolOptions = { ...toolOptions, ...patch };
+    },
     dispose() {
       for (const off of offs.splice(0)) off();
       input?.dispose();

@@ -10,6 +10,12 @@ export interface ToolOptions {
   readonly pickTolerancePx: number;
   /** Move snapping grid step in world units; `undefined` disables snapping. */
   readonly gridStep: number | undefined;
+  /**
+   * Primary-button drag on empty canvas: `pan` scrolls the view and the marquee needs
+   * Shift or the primary modifier; `marquee` selects and panning needs Space or the
+   * middle button.
+   */
+  readonly emptyDrag: "pan" | "marquee";
   /** `direction`: left-to-right contains, right-to-left intersects (D5). */
   readonly marquee: "direction" | "contain" | "intersect";
   /** `scroll-page-unless-modifier`: the wheel zooms only with the primary modifier. */
@@ -22,6 +28,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
   dragThresholdPx: { mouse: 3, touch: 6 },
   pickTolerancePx: 4,
   gridStep: undefined,
+  emptyDrag: "pan",
   marquee: "direction",
   wheel: "zoom",
   wheelSensitivity: 0.0015,

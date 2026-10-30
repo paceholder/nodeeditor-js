@@ -164,10 +164,9 @@ const view = mountView(container, {
     typeOverrides: { signal: { portShape: "square", portFill: "#f2b84b" } },
   },
   initialViewport: { zoom: 1, panX: 130, panY: 90 },
-  // Input is built in: select, marquee, move, connect, pan, wheel zoom and the default
-  // keymap. Moves snap to the 20-unit grid; Alt suppresses it. F is this demo's extra key.
+  // Input is built in: pan, select, Shift-marquee, move, connect, wheel zoom and the
+  // default keymap. Snapping starts off; the checkbox and G toggle it below. F is extra.
   input: {
-    toolOptions: { gridStep: 20 },
     keymap: [
       ...DEFAULT_KEYMAP,
       { chord: "F", command: COMMAND_IDS.fitAll },
@@ -176,6 +175,17 @@ const view = mountView(container, {
   },
 });
 view.element.focus();
+
+// Grid snapping is a runtime tool option: a 20-unit step when on, none when off.
+const snapBox = document.querySelector<HTMLInputElement>("#snap input");
+const setSnap = (on: boolean) => {
+  view.setToolOptions({ gridStep: on ? 20 : undefined });
+  if (snapBox) snapBox.checked = on;
+};
+snapBox?.addEventListener("change", () => {
+  setSnap(snapBox.checked);
+  view.element.focus();
+});
 
 // Live updates: M and E edit the model from outside the view through commands; the view
 // only listens to committed changes, so it repaints by itself. They join the same undo
@@ -193,6 +203,9 @@ window.addEventListener("keydown", (e) => {
       }
       break;
     }
+    case "g":
+      setSnap(view.toolOptions().gridStep === undefined);
+      break;
     case "e":
       model.updateNode(valve.id, {
         status:

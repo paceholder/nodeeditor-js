@@ -237,6 +237,8 @@ export function mountView(
       list: editing.commands.list,
       register: editing.commands.register,
     },
+    toolOptions: editing.toolOptions,
+    setToolOptions: editing.setToolOptions,
     setPresence(entries) {
       presence.set(entries);
       interaction.invalidate();

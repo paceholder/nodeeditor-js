@@ -1,5 +1,6 @@
 /**
- * Marquee tool (INT-02, UX-02, D5): rubber-band selection from an empty-canvas press.
+ * Marquee tool (INT-02, UX-02, D5): rubber-band selection from an empty-canvas press
+ * (with `emptyDrag: "pan"`, only a Shift or primary-modifier press).
  * Left-to-right selects entities fully inside (solid outline); right-to-left selects
  * anything the rectangle touches (dashed outline). Shift adds, the primary modifier
  * toggles, and a click without drag clears the selection.
@@ -83,7 +84,13 @@ function finish(
 export const marqueeTool: Tool<MarqueeState> = {
   id: "marquee",
   idle: IDLE,
-  accepts: ({ input, spaceHeld }) => input.button === 0 && !spaceHeld,
+  // With `emptyDrag: "pan"` a plain drag pans, so the marquee needs Shift or Mod.
+  accepts: ({ input, spaceHeld }, ctx) =>
+    input.button === 0 &&
+    !spaceHeld &&
+    (ctx.options.emptyDrag === "marquee" ||
+      input.modifiers.shift ||
+      input.modifiers.mod),
   isIdle: (state) => state.kind === "idle",
   transition(state, input, ctx) {
     switch (state.kind) {

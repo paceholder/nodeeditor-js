@@ -113,6 +113,13 @@ export interface ViewHandle {
     CommandRegistry,
     "run" | "availability" | "list" | "register"
   >;
+  /** The tool options in effect (defaults merged with the mount and runtime overrides). */
+  toolOptions(): ToolOptions;
+  /**
+   * Change tool options from the next input event on, for example `{ gridStep: undefined }`
+   * to turn snapping off or `{ emptyDrag: "marquee" }`. Keys merge with earlier patches.
+   */
+  setToolOptions(patch: Partial<ToolOptions>): void;
   /** Replace remote cursors/selections; repaints the interaction layer only (OVL-02). */
   setPresence(entries: readonly PresenceEntry[]): void;
   /** The view's asset service: diagnostics, retry, resolver replacement (AST-04). */
