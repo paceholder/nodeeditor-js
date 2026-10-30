@@ -1,12 +1,49 @@
 /**
  * Background layer: fill plus a world-aligned grid (LAY-01). The grid moves with pan and
- * zoom; minor lines fade out when they would be closer than a few pixels.
+ * zoom and keeps a steady on-screen density: when zooming out makes the lines too close,
+ * the grid steps up by `gridMajorEvery` (20 → 100 → 500 world units …), and the minor
+ * lines of each level fade in as they open up, so the switch has no visible jump.
  */
 
 import type { BackgroundPainter } from "../registries/painter-types.js";
 import { setMatrix } from "./frame.js";
 
-const MIN_LINE_GAP_PX = 6;
+/** Closest allowed gap between drawn lines, in CSS pixels. */
+const MIN_LINE_GAP_PX = 8;
+/** Bound on level climbing, for absurd zooms or a step of 1 with `every` of 1. */
+const MAX_LEVELS = 12;
+
+export interface GridLevel {
+  /** World units between minor lines at this zoom. */
+  readonly minorStep: number;
+  /** Every n-th minor line is a major line (the theme's `gridMajorEvery`). */
+  readonly majorEvery: number;
+  /** Opacity of minor lines, 0..1: 0 at the minimum gap, 1 from twice that. */
+  readonly minorAlpha: number;
+}
+
+/**
+ * The grid level for a zoom: the smallest `step * every^k` whose on-screen gap is at
+ * least the minimum (`every` below 2 steps by 2). Returns `undefined` when the grid
+ * cannot be drawn.
+ */
+export function gridLevel(
+  step: number,
+  every: number,
+  zoom: number,
+): GridLevel | undefined {
+  if (!(step > 0) || !Number.isFinite(step) || !(zoom > 0)) return undefined;
+  const majorEvery = Math.max(1, Math.round(every));
+  const n = Math.max(2, majorEvery);
+  let minorStep = step;
+  for (let k = 0; minorStep * zoom < MIN_LINE_GAP_PX; k++) {
+    if (k >= MAX_LEVELS) return undefined;
+    minorStep *= n;
+  }
+  const gapPx = minorStep * zoom;
+  const minorAlpha = Math.min(1, (gapPx - MIN_LINE_GAP_PX) / MIN_LINE_GAP_PX);
+  return { minorStep, majorEvery, minorAlpha };
+}
 
 export const paintGrid: BackgroundPainter = (ctx, frame) => {
   const { theme, viewport, width, height, dpr } = frame;
@@ -14,38 +51,43 @@ export const paintGrid: BackgroundPainter = (ctx, frame) => {
   ctx.fillStyle = theme.background;
   ctx.fillRect(0, 0, width, height);
 
-  const step = theme.gridSpacing;
-  if (!(step > 0) || !Number.isFinite(step)) return;
-  const gapPx = step * viewport.zoom;
-  const showMinor = gapPx >= MIN_LINE_GAP_PX;
-  // Major lines every n steps; when minors are hidden, majors alone still show.
-  const every = Math.max(1, Math.round(theme.gridMajorEvery));
-  const stride = showMinor ? 1 : every;
-  if (stride * gapPx < MIN_LINE_GAP_PX) return;
-
-  const first = Math.floor(frame.visibleWorld.x / step / stride) * stride;
-  const last = Math.ceil((frame.visibleWorld.x + frame.visibleWorld.w) / step);
-  const firstY = Math.floor(frame.visibleWorld.y / step / stride) * stride;
-  const lastY = Math.ceil((frame.visibleWorld.y + frame.visibleWorld.h) / step);
+  const level = gridLevel(
+    theme.gridSpacing,
+    theme.gridMajorEvery,
+    viewport.zoom,
+  );
+  if (!level) return;
+  const { minorStep, majorEvery: every, minorAlpha } = level;
+  const first = Math.floor(frame.visibleWorld.x / minorStep);
+  const last = Math.ceil(
+    (frame.visibleWorld.x + frame.visibleWorld.w) / minorStep,
+  );
+  const firstY = Math.floor(frame.visibleWorld.y / minorStep);
+  const lastY = Math.ceil(
+    (frame.visibleWorld.y + frame.visibleWorld.h) / minorStep,
+  );
 
   ctx.lineWidth = 1 / dpr; // one device pixel
   for (const major of [false, true]) {
+    if (!major && minorAlpha <= 0) continue;
+    ctx.globalAlpha = major ? 1 : minorAlpha;
     ctx.strokeStyle = major ? theme.gridMajor : theme.gridMinor;
     ctx.beginPath();
-    for (let i = first; i <= last; i += stride) {
+    for (let i = first; i <= last; i++) {
       if ((i % every === 0) !== major) continue;
       const x =
-        Math.round(i * step * viewport.zoom + viewport.panX) + 0.5 / dpr;
+        Math.round(i * minorStep * viewport.zoom + viewport.panX) + 0.5 / dpr;
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
-    for (let j = firstY; j <= lastY; j += stride) {
+    for (let j = firstY; j <= lastY; j++) {
       if ((j % every === 0) !== major) continue;
       const y =
-        Math.round(j * step * viewport.zoom + viewport.panY) + 0.5 / dpr;
+        Math.round(j * minorStep * viewport.zoom + viewport.panY) + 0.5 / dpr;
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
     }
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 };
