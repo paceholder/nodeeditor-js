@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { nodeId } from "../../base/ids/ids.js";
+import { describe, expect, it, vi } from "vitest";
+import { connectionId, nodeId } from "../../base/ids/ids.js";
 import type { QuarterTurns } from "../../data/model/values.js";
 import { createGraphModel } from "../../graph-model.js";
 import { applyPoint } from "../geometry/affine.js";
 import { createGeometryRegistry } from "../geometry/geometry-registry.js";
-import { pathDistance } from "../geometry/path-geometry.js";
+import { pathDistance, pathPointAt } from "../geometry/path-geometry.js";
 import { createImageSymbolGeometry } from "../geometry/presets/image-symbol-geometry.js";
-import { rectsIntersect } from "../geometry/rect.js";
+import { rectContainsPoint, rectsIntersect } from "../geometry/rect.js";
 import { shapeContains } from "../geometry/shapes.js";
 import { rect } from "../geometry/spaces.js";
 import { between, seededRandom } from "../geometry/test-utils.js";
@@ -14,6 +14,13 @@ import { createBruteForceIndex } from "../spatial-index/brute-force-index.js";
 import { createGeometryScene } from "./geometry-scene.js";
 import type { HitCandidate } from "./picking.js";
 import { buildModel, submitChunked, twoPortNode } from "./scene-fixtures.js";
+
+// Pass-through spy on exact path distance, so a test can count precise-phase work.
+vi.mock("../geometry/path-geometry.js", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("../geometry/path-geometry.js")>();
+  return { ...real, pathDistance: vi.fn(real.pathDistance) };
+});
 
 describe("GEO-04a hit result identity and order", () => {
   it("GEO-04a port over node body: the port comes first and the node follows", () => {
@@ -293,4 +300,43 @@ describe("IDX-01 large fixture", () => {
       expect(hits.filter((h) => h.kind === "connection").length).toBe(connHits);
     }
   }, 60_000);
+});
+
+describe("PERF-04 picking measures only nearby path pieces", () => {
+  it("PERF-04 long path far from the pointer: no exact distance, not a candidate", () => {
+    const model = buildModel(
+      [twoPortNode("a", 0, 0), twoPortNode("b", 3000, 1500)],
+      [["c1", "a", "aR", "b", "bL"]],
+    );
+    const scene = createGeometryScene(model);
+    const entry = scene.connection(connectionId("c1"));
+    if (!entry?.path || !entry.paintedBounds) throw new Error("no path");
+    // Inside the wire's overall box, far from every piece's box.
+    const point = { x: 2900, y: 100 };
+    const radius = 8; // max(tolerance 4, capture radius 8) at zoom 1
+    expect(rectContainsPoint(entry.paintedBounds, point)).toBe(true);
+    expect(entry.segments.length).toBeGreaterThan(4);
+    for (const box of entry.segmentBounds) {
+      const grown = rect<"world">(
+        box.x - radius,
+        box.y - radius,
+        box.w + 2 * radius,
+        box.h + 2 * radius,
+      );
+      expect(rectContainsPoint(grown, point)).toBe(false);
+    }
+    const counter = vi.mocked(pathDistance);
+    counter.mockClear();
+    expect(scene.pick(point, { zoom: 1 })).toEqual([]);
+    expect(counter).not.toHaveBeenCalled();
+
+    // A point on the curve is measured against nearby pieces only, and hits.
+    const onCurve = pathPointAt(entry.path, 0.5);
+    counter.mockClear();
+    expect(scene.pick(onCurve, { zoom: 1 })).toEqual([
+      { kind: "connection", connectionId: "c1" },
+    ]);
+    expect(counter.mock.calls.length).toBeGreaterThan(0);
+    expect(counter.mock.calls.length).toBeLessThanOrEqual(3);
+  });
 });

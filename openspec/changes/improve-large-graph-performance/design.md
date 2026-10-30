@@ -41,7 +41,8 @@ touch:
 
 - Painter API redesign. Host node painters keep working unchanged at every level above
   overview.
-- Changing what `queryRect` returns or its documented order.
+- Changing what `queryRect` returns or its documented order, except that paths are now
+  culled by their piece boxes (D1, IDX-03).
 
 ## Decisions
 
@@ -50,7 +51,7 @@ touch:
 Each connection's path is split into `k` sub-paths for the index. A line is one segment.
 A cubic is split at equal parameter steps by de Casteljau subdivision, which gives each
 piece exact control points, and the box around a piece's control points contains the
-piece. `k = clamp(ceil(approxLength / 160 world units), 1, 12)`, where `approxLength` is
+piece. `k = clamp(ceil(approxLength / 800 world units), 1, 12)`, where `approxLength` is
 the control-polygon length. Each piece is indexed as `c:<id>#<i>` with its box grown by
 `connectionMargin`. The connection entry stores its pieces (`segments: PathGeometry[]`),
 and its painted bounds stay the union, used for culling and the painter.
@@ -59,8 +60,12 @@ and its painted bounds stay the union, used for culling and the painter.
   pieces whose box was returned, using `pathDistance` on each sub-path. The connection
   hits if any piece is within tolerance. Distance work is then bounded by the pieces near
   the pointer, not by how long the wire is.
-- **`queryRect`:** pieces of one connection are de-duplicated, so the result is
-  unchanged.
+- **`queryRect`:** pieces of one connection are de-duplicated. A connection is returned
+  when its overall painted bounds and at least one of its margin-grown piece boxes
+  intersect the rectangle. That is tighter than the overall box alone: an S-curve whose
+  box touches the viewport but whose stroke does not is no longer returned (IDX-03 is
+  refined to say so). The painter and the marquee re-test the path, so neither changes
+  what it draws or selects.
 - **Updates:** moving a node rewrites that connection's pieces. The count may change, so
   stale `#i` keys above the new count are removed. That still touches only incident
   connections (PERF-04 "Incremental index update").
@@ -73,10 +78,14 @@ Alternatives considered:
 - **A second index for connections only.** No benefit over key prefixes, and it doubles
   the query cost.
 - **Fixed `k`.** Wastes entries on the many short wires. A length-based `k` keeps the
-  F-LARGE entry count near 2× today's rather than 12×.
+  F-LARGE entry count near 1.5× today's rather than 12×.
 
-Cost: index build gets slower. The F-LARGE projection build is now 125 ms at p50, and its
-budget is 1 s. A benchmark guards it.
+Cost: index build gets slower, and `queryRect` visits more keys. The step was tuned on
+F-LARGE: at 160 world units the 20k wires became 104k pieces, which doubled the fit-all
+culling query and quadrupled the build. At 800 they become about 35k pieces (1.7 per
+wire); the fit-all query is then on par with one entry per wire, picking is about 3×
+faster than before at every zoom, and the build stays well under its 1 s budget. A
+benchmark guards it.
 
 ### D2. `queryRect` without strings and generic sorting
 
@@ -84,8 +93,15 @@ budget is 1 s. A benchmark guards it.
   `{ kind, entry }`. That removes the per-key `slice` and `startsWith`. (It is rebuilt
   with the entry, so it never goes stale.)
 - **Ordering.** Rows go into per-layer arrays in place of one big array, and each array
-  is sorted by `(z, seq)` with numeric comparisons. Each `seq` is unique within an entity
-  kind, so the ID tie-break can never decide and is dropped. The order is unchanged.
+  is sorted by `(z, seq)` with numeric comparisons. The ID tie-break stays as the last
+  key: the model allocates `seq` from one counter, but a patch's add op may pass its own
+  `seq` (only checked to be a positive integer), and the `GraphReader` contract does not
+  promise uniqueness. It runs only when `z` and `seq` both tie, so it costs nothing in
+  the usual case. Connections (all at `z = 0`) are sorted by packing `seq` and the row
+  number into one float and sorting a `Float64Array` natively. Pieces are de-duplicated
+  without a set: a path is kept only at the lowest-numbered piece the query returned. The
+  AABB tree collects a subtree whose box lies inside the query without further tests.
+  The order is unchanged.
 - **Full-view cache.** When the query rectangle contains the union of all indexed bounds
   (the fit-all case), the sorted result is cached under a scene version counter that every
   index write bumps. A zoom sweep at fit-all then reuses one list until something
@@ -179,7 +195,7 @@ That trade-off is acceptable for an opt-in option, and the guide documents it.
 
 ## Risks / Trade-offs
 
-- [The index grows: about 2× entries, and slower build and incremental updates] →
+- [The index grows: about 1.5× entries, and slower build and incremental updates] →
   Benchmarks guard the projection build (≤ 1 s) and patch apply (≤ 4 ms). The length step
   in D1 is the knob if they regress.
 - [The full-view cache goes stale] → It is keyed by a counter that every index write
@@ -201,5 +217,5 @@ Additive, with no data or snapshot changes. Host code with an exhaustive `switch
 ## Open Questions
 
 - The defaults `lodOverviewBelow` (0.15) and `lodHidePortsBelow` (0.25) and the D1 length
-  step (160 world units) are first guesses. They are tuned against the demo and benchmarks during implementation,
+  step (now 800 world units, see D1) are first guesses. They are tuned against the demo and benchmarks during implementation,
   and that does not change the approach.

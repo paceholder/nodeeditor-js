@@ -50,6 +50,7 @@ const TEST_SUPPORT: readonly RegExp[] = [
   /\/test-kit\.ts$/, // command and snapshot test kits
   /\/test-setup\.ts$/, // patch test setup
   /\/test-utils\.ts$/, // geometry seeded RNG
+  /\/scene-reference\.ts$/, // brute-force scene reference for picking tests
   /\/input-test-support\.ts$/, // synthetic DOM input events
   /\/browser-support\.ts$/, // browser test hosts and frame waits
 ];

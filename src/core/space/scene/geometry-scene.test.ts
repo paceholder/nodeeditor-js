@@ -4,12 +4,16 @@ import { createGraphModel } from "../../graph-model.js";
 import { loadSnapshot } from "../../io/snapshot/load.js";
 import { sampleSnapshot } from "../../io/snapshot/test-kit.js";
 import { createGeometryRegistry } from "../geometry/geometry-registry.js";
+import { pathPointAt } from "../geometry/path-geometry.js";
 import { createCardGeometry } from "../geometry/presets/card-geometry.js";
+import { rectsIntersect } from "../geometry/rect.js";
 import { rect } from "../geometry/spaces.js";
+import { between, seededRandom } from "../geometry/test-utils.js";
 import { createBruteForceIndex } from "../spatial-index/brute-force-index.js";
 import type { SpatialIndex } from "../spatial-index/spatial-index.js";
 import { createGeometryScene } from "./geometry-scene.js";
 import { buildModel, graphOps, twoPortNode } from "./scene-fixtures.js";
+import { sceneReference } from "./scene-reference.js";
 
 const n = nodeId;
 const c = connectionId;
@@ -69,7 +73,9 @@ describe("IDX-02 incremental updates", () => {
     const after = scene.stats();
     expect(after.nodeRebuilds - before.nodeRebuilds).toBe(1);
     expect(after.connectionRebuilds - before.connectionRebuilds).toBe(2);
-    expect([...rec.writes].sort()).toEqual(["c:c1", "c:c2", "n:n2"]);
+    // Connections are indexed per piece (`c:<id>#<i>`, PERF-04).
+    const entities = new Set(rec.writes.map((k) => k.replace(/#\d+$/, "")));
+    expect([...entities].sort()).toEqual(["c:c1", "c:c2", "n:n2"]);
     expect(scene.node(n("n0"))).toBe(untouchedNode);
     expect(scene.connection(c("c0"))).toBe(untouchedConn);
     expect(scene.node(n("n2"))).not.toBe(movedBefore);
@@ -188,6 +194,30 @@ describe("IDX-03 culling by painted bounds", () => {
     expect(hits).toEqual([{ kind: "connection", connectionId: "c1" }]);
   });
 
+  it("IDX-03 S-curve beside the viewport: its box touches it, its stroke does not, so it is culled", () => {
+    const model = buildModel(
+      [twoPortNode("a", 0, 0), twoPortNode("b", 1000, 600)],
+      [["c1", "a", "aR", "b", "bL"]],
+    );
+    const scene = createGeometryScene(model);
+    const entry = scene.connection(c("c1"));
+    const viewport = rect<"world">(900, -40, 100, 60);
+    if (!entry?.path || !entry.paintedBounds) throw new Error("no path");
+    expect(rectsIntersect(entry.paintedBounds, viewport)).toBe(true);
+    for (let i = 0; i <= 200; i++) {
+      const p = pathPointAt(entry.path, i / 200);
+      expect(rectsIntersect(rect(p.x - 8, p.y - 8, 16, 16), viewport)).toBe(
+        false,
+      );
+    }
+    expect(scene.queryRect(viewport)).toEqual([]);
+    // The same area moved onto the curve's start finds it.
+    expect(scene.queryRect(rect(0, -40, 100, 60))).toContainEqual({
+      kind: "connection",
+      id: "c1",
+    });
+  });
+
   it("IDX-03 results come back in paint order: connections, then nodes by (z, seq)", () => {
     const model = buildModel(
       [
@@ -247,5 +277,100 @@ describe("NOD-07 placeholder geometry in the scene", () => {
       { kind: "node", nodeId: "solo" },
     ]);
     expect(scene.node(n("solo"))?.anchors).toEqual([]);
+  });
+});
+
+describe("PERF-04 connections indexed per piece", () => {
+  it("PERF-04 a long wire gets several index entries; shrinking it removes stale pieces", () => {
+    const model = buildModel(
+      [twoPortNode("a", 0, 0), twoPortNode("b", 6000, 0)],
+      [["c1", "a", "aR", "b", "bL"]],
+    );
+    const rec = recordingIndex();
+    const scene = createGeometryScene(model, { index: rec.index });
+    const long = scene.connection(c("c1"))?.segments.length ?? 0;
+    expect(long).toBeGreaterThan(4);
+    expect(rec.index.size).toBe(2 + long);
+
+    rec.writes.length = 0;
+    model.moveNodes([{ node: n("b"), position: { x: 100, y: 0 } }]);
+    const short = scene.connection(c("c1"))?.segments.length ?? 0;
+    expect(short).toBe(1);
+    expect(rec.index.size).toBe(2 + short);
+    // Each stale piece above the new count is removed exactly once.
+    for (let i = short; i < long; i++)
+      expect(rec.writes.filter((k) => k === `c:c1#${i}`)).toHaveLength(1);
+    expect(rec.writes.filter((k) => k.startsWith("n:"))).toEqual(["n:b"]);
+
+    model.deleteEntities({ connections: [c("c1")] });
+    expect(rec.index.size).toBe(2);
+  });
+
+  it("PERF-04 queryRect matches a brute-force reference over 1k seeded edits", () => {
+    const rnd = seededRandom(2024);
+    const N = 40;
+    const model = buildModel(
+      Array.from({ length: N }, (_, i) =>
+        twoPortNode(`n${i}`, (i % 8) * 300, Math.floor(i / 8) * 300),
+      ),
+    );
+    const rec = recordingIndex();
+    const scene = createGeometryScene(model, { index: rec.index });
+    const pick = (k: number) => n(`n${Math.floor(between(rnd, 0, k))}`);
+    let nextConn = 0;
+    for (let step = 0; step < 1000; step++) {
+      const roll = rnd();
+      if (roll < 0.45) {
+        const pos = {
+          x: between(rnd, -500, 3000),
+          y: between(rnd, -500, 3000),
+        };
+        model.moveNodes([{ node: pick(N), position: pos }]);
+      } else if (roll < 0.65) {
+        const id = pick(N);
+        const old = model.reader.getNode(id)?.z ?? 0;
+        const z = Math.floor(between(rnd, 0, 3));
+        model.submit({
+          ops: [
+            {
+              op: "update",
+              entity: "node",
+              id,
+              fields: { z: { old, new: z } },
+            },
+          ],
+        });
+      } else if (roll < 0.85) {
+        const a = pick(N);
+        const b = pick(N);
+        if (a !== b)
+          model.submit({
+            ops: graphOps([], [[`k${nextConn++}`, a, `${a}R`, b, `${b}L`]]),
+          });
+      } else if (roll < 0.95) {
+        const all = model.reader.connections();
+        const victim = all[Math.floor(between(rnd, 0, all.length))];
+        if (victim) model.deleteEntities({ connections: [victim.id] });
+      } else {
+        model.undo();
+      }
+      const area = rect<"world">(
+        between(rnd, -800, 3000),
+        between(rnd, -800, 3000),
+        between(rnd, 50, 1500),
+        between(rnd, 50, 1500),
+      );
+      const mode = step % 2 === 0 ? "painted" : "hit";
+      expect(scene.queryRect(area, mode)).toEqual(
+        sceneReference(scene, model.reader, area, mode),
+      );
+      const pieces = model.reader
+        .connections()
+        .reduce(
+          (s, cr) => s + (scene.connection(cr.id)?.segments.length ?? 0),
+          0,
+        );
+      expect(rec.index.size).toBe(model.reader.nodes().length + pieces);
+    }
   });
 });

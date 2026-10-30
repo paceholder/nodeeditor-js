@@ -2,8 +2,8 @@
  * Headless geometry scene (GEO-04, IDX-01 to IDX-04, VIS-03).
  *
  * A derived cache over a graph model: per-node transform, world bounds and anchors,
- * per-connection path geometry, and one spatial index keyed `n:<id>` / `c:<id>`. It is
- * never authoritative. `change` events update only the touched nodes and their incident
+ * per-connection path geometry, and one spatial index keyed `n:<id>` per node and
+ * `c:<id>#<i>` per connection piece (PERF-04). It is never authoritative. `change` events update only the touched nodes and their incident
  * connections (IDX-02); `reset` and `rebuild()` recompute everything.
  */
 
@@ -17,13 +17,9 @@ import {
   createGeometryRegistry,
   type GeometryRegistry,
 } from "../geometry/geometry-registry.js";
-import { rectsIntersect } from "../geometry/rect.js";
 import type { Point, Rect } from "../geometry/spaces.js";
 import { createAabbTree } from "../spatial-index/aabb-tree.js";
-import {
-  compareKeys,
-  type SpatialIndex,
-} from "../spatial-index/spatial-index.js";
+import type { SpatialIndex } from "../spatial-index/spatial-index.js";
 import {
   type HitCandidate,
   type HitKind,
@@ -36,13 +32,13 @@ import {
   type ConnectionEntry,
   type NodeEntry,
 } from "./scene-entries.js";
+import { createSceneIndex } from "./scene-index.js";
+import { createSceneQuery, type SceneItem } from "./scene-query.js";
 import { applyChange, type SceneOps } from "./scene-update.js";
 
 export type SceneLayer = "connection" | "node" | "port";
 
-export type SceneItem =
-  | { readonly kind: "node"; readonly id: NodeId }
-  | { readonly kind: "connection"; readonly id: ConnectionId };
+export type { SceneItem } from "./scene-query.js";
 
 export interface SceneStats {
   /** Node entries computed since creation. */
@@ -58,7 +54,9 @@ export interface GeometryScene {
   connection(id: ConnectionId): ConnectionEntry | undefined;
   /**
    * Culling query: items whose painted (default) or hit bounds intersect `rect`, in paint
-   * order (bottom first) so a painter can iterate directly (IDX-03).
+   * order (bottom first) so a painter can iterate directly (IDX-03). A connection also
+   * needs one of its margin-grown piece boxes to intersect, so a curve whose overall box
+   * touches `rect` but whose stroke stays outside is not returned.
    */
   queryRect(rect: Rect<"world">, bounds?: "painted" | "hit"): SceneItem[];
   /** Ordered candidates under `point`, topmost first (GEO-04a). */
@@ -94,14 +92,14 @@ export function createGeometryScene(
 ): GeometryScene {
   const { reader } = source;
   const registry = options.registry ?? createGeometryRegistry();
-  const index = options.index ?? createAabbTree<string>();
+  const index = createSceneIndex(options.index ?? createAabbTree<string>());
   const layers = options.layerOrder ?? DEFAULT_LAYERS;
   const margin = options.connectionMargin ?? 8;
   const modeOf = options.routeMode ?? (() => "bezier" as const);
   const nodes = new Map<NodeId, NodeEntry>();
   const connections = new Map<ConnectionId, ConnectionEntry>();
   let maxCapture = 0;
-  const stats = { nodeRebuilds: 0, connectionRebuilds: 0, indexWrites: 0 };
+  const stats = { nodeRebuilds: 0, connectionRebuilds: 0 };
 
   const ops: SceneOps = {
     reader,
@@ -122,20 +120,19 @@ export function createGeometryScene(
       nodes.set(id, entry);
       for (const a of entry.anchors)
         maxCapture = Math.max(maxCapture, a.captureRadiusPx);
-      index.update(`n:${id}`, entry.indexBounds);
-      stats.indexWrites++;
+      index.putNode(entry);
       return true;
     },
     refreshNodeRecord(id) {
       const entry = nodes.get(id);
       const record = reader.getNode(id);
-      if (entry && record) nodes.set(id, { ...entry, record });
+      if (!entry || !record) return;
+      const refreshed = { ...entry, record };
+      nodes.set(id, refreshed);
+      index.refreshNode(refreshed);
     },
     removeNode(id) {
-      if (nodes.delete(id)) {
-        index.remove(`n:${id}`);
-        stats.indexWrites++;
-      }
+      if (nodes.delete(id)) index.removeNode(id);
     },
     setConnection(id) {
       const record = reader.getConnection(id);
@@ -148,17 +145,15 @@ export function createGeometryScene(
         margin,
       );
       stats.connectionRebuilds++;
+      index.putConnection(entry, connections.get(id));
       connections.set(id, entry);
-      if (entry.paintedBounds) index.update(`c:${id}`, entry.paintedBounds);
-      else index.remove(`c:${id}`);
-      stats.indexWrites++;
       return true;
     },
     removeConnection(id) {
-      if (connections.delete(id)) {
-        index.remove(`c:${id}`);
-        stats.indexWrites++;
-      }
+      const entry = connections.get(id);
+      if (!entry) return;
+      connections.delete(id);
+      index.removeConnection(entry);
     },
     nodesOfType(type) {
       return [...nodes.values()]
@@ -190,68 +185,30 @@ export function createGeometryScene(
     const i = layers.indexOf(kind);
     return i < 0 ? layers.length : i;
   };
+  const query = createSceneQuery(
+    index,
+    layerRank("node"),
+    layerRank("connection"),
+  );
 
   const pickOrder: readonly HitKind[] = [...layers].reverse();
 
   return {
     node: (id) => nodes.get(id),
     connection: (id) => connections.get(id),
-    queryRect(rect, bounds = "painted") {
-      const keys: string[] = [];
-      index.queryRect(rect, keys);
-      const items: {
-        item: SceneItem;
-        layer: number;
-        z: number;
-        seq: number;
-      }[] = [];
-      for (const key of keys) {
-        const id = key.slice(2);
-        if (key.startsWith("n:")) {
-          const e = nodes.get(id as NodeId);
-          const b = e && (bounds === "painted" ? e.paintedBounds : e.hitBounds);
-          if (e && b && rectsIntersect(b, rect)) {
-            items.push({
-              item: { kind: "node", id: e.id },
-              layer: layerRank("node"),
-              z: e.record.z,
-              seq: e.seq,
-            });
-          }
-        } else {
-          const e = connections.get(id as ConnectionId);
-          if (e?.paintedBounds && rectsIntersect(e.paintedBounds, rect)) {
-            items.push({
-              item: { kind: "connection", id: e.id },
-              layer: layerRank("connection"),
-              z: 0,
-              seq: e.seq,
-            });
-          }
-        }
-      }
-      items.sort(
-        (a, b) =>
-          a.layer - b.layer ||
-          a.z - b.z ||
-          a.seq - b.seq ||
-          compareKeys(a.item.id, b.item.id),
-      );
-      return items.map((i) => i.item);
-    },
+    queryRect: (rect, bounds = "painted") => query.queryRect(rect, bounds),
     pick: (point, o) =>
       pickAt(
         {
-          index,
-          node: (id) => nodes.get(id),
-          connection: (id) => connections.get(id),
+          index: index.spatial,
+          lookup: index.lookup,
           maxCaptureRadiusPx: () => maxCapture,
           defaultOrder: pickOrder,
         },
         point,
         o,
       ),
-    stats: () => ({ ...stats }),
+    stats: () => ({ ...stats, indexWrites: index.writes() }),
     rebuild,
     dispose() {
       for (const off of unsubscribers) off();

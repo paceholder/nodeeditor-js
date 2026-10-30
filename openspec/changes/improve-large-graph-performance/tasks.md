@@ -7,14 +7,14 @@
 
 ## 2. Segment-indexed connections (D1)
 
-- [ ] 2.1 Add cubic subdivision (de Casteljau at equal parameter steps) and the length-based piece count to `src/core/space/geometry/path-geometry.ts`; verify tests titled PERF-04 that each piece's control-point box contains 200 sampled points of its piece, and that the union of piece boxes equals the whole path's bounds within 1e-9
-- [ ] 2.2 Store pieces on `ConnectionEntry` and index them as `c:<id>#<i>`, removing stale piece keys when the count shrinks; verify `geometry-scene.test.ts` (PERF-04) that `queryRect` results are unchanged against a brute-force reference over 1k seeded edits, and `bench/headless/incremental.test.ts` (PERF-04, IDX-02) still shows only incident entries updated
-- [ ] 2.3 Pick on returned pieces only, grouping by connection ID; verify `picking.test.ts` (PERF-04 "Long path far from the pointer") with an instrumented distance counter showing no exact distance for a long wire whose overall box contains the point but whose pieces do not, and the existing GEO-04/GEO-05 picking tests pass unchanged
+- [x] 2.1 Add cubic subdivision (de Casteljau at equal parameter steps) and the length-based piece count to `src/core/space/geometry/path-pieces.ts` (next to `path-geometry.ts`); verify tests titled PERF-04 that each piece's control-point box contains 200 sampled points of its piece, and that the union of piece boxes equals the whole path's bounds within 1e-9
+- [x] 2.2 Store pieces on `ConnectionEntry` and index them as `c:<id>#<i>`, removing stale piece keys when the count shrinks; verify `geometry-scene.test.ts` (PERF-04) that `queryRect` results match a brute-force reference (whole painted bounds and at least one piece box intersect, IDX-03) over 1k seeded edits, and `bench/headless/incremental.test.ts` (PERF-04, IDX-02) still shows only incident entries updated
+- [x] 2.3 Pick on returned pieces only, grouping by connection ID; verify `picking.test.ts` (PERF-04 "Long path far from the pointer") with an instrumented distance counter showing no exact distance for a long wire whose overall box contains the point but whose pieces do not, and the existing GEO-04/GEO-05 picking tests pass unchanged
 
 ## 3. Faster `queryRect` (D2)
 
-- [ ] 3.1 Replace key parsing with a key→entry map, per-layer arrays and numeric `(z, seq)` sorting; verify `geometry-scene.test.ts` (LAY-03, MOD-08) shows identical order to the previous comparator on seeded scenes with equal `z` values
-- [ ] 3.2 Add the full-view result cache keyed by an index-write counter; verify a test (LAY-03) shows cached and uncached results equal after interleaved moves, adds, removes and z changes, and that the second fit-all query does not call the index (counter)
+- [x] 3.1 Replace key parsing with a key→entry map, per-layer arrays and numeric `(z, seq)` sorting; verify `geometry-scene.test.ts` (LAY-03, MOD-08) shows identical order to the previous comparator on seeded scenes with equal `z` values
+- [x] 3.2 Add the full-view result cache keyed by an index-write counter; verify a test (LAY-03) shows cached and uncached results equal after interleaved moves, adds, removes and z changes, and that the second fit-all query does not call the index (counter)
 
 ## 4. Hidden ports when zoomed out (D4)
 

@@ -58,9 +58,12 @@ None.
   on screen.
 - `canvas-view`: adds LAY-05, opt-in gesture bitmap reuse. LAY-04 gains an `overview`
   detail level that keeps the elements LAY-04 already requires.
+- `geometry`: IDX-03 culls a path by the union of its margin-grown segment boxes instead
+  of its overall bounding box, so a path whose stroke stays outside the viewport is not
+  drawn.
 
 Implemented or refined requirement IDs: PERF-02, PERF-02a, PERF-02e (new), PERF-04, PERF-06,
-LAY-03, LAY-04, LAY-05 (new).
+IDX-03, LAY-03, LAY-04, LAY-05 (new).
 
 ## Out of scope
 
