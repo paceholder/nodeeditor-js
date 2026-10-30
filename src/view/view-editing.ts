@@ -59,6 +59,8 @@ export interface EditingDeps {
   readonly setHovered: (id: string | undefined) => void;
   /** `false` keeps selection and commands but attaches no DOM listeners. */
   readonly input: false | InputOptions;
+  /** Current port-hiding zoom of the theme. */
+  readonly hidePortsBelow: () => number;
 }
 
 export interface Editing {
@@ -138,6 +140,7 @@ export function attachEditing(deps: EditingDeps): Editing {
         : () => ({ available: false, reason: NO_MODEL }),
       ...(editable ? { plan: editable.plan } : {}),
       options: () => toolOptions,
+      hidePortsBelow: deps.hidePortsBelow,
     });
     input = attachDomInput(deps.root, {
       router,

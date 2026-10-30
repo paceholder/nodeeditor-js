@@ -18,15 +18,15 @@
 
 ## 4. Hidden ports when zoomed out (D4)
 
-- [ ] 4.1 Add the `lodHidePortsBelow` token (default 0.25) and `PickOptions.ports`; `pickAt` skips capture radii and port candidates when `ports` is false; verify `picking.test.ts` that a point on a port anchor yields the node, not the port, with `ports: false`
-- [ ] 4.2 The scene layer stops painting ports below the threshold, and the tool context passes `ports: false` below it; verify a browser test (the level of detail rule "Ports hidden when zoomed out") that no port glyph pixels appear at the anchor and a press there starts no connection (empty-pan or select-move becomes active), plus a tool-harness test of the same press
-- [ ] 4.3 Draw port glyphs without per-port `save`/`restore` above the threshold; verify existing port glyph and `scene-layer.browser.test.ts` pixel tests pass unchanged
+- [x] 4.1 Add the `lodHidePortsBelow` token (default 0.25) and `PickOptions.ports`; `pickAt` skips capture radii and port candidates when `ports` is false; verify `picking.test.ts` that a point on a port anchor yields the node, not the port, with `ports: false`
+- [x] 4.2 The scene layer stops painting ports below the threshold, and the tool context passes `ports: false` below it; verify a browser test (the level of detail rule "Ports hidden when zoomed out") that no port glyph pixels appear at the anchor and a press there starts no connection (empty-pan or select-move becomes active), plus a tool-harness test of the same press
+- [x] 4.3 Draw port glyphs without per-port `save`/`restore` above the threshold; verify existing port glyph and `scene-layer.browser.test.ts` pixel tests pass unchanged
 
 ## 5. Overview level (D3)
 
-- [ ] 5.1 Add `overview` to `DetailLevel` and the `lodOverviewBelow` token (default 0.15); verify `level-of-detail.test.ts` maps zooms to all four levels and that `selection`, `diagnostics` and `endpoints` stay `true`
-- [ ] 5.2 Batched overview painting in the scene layer: nodes by resolved fill and stroke, connections by resolved stroke, lines for tiny cubics, no painter calls; verify a browser test (the low-detail rendering rule "Overview keeps what matters") on a seeded graph with a selected node, a selected connection and a node in error: selection outlines and the error badge pixels are present, port glyphs absent, and `renderStats()` counts all visible entities as painted
-- [ ] 5.3 Verify the batching with an instrumented 2D context in a browser test: an overview frame of F-TYPICAL issues a number of `fill`/`stroke` calls bounded by the distinct style count plus selected and diagnostic entities, not by the entity count
+- [x] 5.1 Add `overview` to `DetailLevel` and the `lodOverviewBelow` token (default 0.15); verify `level-of-detail.test.ts` maps zooms to all four levels and that `selection`, `diagnostics` and `endpoints` stay `true`
+- [x] 5.2 Batched overview painting in the scene layer: nodes by resolved fill and stroke, connections by resolved stroke, lines for tiny cubics, no painter calls; verify a browser test (the low-detail rendering rule "Overview keeps what matters") on a seeded graph with a selected node, a selected connection and a node in error: selection outlines and the error badge pixels are present, port glyphs absent, and `renderStats()` counts all visible entities as painted
+- [x] 5.3 Verify the batching with an instrumented 2D context in a browser test: an overview frame of F-TYPICAL issues a number of `fill`/`stroke` calls bounded by the distinct style count plus selected and diagnostic entities, not by the entity count
 
 ## 6. Gesture bitmap reuse (D5)
 

@@ -340,3 +340,25 @@ describe("picking measures only nearby path pieces", () => {
     expect(counter.mock.calls.length).toBeLessThanOrEqual(3);
   });
 });
+
+describe("hidden ports are not pickable", () => {
+  it("ports: false yields the node at a port anchor, never the port", () => {
+    const model = buildModel([twoPortNode("a", 0, 0, { w: 100, h: 40 })]);
+    const scene = createGeometryScene(model);
+    // Right port anchor at (50, 0), on the node outline.
+    expect(scene.pick({ x: 50, y: 0 }, { zoom: 0.1, ports: false })).toEqual([
+      { kind: "node", nodeId: "a" },
+    ]);
+    expect(scene.pick({ x: 50, y: 0 }, { zoom: 0.1 })[0]).toEqual({
+      kind: "port",
+      nodeId: "a",
+      portId: "aR",
+    });
+    // Outside the body but inside the capture radius: nothing without ports.
+    const outside = { x: 50 + 30, y: 0 };
+    expect(scene.pick(outside, { zoom: 0.1 })).toEqual([
+      { kind: "port", nodeId: "a", portId: "aR" },
+    ]);
+    expect(scene.pick(outside, { zoom: 0.1, ports: false })).toEqual([]);
+  });
+});

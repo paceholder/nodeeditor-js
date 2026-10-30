@@ -6,6 +6,7 @@
  * where a real device's events land relative to the next animation frame.
  */
 
+import type { GraphModel } from "nodeeditor-js";
 import type { ViewHandle } from "nodeeditor-js/view";
 import { cdp, commands } from "vitest/browser";
 import { type FixtureSpec, worldSize } from "../fixtures/fixture-specs.js";
@@ -43,6 +44,7 @@ export interface Samples {
 
 export interface Mounted {
   readonly view: ViewHandle;
+  readonly model: GraphModel;
   readonly dispose: () => void;
 }
 
@@ -101,6 +103,7 @@ export async function mountFixture(
   await settle(1_500); // first paint plus asynchronous symbol decoding
   return {
     view,
+    model,
     dispose() {
       view.dispose();
       host.remove();

@@ -120,9 +120,13 @@ does not call node, port or connection painters. It draws the following itself:
   pair, then filled and stroked once. Image symbols are not drawn: a node is a few pixels
   wide at this zoom.
 - **Connections.** Each path is added to one path per resolved stroke style, then stroked
-  once. Below about 3 CSS px of on-screen length, a cubic is drawn as a line.
+  once. Below about 3 CSS px of on-screen length (control polygon), a cubic is drawn as
+  a line.
 - **Ports.** Not drawn (D4 hides them from a higher zoom already). Wire endpoints still
-  end at the anchors, so the level of detail rule's attachment distinction holds.
+  end at the anchors, so the level of detail rule's attachment distinction holds. Port visibility follows
+  `lodHidePortsBelow` alone: with that token at 0 (ports at every zoom, as the level of detail rule allows),
+  the overview still draws ports through their glyph painters and they stay pickable, so
+  a port is never pickable without being drawn. (Clarified during implementation.)
 - **Always drawn individually, after the batches.** Selection outlines (nodes and
   connections), diagnostics and status badges, and, once Slice B adds them, junction
   markers. These lists are small, so they keep their per-entity code paths.

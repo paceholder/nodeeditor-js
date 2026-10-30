@@ -11,6 +11,14 @@ const points = randomPoints(F_LARGE, 10_000);
 // Fit-all zoom at 1440x900 (5% margin): every node of F-LARGE is in view.
 const world = worldSize(F_LARGE);
 const fitZoom = Math.min(1440 / world.w, 900 / world.h) * 0.95;
+// The visible world rectangle of that fit-all viewport: the world box plus a margin,
+// which is what the view queries (and what the full-view cache serves).
+const fitView = rect<"world">(
+  world.w / 2 - 1440 / fitZoom / 2,
+  world.h / 2 - 900 / fitZoom / 2,
+  1440 / fitZoom,
+  900 / fitZoom,
+);
 let next = 0;
 const take = (): { x: number; y: number } => {
   next = (next + 1) % points.length;
@@ -67,11 +75,27 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
+      name: "pick at random point (fit-all zoom, ports hidden)",
+      metric: "pickMs",
+      fixture,
+      fn: () => {
+        scene.pick(take(), { zoom: fitZoom, ports: false });
+      },
+    },
+    {
       name: "culling query at fit-all",
       metric: "candidateQueryMs",
       fixture,
       fn: () => {
         scene.queryRect(rect(0, 0, world.w, world.h));
+      },
+    },
+    {
+      name: "culling query at fit-all viewport",
+      metric: "candidateQueryMs",
+      fixture,
+      fn: () => {
+        scene.queryRect(fitView);
       },
     },
   ]);

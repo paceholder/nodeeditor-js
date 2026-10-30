@@ -42,6 +42,11 @@ export interface PickOptions {
   readonly tolerancePx?: number;
   /** Interactive order, topmost kind first. Defaults to the scene's order. */
   readonly order?: readonly HitKind[];
+  /**
+   * Score ports. Default true. A view passes `false` while ports are hidden (zoomed
+   * out, the level of detail rule): capture radii then leave the broad phase and no port is returned.
+   */
+  readonly ports?: boolean;
 }
 
 export interface PickSource {
@@ -81,17 +86,17 @@ export function pickAt(
   const zoom = clampZoom(options.zoom);
   if (!zoom.ok || !Number.isFinite(point.x) || !Number.isFinite(point.y))
     return [];
-  const tolerance = (options.tolerancePx ?? DEFAULT_TOLERANCE_PX) / zoom.value;
   const order = options.order ?? source.defaultOrder;
   const rank = (kind: HitKind): number => {
     const i = order.indexOf(kind);
     return i < 0 ? order.length : i;
   };
+  const ports = options.ports ?? true;
+  const tolerancePx = options.tolerancePx ?? DEFAULT_TOLERANCE_PX;
   const radius =
-    Math.max(
-      options.tolerancePx ?? DEFAULT_TOLERANCE_PX,
-      source.maxCaptureRadiusPx(),
-    ) / zoom.value;
+    (ports ? Math.max(tolerancePx, source.maxCaptureRadiusPx()) : tolerancePx) /
+    zoom.value;
+  const tolerance = tolerancePx / zoom.value;
   const keys: string[] = [];
   source.index.queryPoint(point, radius, keys);
   keys.sort(compareKeys);
@@ -103,7 +108,8 @@ export function pickAt(
     const ref = source.lookup(key);
     if (!ref) continue;
     if (ref.kind === "node") {
-      scoreNode(ref.entry, point, zoom.value, rank, found);
+      if (ports) scorePorts(ref.entry, point, zoom.value, rank, found);
+      scoreBody(ref.entry, point, rank, found);
       continue;
     }
     const entry = ref.entry;
@@ -131,32 +137,39 @@ function connectionHit(
   };
 }
 
-function scoreNode(
+function scorePorts(
   entry: NodeEntry,
   point: Point<"world">,
   zoom: number,
   rank: (kind: HitKind) => number,
   out: Scored[],
 ): void {
-  const z = entry.record.z;
   for (const a of entry.anchors) {
     const dist = Math.hypot(point.x - a.position.x, point.y - a.position.y);
     if (dist <= a.captureRadiusPx / zoom) {
       out.push({
         hit: { kind: "port", nodeId: entry.id, portId: a.portId },
         layer: rank("port"),
-        z,
+        z: entry.record.z,
         seq: entry.seq,
         dist,
         tie: a.portId,
       });
     }
   }
+}
+
+function scoreBody(
+  entry: NodeEntry,
+  point: Point<"world">,
+  rank: (kind: HitKind) => number,
+  out: Scored[],
+): void {
   if (shapeContains(entry.hitShape, applyPoint(entry.toLocal, point))) {
     out.push({
       hit: { kind: "node", nodeId: entry.id },
       layer: rank("node"),
-      z,
+      z: entry.record.z,
       seq: entry.seq,
       dist: 0,
       tie: entry.id,

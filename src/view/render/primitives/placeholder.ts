@@ -30,7 +30,7 @@ export function drawPlaceholder(
   ctx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, style.nodeRadius);
   ctx.fillStyle = style.nodeFill;
   ctx.fill();
-  if (detail.level !== "minimal") {
+  if (detail.level === "full" || detail.level === "reduced") {
     ctx.save();
     ctx.clip();
     ctx.globalAlpha = 0.35;

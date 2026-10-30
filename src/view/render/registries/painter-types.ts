@@ -4,7 +4,10 @@
  * pixels only, never model state, and keep no state between calls.
  *
  * Canvas state on entry: the context transform is already set for the space named on
- * each input, and the context is saved/restored around the call by the scene layer.
+ * each input. Node and connection painters are saved/restored around each call by the
+ * scene layer. Port glyphs are not (there are many of them): the layer sets `fillStyle`,
+ * `strokeStyle` and `lineWidth` before each glyph, and a glyph painter that changes any
+ * other state (transform, alpha, dash, clip) must restore it itself.
  */
 import type {
   ConnectionRecord,
@@ -55,7 +58,7 @@ export interface PortGlyphInput {
   readonly unit: number;
 }
 
-/** Context transform: world space. */
+/** Context transform: world space. No `save`/`restore` around the call (see above). */
 export interface PortGlyphPainter {
   paint(ctx: CanvasRenderingContext2D, input: PortGlyphInput): void;
 }
