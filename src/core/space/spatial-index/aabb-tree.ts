@@ -3,7 +3,8 @@
  *
  * A bounding-volume hierarchy whose leaves carry "fat" boxes: the tight bounds grown by
  * `fatMargin`. An update whose new tight bounds still fit inside the stored fat box is
- * O(1) and touches no tree node. Insertion picks a sibling by a perimeter heuristic and
+ * O(1) and touches no tree node. A leaf's tight bounds always lie inside its fat box, so
+ * a query collects a subtree whose box it contains without testing further. Insertion picks a sibling by a perimeter heuristic and
  * AVL-style rotations keep the height logarithmic. Queries test the fat boxes while
  * descending and the exact tight bounds at the leaves, so results equal a linear scan.
  */
@@ -210,6 +211,15 @@ export function createAabbTree<K extends string>(
     }
   }
 
+  /** Every leaf key under `start`; used when its box lies inside the query. */
+  function collect(start: TreeNode<K>, out: K[]): void {
+    const stack: TreeNode<K>[] = [start];
+    for (let n = stack.pop(); n; n = stack.pop()) {
+      if (n.child1 && n.child2) stack.push(n.child2, n.child1);
+      else if (n.key !== undefined) out.push(n.key);
+    }
+  }
+
   return {
     insert: upsert,
     update: upsert,
@@ -220,13 +230,15 @@ export function createAabbTree<K extends string>(
       leaves.delete(key);
     },
     queryRect(r, out) {
-      search(
-        (box) => rectsIntersect(box, r),
-        (n) => {
-          if (n.key !== undefined && rectsIntersect(n.tight, r))
-            out.push(n.key);
-        },
-      );
+      if (!root) return;
+      const stack: TreeNode<K>[] = [root];
+      for (let n = stack.pop(); n; n = stack.pop()) {
+        if (!rectsIntersect(n.box, r)) continue;
+        if (rectContainsRect(r, n.box)) collect(n, out);
+        else if (n.child1 && n.child2) stack.push(n.child2, n.child1);
+        else if (n.key !== undefined && rectsIntersect(n.tight, r))
+          out.push(n.key);
+      }
     },
     queryPoint(p, radius, out) {
       const probe: Rect<W> = {

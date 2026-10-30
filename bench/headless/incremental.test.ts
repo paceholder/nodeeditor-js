@@ -44,7 +44,11 @@ describe("incremental index updates in F-LARGE", () => {
       registry: createFixtureGeometry(),
       index,
     });
-    expect(index.size).toBe(F_LARGE.nodes + F_LARGE.connections);
+    // One entry per node and one per connection piece (`c:<id>#<i>`).
+    const pieces = model.reader
+      .connections()
+      .reduce((n, c) => n + (scene.connection(c.id)?.segments.length ?? 0), 0);
+    expect(index.size).toBe(F_LARGE.nodes + pieces);
     const node = model.reader
       .nodes()
       .find((n) => model.reader.connectionsOfNode(n.id).length >= 2);
@@ -73,9 +77,11 @@ describe("incremental index updates in F-LARGE", () => {
     );
     expect(result.status).toBe("accepted");
 
+    // Each written key is the node or a piece of an incident connection, written once.
+    const entityOf = (key: string) => key.replace(/#\d+$/, "");
     const expected = [`n:${node.id}`, ...incident.map((c) => `c:${c}`)].sort();
-    expect([...new Set(writes)].sort()).toEqual(expected);
-    expect(writes.length).toBe(expected.length);
+    expect([...new Set(writes.map(entityOf))].sort()).toEqual(expected);
+    expect(new Set(writes).size).toBe(writes.length);
     const after = scene.stats();
     expect(after.nodeRebuilds - before.nodeRebuilds).toBe(1);
     expect(after.connectionRebuilds - before.connectionRebuilds).toBe(

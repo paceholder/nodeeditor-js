@@ -4,18 +4,13 @@
  * Broad phase: a point query on the spatial index with a radius of
  * `max(tolerancePx, largest capture radius) / zoom` world units. Precise phase: port
  * capture distance, node hit shape (the point mapped into node-local space), and path
- * distance. Tolerances are CSS pixels and are divided by zoom, so they stay constant on
+ * distance. Connections are indexed per piece, so exact distance is measured only on the
+ * pieces the broad phase returned, never on a whole long path. Tolerances are CSS pixels and are divided by zoom, so they stay constant on
  * screen. Candidates are ordered by interactive layer (first entry of `order` wins), then
  * by paint order descending (topmost first), then nearest port first, then by ID.
  */
 
-import {
-  type ConnectionId,
-  connectionId,
-  type NodeId,
-  nodeId,
-  type PortId,
-} from "../../base/ids/ids.js";
+import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
 import { applyPoint } from "../geometry/affine.js";
 import { clampZoom } from "../geometry/limits.js";
 import { pathDistance } from "../geometry/path-geometry.js";
@@ -26,6 +21,7 @@ import {
   type SpatialIndex,
 } from "../spatial-index/spatial-index.js";
 import type { ConnectionEntry, NodeEntry } from "./scene-entries.js";
+import type { IndexedRef } from "./scene-index.js";
 
 export type HitKind = "port" | "node" | "connection";
 
@@ -50,8 +46,8 @@ export interface PickOptions {
 
 export interface PickSource {
   readonly index: SpatialIndex<string>;
-  node(id: NodeId): NodeEntry | undefined;
-  connection(id: ConnectionId): ConnectionEntry | undefined;
+  /** Entry (and piece) behind an index key. */
+  lookup(key: string): IndexedRef | undefined;
   maxCaptureRadiusPx(): number;
   readonly defaultOrder: readonly HitKind[];
 }
@@ -101,26 +97,38 @@ export function pickAt(
   keys.sort(compareKeys);
 
   const found: Scored[] = [];
+  // Connections already hit by one of their pieces; the rest of their pieces are skipped.
+  const hitConnections = new Set<ConnectionEntry>();
   for (const key of keys) {
-    const id = key.slice(2);
-    if (key.startsWith("n:")) {
-      const entry = source.node(nodeId(id));
-      if (entry) scoreNode(entry, point, zoom.value, rank, found);
-    } else {
-      const entry = source.connection(connectionId(id));
-      if (entry?.path && pathDistance(entry.path, point) <= tolerance) {
-        found.push({
-          hit: { kind: "connection", connectionId: entry.id },
-          layer: rank("connection"),
-          z: 0,
-          seq: entry.seq,
-          dist: 0,
-          tie: entry.id,
-        });
-      }
+    const ref = source.lookup(key);
+    if (!ref) continue;
+    if (ref.kind === "node") {
+      scoreNode(ref.entry, point, zoom.value, rank, found);
+      continue;
+    }
+    const entry = ref.entry;
+    if (hitConnections.has(entry)) continue;
+    const piece = entry.segments[ref.piece];
+    if (piece && pathDistance(piece, point) <= tolerance) {
+      hitConnections.add(entry);
+      found.push(connectionHit(entry, rank));
     }
   }
   return found.sort(compareScored).map((s) => s.hit);
+}
+
+function connectionHit(
+  entry: ConnectionEntry,
+  rank: (kind: HitKind) => number,
+): Scored {
+  return {
+    hit: { kind: "connection", connectionId: entry.id },
+    layer: rank("connection"),
+    z: 0,
+    seq: entry.seq,
+    dist: 0,
+    tie: entry.id,
+  };
 }
 
 function scoreNode(

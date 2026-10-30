@@ -22,6 +22,7 @@ import {
   type PathGeometry,
   pathBounds,
 } from "../geometry/path-geometry.js";
+import { controlBounds, splitPath } from "../geometry/path-pieces.js";
 import { inflateRect, transformRect, unionRects } from "../geometry/rect.js";
 import { type Shape, shapeBounds } from "../geometry/shapes.js";
 import type { Point, Rect } from "../geometry/spaces.js";
@@ -61,6 +62,10 @@ export interface ConnectionEntry {
   readonly path: PathGeometry | undefined;
   /** Path bounds grown by stroke and arrowhead margins. */
   readonly paintedBounds: Rect<W> | undefined;
+  /** The path split into pieces for the spatial index; empty without a path. */
+  readonly segments: readonly PathGeometry[];
+  /** Index box of each piece: its control-point box grown by the same margin. */
+  readonly segmentBounds: readonly Rect<W>[];
 }
 
 export function buildNodeEntry(
@@ -112,13 +117,7 @@ export function buildConnectionEntry(
   const from = anchorOf(nodes(record.from.node), record.from.port);
   const to = anchorOf(nodes(record.to.node), record.to.port);
   if (!from || !to) {
-    return {
-      id: record.id,
-      record,
-      seq,
-      path: undefined,
-      paintedBounds: undefined,
-    };
+    return pathless(record, seq);
   }
   const path = buildPath(
     mode,
@@ -126,19 +125,28 @@ export function buildConnectionEntry(
     { position: to.position, normal: to.normal },
   );
   if (!isFinitePath(path)) {
-    return {
-      id: record.id,
-      record,
-      seq,
-      path: undefined,
-      paintedBounds: undefined,
-    };
+    return pathless(record, seq);
   }
+  const segments = splitPath(path);
   return {
     id: record.id,
     record,
     seq,
     path,
     paintedBounds: inflateRect(pathBounds(path), margin),
+    segments,
+    segmentBounds: segments.map((s) => inflateRect(controlBounds(s), margin)),
+  };
+}
+
+function pathless(record: ConnectionRecord, seq: number): ConnectionEntry {
+  return {
+    id: record.id,
+    record,
+    seq,
+    path: undefined,
+    paintedBounds: undefined,
+    segments: [],
+    segmentBounds: [],
   };
 }

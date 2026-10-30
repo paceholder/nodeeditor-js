@@ -57,9 +57,12 @@ None.
   on screen.
 - `canvas-view`: adds the gesture bitmap reuse rule, opt-in gesture bitmap reuse. The level of detail rule gains an `overview`
   detail level that keeps the elements the level of detail rule already requires.
+- `geometry`: culls a path by the union of its margin-grown segment boxes instead
+  of its overall bounding box, so a path whose stroke stays outside the viewport is not
+  drawn.
 
 Implemented or refined requirements: the interaction budgets rule, the query and update budgets rule and the overview navigation target rule (new), the indexed culling and picking rule and the low-detail rendering rule,
-the culled painting rule, the level of detail rule and the gesture bitmap reuse rule (new).
+the indexed culling by painted bounds rule, the culled painting rule, the level of detail rule and the gesture bitmap reuse rule (new).
 
 ## Out of scope
 
