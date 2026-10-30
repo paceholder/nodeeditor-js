@@ -23,6 +23,27 @@ step), like a `QUndoCommand` pushed once per mouse release instead of once per m
 | Selection model | View-local, ordered, with a primary entry. Dropped entities leave it when the model commits their removal. |
 | Command registry | Stable command IDs shared by shortcuts, the API and (later) menus. |
 
+How one input travels through them. On a press the router asks the tools in precedence
+order (`defaultToolSlots()`, section 8) and the first one that accepts owns the gesture
+until it returns to idle; moves and releases of that pointer go straight to it. The wheel
+bypasses the tools, so zooming also works in the middle of a drag.
+
+```mermaid
+flowchart TB
+  dom["DOM events<br/>pointer, wheel, key, blur, visibilitychange"] --> adapter["DOM input adapter (attachDomInput)<br/>the only DOM code: client to world, modifiers"]
+  adapter -- "ToolInput" --> router["tool router<br/>one active gesture, one pointer"]
+  router -- "pointer-down" --> order["first tool that accepts:<br/>1 pan, 2 connect, 3 select-move,<br/>4 empty-pan, 5 marquee"]
+  order --> tool["active tool<br/>transition(state, input, ctx), pure"]
+  router -- "move, up, cancel" --> tool
+  router -- "wheel" --> wheel["wheelZoom"]
+  tool -- "effects" --> runner["effect runner"]
+  wheel -- "viewport effect" --> runner
+  runner --> host["host: pointer capture, preview, commit (one command),<br/>selection, viewport, cursor"]
+```
+
+A press nobody accepts (the right button, by default) returns `handled: false`, and the
+adapter leaves the browser's default alone.
+
 ## 2. Gestures
 
 | Gesture | What happens |
@@ -93,6 +114,48 @@ refused.
 Policy answers are cached per candidate for the current model revision, so moving the
 pointer over a dense cluster of ports does not re-run the policy.
 
+The whole gesture as a sequence. The tool asks through the tool context, which runs the
+model's dry-run planner (`model.plan`), and the planner asks the connection policy, so the
+preview and the final commit apply the same rules. The policy's four outcomes
+(`PolicyOutcome` in `src/core/edit/policy/types.ts`) map to the states above:
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant T as Connect tool
+  participant C as Tool context
+  participant P as Planner and policy
+  participant H as Effect host
+  U->>T: press on a port (the router picks connect)
+  Note over T: pressed, nothing drawn yet
+  U->>T: move past the drag threshold
+  T->>C: ports in capture radius, evaluateConnection(source, port)
+  C->>P: plan connect, dry run (cached per revision)
+  P-->>C: outcome
+  C-->>T: candidate states
+  T->>H: preview (dashed wire, badges), cursor
+  alt accept
+    Note over H: check, the wire snaps to the port
+  else reject
+    Note over H: red cross (ring if full, padlock if denied), reason beside it
+  else choice required
+    Note over H: hourglass, no chooser UI yet
+  else pending
+    Note over H: hourglass, the policy's reason
+  end
+  U->>T: release
+  alt a compatible port within the capture radius
+    T->>H: clear preview, commit connect command
+    H->>P: plan again and submit, one history entry
+  else reject, choice, pending, or empty canvas
+    T->>H: clear preview, nothing committed
+  end
+```
+
+Choice-required (the policy offers several alternative plans, for example with or without
+a converter node) currently commits nothing on release: picking between alternatives
+needs a chooser UI that a later change adds. Until then it is drawn like pending.
+
 ## 5. Navigation
 
 - **Wheel** zooms around the cursor by `exp(-deltaY * wheelSensitivity)`, clamped to the
@@ -155,7 +218,29 @@ running: one gesture is one history entry.
 - Cancellation sources: `pointercancel`, `lostpointercapture`, Escape, window `blur`, the
   document becoming hidden, a model `reset` (the whole document replaced, for example by
   `loadSnapshot`), and `dispose()`. Each ends the gesture with nothing committed.
+  A committed removal is different: the tool is told which IDs left the model and cancels
+  only if its gesture uses one of them.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
+
+All cancellation sources meet in the router, and they only matter while a gesture runs.
+Model reset and removal are not DOM events: the view forwards them from the model's
+`reset` and `change` events (`view-editing.ts`).
+
+```mermaid
+flowchart LR
+  pc["pointercancel"] --> cancel
+  lc["lostpointercapture"] --> cancel
+  blur["window or root blur"] --> cancel
+  hidden["document hidden"] --> cancel
+  reset["model reset"] --> cancel
+  dispose["dispose()"] --> cancel
+  esc["Escape key-down"] --> router
+  cancel["cancel(reason)"] --> router["tool router"]
+  removed["committed removal"] -- "entities-removed(ids)" --> router
+  router --> tool{"active tool"}
+  tool -- "any cancel, or a removed<br/>ID the gesture uses" --> idle["idle: preview cleared,<br/>nothing committed"]
+  tool -- "removed IDs not in use" --> goes["gesture continues"]
+```
 
 ## 8. Options
 

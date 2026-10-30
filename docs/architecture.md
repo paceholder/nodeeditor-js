@@ -47,6 +47,47 @@ gates, not style preferences:
 | `NodeDelegateModelRegistry`               | Node type registry (`createNodeTypeRegistry`)                     | Model-level only: label, size, ports. Looks are registered separately. |
 | `QGraphicsItem::DeviceCoordinateCache`    | Zoom-bucketed `ImageBitmap` cache for SVG/raster symbols (`createAssetService`) | Same idea: rasterize once, copy every frame. |
 
+### Size, and what Qt gave QtNodes for free
+
+Source without tests: QtNodes (`src/` and `include/`) is 60 files and about 8.0k lines;
+nodeeditor-js (`src/`, without tests and the test-support files that
+`src/architecture.test.ts` lists) is 167 files and about 17.5k lines, in eight layer
+folders (five in core, three in view) plus the core facade and the view mount files.
+Files here are kept small on purpose (100–300 lines), which inflates the file count, but
+the line count is still more than twice as large. Most of the difference is
+code that Qt (`QGraphicsView`, `QGraphicsScene`, `QUndoStack`) provides and the browser
+does not:
+
+| Qt provides                                         | Here                                                  |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| BSP item index, `items(rect)`, `itemAt()`           | AABB tree, geometry scene, picking (`src/core/space/spatial-index`, `src/core/space/scene`) |
+| `update()` coalescing, exposed-region repaint       | Frame scheduler and per-layer dirty flags             |
+| Item mouse events, grabber item, `QDrag`            | DOM input adapter, tool router, tool state machines   |
+| `devicePixelRatio` handled by the paint device      | Backing-store sizing, pixel-ratio changes, device matrix |
+| `QUndoStack`                                        | Local history over inverse patches                    |
+
+The rest is what QtNodes does not do at all: patches with operation IDs and base revisions
+so that a server can be the authority, validated snapshot loading with versioned
+documents, and connection policy outcomes beyond yes/no (reason, choice, pending).
+
+The concepts a host actually uses are few:
+
+1. `createGraphModel()`: the model, with history, events and the command API.
+2. Commands (`Command`): intents such as `connect` or `moveNodes`, run with
+   `model.execute`, or `view.commands.run` for editor commands by stable ID.
+3. The model adapter (`ModelAdapter`): who decides whether an edit is accepted.
+4. Node types and ports (`createNodeTypeRegistry`, `NodeTypeDefinition`).
+5. Connection policy (`ConnectionPolicy`, `createDefaultConnectionPolicy`).
+6. `mountView()`: puts a model on screen and returns the view handle.
+7. Painters (`createPainterRegistries` and the presets): what nodes, ports and wires
+   look like; node geometry is a separate registration.
+8. Theme (`DEFAULT_THEME`, `mergeTheme`, `view.setTheme`).
+9. Tools (`defaultToolSlots()` and the tool contract): how input becomes edits.
+10. Selection (`view.selection`): view-local, never in the document.
+
+Status: only the local adapter exists today. `createGraphModel()` wires it in; the
+external, server-authoritative adapter is **(planned: Slice D)**, see section 5.
+
 ## 3. What the model stores
 
 Three kinds of records, all plain immutable objects (`src/core/data/model/records.ts`):
@@ -321,6 +362,50 @@ src/view/                                                     (nodeeditor-js/vie
   advanced.ts                    building blocks (nodeeditor-js/view/advanced)
 src/react/                       provider and hooks                  planned (Slice B)
 ```
+
+How the layers depend on each other. An arrow means "may be imported by", and the test
+checks it against the import statements. `space` and `io` are siblings: neither imports
+the other. Inside a layer, folders may import each other as long as no runtime import
+cycle between files appears.
+
+```mermaid
+flowchart BT
+  subgraph core["src/core (nodeeditor-js)"]
+    base["base/<br/>result, ids"] --> data["data/<br/>model, node-types, patch"]
+    data --> edit["edit/<br/>policy, capabilities, commands,<br/>history, adapter, events"]
+    edit --> space["space/<br/>geometry, spatial-index, scene"]
+    edit --> io["io/<br/>snapshot"]
+    space & io --> facade["graph-model.ts, index.ts"]
+  end
+  subgraph view["src/view"]
+    platform["platform/<br/>dom, frame scheduler, viewport,<br/>model binding, render stats"] --> render["render/<br/>primitives, theme, assets,<br/>registries, presets, paint"]
+    render --> interact["interact/<br/>selection, tools, input,<br/>commands, overlay"]
+    interact --> mount["view-types.ts, view-editing.ts,<br/>mount-view.ts"]
+    mount --> entries["index.ts (view)<br/>advanced.ts (view/advanced)"]
+  end
+  facade -- "only through src/core/index.ts" --> platform
+  entries --> react["src/react"]
+```
+
+Three things worth knowing about the layers, none of them a cycle between files:
+
+- `edit/` is one layer because its folders lean on each other: `adapter/` creates the
+  event hub and the local history, and `events/` and `history/` import back from
+  `adapter/types.ts`, but only types (`Revision`, `OperationId`, `HistoryState`).
+  `space/scene` listens to model changes, which is why `space/` sits above `edit/`.
+- Inside `render/`, `primitives/` holds the drawing helpers that registries, presets and
+  paint layers share (`paintGrid`, `tracePath`, the placeholder painter, and the paint
+  frame with `setMatrix`), so those three do not import each other at runtime. The
+  preview data shapes (`ToolPreview` and the connect candidate types) live in
+  `paint/previews/preview-types.ts`, and `interact/tools/tool-types.ts` re-exports them,
+  so rendering never imports interaction.
+- `interact/commands/` imports `capabilityProbe` from `interact/tools/`, and
+  `interact/overlay/` paints presence through `render/paint/`. Both follow the layer
+  order.
+
+Test-support files (fixtures, harnesses, builders) may reach across layers, and the test
+lists each of them; for example `view/test-support/tool-harness.ts` imports
+`core/space/scene/scene-fixtures.ts`. Production code never imports a test-support file.
 
 Suggested reading order for the implemented code: `base/result.ts` → `base/ids/ids.ts` →
 `base/ids/id-generator.ts` → `data/model/records.ts` → `data/model/store.ts` →
