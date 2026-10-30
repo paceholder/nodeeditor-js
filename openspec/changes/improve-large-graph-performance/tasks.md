@@ -1,0 +1,47 @@
+# Tasks
+
+## 1. Measurement first
+
+- [ ] 1.1 Add the `overview-zoom` and `overview-pan` browser workloads at F-LARGE fit-all (bitmap reuse off) and PERF-02e targets in `bench/report/targets.ts`; verify a `BENCH_QUICK=1 npm run bench:browser` run reports frame interval, latency, pick time and visible counts (about 10k nodes) for both at DPR 1 and 2, and record the before numbers in the change's notes
+- [ ] 1.2 Add headless variants for pick at fit-all zoom and `queryRect` at fit-all to `bench/headless/scene.bench.ts`; verify `npm run bench` prints both
+
+## 2. Segment-indexed connections (D1)
+
+- [ ] 2.1 Add cubic subdivision (de Casteljau at equal parameter steps) and the length-based piece count to `src/core/space/geometry/path-geometry.ts`; verify tests titled PERF-04 that each piece's control-point box contains 200 sampled points of its piece, and that the union of piece boxes equals the whole path's bounds within 1e-9
+- [ ] 2.2 Store pieces on `ConnectionEntry` and index them as `c:<id>#<i>`, removing stale piece keys when the count shrinks; verify `geometry-scene.test.ts` (PERF-04) that `queryRect` results are unchanged against a brute-force reference over 1k seeded edits, and `bench/headless/incremental.test.ts` (PERF-04, IDX-02) still shows only incident entries updated
+- [ ] 2.3 Pick on returned pieces only, grouping by connection ID; verify `picking.test.ts` (PERF-04 "Long path far from the pointer") with an instrumented distance counter showing no exact distance for a long wire whose overall box contains the point but whose pieces do not, and the existing GEO-04/GEO-05 picking tests pass unchanged
+
+## 3. Faster `queryRect` (D2)
+
+- [ ] 3.1 Replace key parsing with a key→entry map, per-layer arrays and numeric `(z, seq)` sorting; verify `geometry-scene.test.ts` (LAY-03, MOD-08) shows identical order to the previous comparator on seeded scenes with equal `z` values
+- [ ] 3.2 Add the full-view result cache keyed by an index-write counter; verify a test (LAY-03) shows cached and uncached results equal after interleaved moves, adds, removes and z changes, and that the second fit-all query does not call the index (counter)
+
+## 4. Hidden ports when zoomed out (D4)
+
+- [ ] 4.1 Add the `lodHidePortsBelow` token (default 0.25) and `PickOptions.ports`; `pickAt` skips capture radii and port candidates when `ports` is false; verify `picking.test.ts` (LAY-04) that a point on a port anchor yields the node, not the port, with `ports: false`
+- [ ] 4.2 The scene layer stops painting ports below the threshold, and the tool context passes `ports: false` below it; verify a browser test (LAY-04 "Ports hidden when zoomed out") that no port glyph pixels appear at the anchor and a press there starts no connection (empty-pan or select-move becomes active), plus a tool-harness test of the same press
+- [ ] 4.3 Draw port glyphs without per-port `save`/`restore` above the threshold; verify existing port glyph and `scene-layer.browser.test.ts` pixel tests pass unchanged
+
+## 5. Overview level (D3)
+
+- [ ] 5.1 Add `overview` to `DetailLevel` and the `lodOverviewBelow` token (default 0.15); verify `level-of-detail.test.ts` (LAY-04) maps zooms to all four levels and that `selection`, `diagnostics` and `endpoints` stay `true`
+- [ ] 5.2 Batched overview painting in the scene layer: nodes by resolved fill and stroke, connections by resolved stroke, lines for tiny cubics, no painter calls; verify a browser test (LAY-04, PERF-06 "Overview keeps what matters") on a seeded graph with a selected node, a selected connection and a node in error: selection outlines and the error badge pixels are present, port glyphs absent, and `renderStats()` counts all visible entities as painted
+- [ ] 5.3 Verify the batching with an instrumented 2D context in a browser test (PERF-03): an overview frame of F-TYPICAL issues a number of `fill`/`stroke` calls bounded by the distinct style count plus selected and diagnostic entities, not by the entity count
+
+## 6. Gesture bitmap reuse (D5, LAY-05)
+
+- [ ] 6.1 Add the `gestureBitmap` mount option and offscreen copy of the last exact scene frame; verify a browser test (LAY-05 "Option off by default") that without the option every pan frame increments the exact scene paint counter
+- [ ] 6.2 Draw the transformed copy for viewport-only frames at or above `minVisible`, with the settle timer; verify browser tests (LAY-05 "Settle repaint", PERF-02d) that after a zoom stops an exact repaint happens within `settleMs` plus one frame and no animation frames are requested for 2 s afterwards, and that `dispose()` clears the timer
+- [ ] 6.3 Force exact frames on model, selection, hover, theme, asset and resize changes and keep picking geometric; verify browser tests (LAY-05 "Change during a gesture") that a model change mid-pan shows on the next frame and `view.pick` results are identical with the option on and off
+- [ ] 6.4 Add a "Gesture bitmap" toggle to `examples/perf`; verify by running `npm run demo:perf` in headless Chrome (Playwright, `channel: "chrome"`) with no console errors and the zoom sweep reporting higher fps with the toggle on
+
+## 7. Verification and baseline
+
+- [ ] 7.1 Profile the culled F-LARGE pan at DPR 2 after groups 2–5; fix the top remaining cost if it is in the library, and verify with a full `npm run bench:browser` run that p95 ≤ 16.7 ms; if still missed, report the profile and numbers to the user before continuing
+- [ ] 7.2 Run the gates: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:bench`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass
+- [ ] 7.3 Record a new baseline with `npm run bench:baseline` (headed installed Chrome); verify the new `bench/baseline/<date>-chrome.json` and `SUMMARY.md` show PERF-02a drag pick, PERF-02e overview and DPR 2 pan status, and compare them with 2026-10-30 in the summary
+- [ ] 7.4 Re-run the perf demo stresses (zoom sweep, pan, move, live stream) on F-LARGE and 20k nodes in headless Chrome and note the before/after numbers in `bench/README.md`
+
+## 8. Documentation (separate commit)
+
+- [ ] 8.1 Update `docs/guide-view.md` (overview level, port hiding, gesture bitmap option and its blur trade-off, `DetailLevel` switch note), `docs/geometry.md` (segment-indexed paths, `ports` pick option) and `bench/README.md` (overview workloads); verify every new option and token named in the code is mentioned, by grepping the docs for `lodOverviewBelow`, `lodHidePortsBelow`, `gestureBitmap` and `ports:`
