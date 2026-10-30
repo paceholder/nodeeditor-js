@@ -210,6 +210,12 @@ const view = mountView(container, { model, geometry, painters });
 - **Painters** (view) only draw. There are four slots: `nodes` keyed by node type,
   `portGlyphs` keyed by the port's `typeKey`, `connections` keyed by connection `kind`, and a
   single `background` slot (default: the grid, `paintGrid` from `nodeeditor-js/view/advanced`).
+- The default grid keeps a steady on-screen density. When zooming out brings its lines
+  closer than 8 CSS px, it steps up by `gridMajorEvery` (with the defaults: 20, then 100,
+  then 500 world units …), and the finer lines of each level fade in as they open up.
+  QtNodes draws fixed 15 and 150 scene-unit grids and gets away with it because its
+  default zoom range stops at 0.3; here the zoom goes far lower for large graphs, so the
+  grid has to adapt.
 - Lookups never fail. An unregistered node type gets the placeholder painter, an
   unregistered port type a round dot, an unregistered connection kind a plain stroked path.
 - `register(key, painter)` returns a `Result` and rejects `duplicate-type`; `replace`
