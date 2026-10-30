@@ -6,7 +6,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Summary } from "./stats.js";
-import { statusOf, TARGETS } from "./targets.js";
+import { statusOf, targetFor } from "./targets.js";
 import type { Baseline, BenchResult } from "./types.js";
 
 export interface ResultInput {
@@ -21,7 +21,7 @@ export interface ResultInput {
 
 /** Build a result row, attaching the metric's target and its status. */
 export function toResult(input: ResultInput): BenchResult {
-  const target = TARGETS[input.metric];
+  const target = targetFor(input.workload, input.metric);
   return {
     workload: input.workload,
     fixture: input.fixture,
@@ -75,7 +75,7 @@ function targetText(r: BenchResult): string {
   const parts: string[] = [];
   if (t.p95 !== undefined) parts.push(`p95 <= ${t.p95}`);
   if (t.p99 !== undefined) parts.push(`p99 <= ${t.p99}`);
-  return parts.join(", ");
+  return t.label ? `${parts.join(", ")} (${t.label})` : parts.join(", ");
 }
 
 /** Markdown summary: provenance, result tables, bundle table, missed targets. */

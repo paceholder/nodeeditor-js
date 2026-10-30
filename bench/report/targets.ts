@@ -1,9 +1,11 @@
-/** Budgets from the performance spec, as labelled targets (PERF-02, PERF-02a, PERF-02c). */
+/** Budgets from the performance spec, as labelled targets (PERF-02, PERF-02a, PERF-02c, PERF-02e). */
 import type { Summary } from "./stats.js";
 
 export interface Target {
   readonly p95?: number;
   readonly p99?: number;
+  /** Requirement that defines a workload-specific target, shown in the summary. */
+  readonly label?: string;
 }
 
 export type TargetStatus = "met" | "missed" | "no-target";
@@ -19,6 +21,22 @@ export const TARGETS: Readonly<Record<string, Target>> = {
   // PERF-02d: animation-frame requests during 5 s of inactivity.
   idleFrameRequests: { p95: 0, p99: 0 },
 };
+
+/** PERF-02e: labeled, non-failing targets for the fit-all overview workloads. */
+const OVERVIEW_FRAME_TARGET: Target = { p95: 33.3, label: "PERF-02e" };
+
+/** The target of one metric of one workload; overview workloads override the frame interval. */
+export function targetFor(
+  workload: string,
+  metric: string,
+): Target | undefined {
+  if (
+    metric === "frameIntervalMs" &&
+    (workload === "overview-zoom" || workload === "overview-pan")
+  )
+    return OVERVIEW_FRAME_TARGET;
+  return TARGETS[metric];
+}
 
 export function statusOf(
   summary: Pick<Summary, "p95" | "p99">,

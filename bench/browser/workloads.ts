@@ -7,7 +7,11 @@
 import type { ViewHandle } from "nodeeditor-js/view";
 
 export const WORKLOADS = ["pan", "zoom", "drag"] as const;
-export type WorkloadName = (typeof WORKLOADS)[number];
+/** PERF-02e: the same pan and zoom scripts with the whole fixture on screen. */
+export const OVERVIEW_WORKLOADS = ["overview-pan", "overview-zoom"] as const;
+export type WorkloadName =
+  | (typeof WORKLOADS)[number]
+  | (typeof OVERVIEW_WORKLOADS)[number];
 
 export interface Pointer {
   readonly x: number;
@@ -170,8 +174,10 @@ export function createScript(
 ): Script {
   switch (name) {
     case "pan":
+    case "overview-pan":
       return panScript(view);
     case "zoom":
+    case "overview-zoom":
       return zoomScript(view, cfg);
     case "drag":
       return dragScript(view);

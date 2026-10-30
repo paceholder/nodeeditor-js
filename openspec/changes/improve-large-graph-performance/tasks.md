@@ -2,8 +2,8 @@
 
 ## 1. Measurement first
 
-- [ ] 1.1 Add the `overview-zoom` and `overview-pan` browser workloads at F-LARGE fit-all (bitmap reuse off) and PERF-02e targets in `bench/report/targets.ts`; verify a `BENCH_QUICK=1 npm run bench:browser` run reports frame interval, latency, pick time and visible counts (about 10k nodes) for both at DPR 1 and 2, and record the before numbers in the change's notes
-- [ ] 1.2 Add headless variants for pick at fit-all zoom and `queryRect` at fit-all to `bench/headless/scene.bench.ts`; verify `npm run bench` prints both
+- [x] 1.1 Add the `overview-zoom` and `overview-pan` browser workloads at F-LARGE fit-all (bitmap reuse off) and PERF-02e targets in `bench/report/targets.ts`; verify a `BENCH_QUICK=1 npm run bench:browser` run reports frame interval, latency, pick time and visible counts (about 10k nodes) for both at DPR 1 and 2, and record the before numbers in the change's notes
+- [x] 1.2 Add headless variants for pick at fit-all zoom and `queryRect` at fit-all to `bench/headless/scene.bench.ts`; verify `npm run bench` prints both
 
 ## 2. Segment-indexed connections (D1)
 
