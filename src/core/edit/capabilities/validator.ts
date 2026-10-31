@@ -3,7 +3,9 @@
  *
  * Maps patch operations to actions and checks each against the touched nodes, so API
  * calls, raw patches and undo all pass the same gate. External-origin patches are
- * already decided by their authority and are skipped.
+ * already decided by their authority and are skipped. A field changed as part of another
+ * field's change (the position of an anchored resize, the rotation of a screen-axis
+ * mirror) is judged by that field's action (`compound-fields.ts`).
  */
 import type { NodeId } from "../../base/ids/ids.js";
 import type { Rejection } from "../../base/result.js";
@@ -11,6 +13,7 @@ import type { GraphReader } from "../../data/model/reader.js";
 import type { CapabilityAction, NodeRecord } from "../../data/model/records.js";
 import type { NodeFieldChanges, PatchOp } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
+import { coveredFields } from "./compound-fields.js";
 import { readOnlyRejection, resolveCapability } from "./resolve.js";
 import type { CapabilityContext } from "./types.js";
 
@@ -108,8 +111,9 @@ class Checker {
     const subject: NodeRecord = op.fields.capabilities
       ? withCapabilities(current, op.fields.capabilities.old)
       : current;
+    const covered = coveredFields(current, op.fields);
     for (const [field, action] of FIELD_ACTIONS) {
-      if (op.fields[field] === undefined) continue;
+      if (op.fields[field] === undefined || covered.has(field)) continue;
       const refused = this.need(action, subject);
       if (refused) return refused;
     }

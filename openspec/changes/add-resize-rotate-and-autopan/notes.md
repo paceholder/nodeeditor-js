@@ -29,3 +29,12 @@ Deviations from design.md, clarifications made while implementing, and observati
   fresh projection, so nothing needed updating (task 2.2 review).
 - **`resizeNode` copies the size** into the patch (`{ width, height }`) so extra fields on
   a caller's object never reach the record.
+- **`coveredFields(node, fields)`** (compound-fields.ts) returns the fields whose own
+  action is replaced, and the validator skips those in `FIELD_ACTIONS`. The local frame
+  for the resize rule is the node's current rotation and mirror flag. The tolerance is
+  `1e-9 · max(1, |coordinates|, |size change|)` so far-away nodes do not fail on float
+  subtraction.
+- **The `project` test lives in a new `geometry-scene-project.test.ts`**, not in
+  `geometry-scene.test.ts`, which is already 376 lines. `project` counts no node rebuild.
+- **Extra core exports**: `DEFAULT_SIZE_LIMITS` (the view's default for models without
+  `sizeLimits`), `MirrorAxis` and `NodePlacementChange`, besides the five task 3.5 names.

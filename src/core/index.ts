@@ -27,7 +27,8 @@ export {
 } from "./base/ids/ids.js";
 export type { Rejection, RejectionCode, Result } from "./base/result.js";
 export { err, MisuseError, ok, reject, rejectionOf } from "./base/result.js";
-export type { MirrorAxis } from "./data/model/node-frame.js";
+export type { MirrorAxis, ResizeFixed } from "./data/model/node-frame.js";
+export { anchoredPosition } from "./data/model/node-frame.js";
 export type { GraphReader } from "./data/model/reader.js";
 export type {
   AttachmentLimit,
@@ -60,6 +61,7 @@ export {
 export type {
   NodeTypeDefinition,
   PortSpec,
+  SizeLimits,
 } from "./data/node-types/definition.js";
 export { defaultLimit } from "./data/node-types/definition.js";
 export type { UnknownTypeDiagnostic } from "./data/node-types/diagnostics.js";
@@ -107,6 +109,11 @@ export type {
   CommandHost,
 } from "./edit/commands/api.js";
 export type { ConvenienceMethods } from "./edit/commands/convenience.js";
+export type {
+  ResolvedSizeLimits,
+  SizeLimitPolicy,
+} from "./edit/commands/size-limits.js";
+export { DEFAULT_SIZE_LIMITS } from "./edit/commands/size-limits.js";
 export type {
   Availability,
   ChoiceAlternative,
