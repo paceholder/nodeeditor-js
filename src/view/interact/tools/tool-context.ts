@@ -12,9 +12,11 @@ import type {
   GraphReader,
   NodeId,
   PlanResult,
+  ResolvedSizeLimits,
+  Size,
   Viewport,
 } from "../../../core/index.js";
-import { rejectionOf } from "../../../core/index.js";
+import { DEFAULT_SIZE_LIMITS, rejectionOf } from "../../../core/index.js";
 import type { ReadonlySelection } from "../selection/selection-model.js";
 import { evaluationOf, NO_MODEL_EVALUATION } from "./connect-evaluation.js";
 import { resolveToolOptions, type ToolOptions } from "./thresholds.js";
@@ -31,6 +33,8 @@ export interface ToolContextDeps {
   readonly can: (action: CapabilityAction, id: NodeId) => Availability;
   /** Read on every gesture step, so a getter lets options change at runtime. */
   readonly options?: Partial<ToolOptions> | (() => Partial<ToolOptions>);
+  /** Resolved size limits (`GraphModel.sizeLimits`); omitted: the library default. */
+  readonly sizeLimits?: SizeLimitsLookup;
   /** Dry-run planner of the model (`GraphModel.plan`); without it nothing can connect. */
   readonly plan?: (command: Command) => PlanResult;
   /**
@@ -38,6 +42,16 @@ export interface ToolContextDeps {
    * then skip ports, so a press there selects, moves or pans. Omitted: ports always count.
    */
   readonly hidePortsBelow?: () => number;
+}
+
+export type SizeLimitsLookup = (id: NodeId) => ResolvedSizeLimits | undefined;
+
+/** A model's `sizeLimits` method when it has one (a `GraphModel` does). */
+export function sizeLimitsOf(model: object): SizeLimitsLookup | undefined {
+  const m = model as { sizeLimits?: unknown };
+  return typeof m.sizeLimits === "function"
+    ? (m.sizeLimits as SizeLimitsLookup)
+    : undefined;
 }
 
 export function createToolContext(deps: ToolContextDeps): () => ToolContext {
@@ -75,6 +89,8 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
     }
     return hit;
   };
+  const sizeLimits = (id: NodeId): ResolvedSizeLimits =>
+    deps.sizeLimits?.(id) ?? DEFAULT_SIZE_LIMITS;
   return () => {
     const viewport = deps.viewport();
     const options = currentOptions();
@@ -92,6 +108,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       viewport,
       zoom: viewport.zoom,
       can: deps.can,
+      sizeLimits,
       evaluateConnection,
       options,
     };
@@ -99,12 +116,15 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
 }
 
 /**
- * Capability probe through a model's `can`. Only `move` is needed by the current tools:
- * a one-unit trial move exercises exactly the capability gate a real move would hit.
+ * Capability probe through a model's `can` (MOD-11): each action is answered by a
+ * one-step trial command, so it exercises exactly the capability gate a real edit would
+ * hit. `resize` tries one unit wider (or narrower, or taller or shorter where the limits
+ * require); a node whose limits leave no other size is unavailable with `out-of-range`.
  */
 export function capabilityProbe(model: {
   readonly reader: GraphReader;
   can(command: Command): Availability;
+  sizeLimits?: SizeLimitsLookup;
 }): (action: CapabilityAction, id: NodeId) => Availability {
   return (action, id) => {
     const node = model.reader.getNode(id);
@@ -127,10 +147,48 @@ export function capabilityProbe(model: {
             },
           ],
         });
+      case "resize": {
+        const limits = model.sizeLimits?.(id) ?? DEFAULT_SIZE_LIMITS;
+        const size = trialSize(node.size, limits);
+        return size
+          ? model.can({ kind: "resizeNode", node: id, size })
+          : {
+              available: false,
+              reason: rejectionOf(
+                "out-of-range",
+                `Node ${id} has a fixed size`,
+                [id],
+              ),
+            };
+      }
+      case "rotate":
+        return model.can({ kind: "rotateNodes", nodes: [id], turns: 1 });
+      case "mirror":
+        return model.can({ kind: "mirrorNodes", nodes: [id] });
       case "delete":
         return model.can({ kind: "deleteEntities", nodes: [id] });
       default:
         return { available: true };
     }
   };
+}
+
+/** A size one unit away from `size` inside `limits`, or undefined when none differs. */
+function trialSize(size: Size, limits: ResolvedSizeLimits): Size | undefined {
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(Math.max(v, lo), hi);
+  const { width: w, height: h } = size;
+  for (const [dw, dh] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const) {
+    const trial = {
+      width: clamp(w + dw, limits.min.width, limits.max.width),
+      height: clamp(h + dh, limits.min.height, limits.max.height),
+    };
+    if (trial.width !== w || trial.height !== h) return trial;
+  }
+  return undefined;
 }

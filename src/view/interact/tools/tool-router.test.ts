@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createNodeTypeRegistry, nodeId } from "../../../core/index.js";
 import {
   cornerNode,
   cornerOf,
   createToolHarness,
 } from "../../test-support/tool-harness.js";
+import { nodeKey } from "../selection/selection-model.js";
 
 const fixture = () =>
   createToolHarness({
@@ -110,5 +112,50 @@ describe("tool router", () => {
     h.up({ x: 500, y: 500 });
     h.down({ x: 20, y: 10 }, { button: 1 });
     expect(h.router.activeTool).toBe("pan");
+  });
+});
+
+describe("INT-10, INT-04 resize and connect", () => {
+  /** Node `a` has a port on its bottom-right corner, right under the handle. */
+  const cornerPort = () => {
+    const registry = createNodeTypeRegistry();
+    registry.register({
+      type: "t",
+      label: "T",
+      defaultSize: { width: 40, height: 20 },
+      capabilities: { resize: true },
+    });
+    const h = createToolHarness({
+      modelOptions: { registry },
+      nodes: [
+        {
+          id: "a",
+          x: 20,
+          y: 10,
+          ports: [{ id: "aC", placement: { x: 1, y: 1 } }],
+        },
+        cornerNode("b", 200, 0),
+      ],
+    });
+    h.selection.replace([nodeKey(nodeId("a"))]);
+    return h;
+  };
+
+  it("Resize and connect are exclusive: the handle resizes, the rest of the port connects", () => {
+    const h = cornerPort();
+    // Inside the 8 px square: the port's capture circle also covers this point.
+    h.down({ x: 37, y: 17 });
+    expect(h.router.activeTool).toBe("resize");
+    h.move({ x: 50, y: 30 });
+    h.up({ x: 50, y: 30 });
+    expect(h.log.commits.map((c) => c.kind)).toEqual(["resizeNode"]);
+
+    const g = cornerPort();
+    // Outside the square, still within the port's capture radius.
+    g.down({ x: 43, y: 23 });
+    expect(g.router.activeTool).toBe("connect");
+    g.move({ x: 100, y: 60 });
+    g.send({ type: "cancel", reason: "escape" });
+    expect(g.log.commits).toEqual([]);
   });
 });

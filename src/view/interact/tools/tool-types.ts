@@ -15,6 +15,7 @@ import type {
   HitCandidate,
   NodeId,
   Point,
+  ResolvedSizeLimits,
   Viewport,
 } from "../../../core/index.js";
 import type {
@@ -108,7 +109,9 @@ export type CursorKind =
   | "grabbing"
   | "move"
   | "crosshair"
-  | "not-allowed";
+  | "not-allowed"
+  /** Over or dragging the resize handle (always the screen bottom-right corner). */
+  | "nwse-resize";
 
 export type ToolEffect =
   | { readonly type: "capture" | "release"; readonly pointerId: number }
@@ -129,6 +132,8 @@ export interface ToolContext {
   readonly viewport: Viewport;
   readonly zoom: number;
   can(action: CapabilityAction, id: NodeId): Availability;
+  /** Size limits a resize of the node must respect (NOD-04a); defaults when unknown. */
+  sizeLimits(id: NodeId): ResolvedSizeLimits;
   /**
    * The connection policy's verdict for `from` -> `to`, mapped to a presentation state.
    * Cached per candidate pair until the model revision changes (TXN-05).

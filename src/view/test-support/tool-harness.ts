@@ -126,6 +126,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     selection,
     viewport: () => viewport,
     can: capabilityProbe(model),
+    sizeLimits: model.sizeLimits,
     plan: model.plan,
     ...(opts.options ? { options: opts.options } : {}),
     ...(opts.hidePortsBelow !== undefined
