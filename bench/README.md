@@ -100,6 +100,28 @@ case, the whole F-LARGE graph on screen (PERF-02e):
 The perf demo has a "Gesture bitmap" checkbox (or `?bitmap=1`) to compare stress runs with
 reuse on and off.
 
+### Stress runs before and after improve-large-graph-performance
+
+Perf demo stresses (`npm run demo:perf`, headless installed Chrome 156 through
+Playwright, 1440x900, gesture bitmap off, one 12 s run each). Before is commit 86a7aa6
+(on AC power); after is a6aa818 (on battery; a partial rerun on AC power matched it).
+Frames per second, then p95 / worst frame interval in ms:
+
+| Stress | Graph | DPR | Before | After |
+| --- | --- | --- | --- | --- |
+| Zoom sweep (fit-all to 1:1 and back) | F-LARGE (10k) | 1 | 40, 66.7 / 166.7 | 57, 33.3 / 33.4 |
+| Zoom sweep | F-LARGE | 2 | 40, 66.7 / 166.7 | 57, 33.3 / 33.4 |
+| Zoom sweep | 20k nodes | 1 | 35, 66.7 / 316.6 | 46, 50.0 / 83.4 |
+| Zoom sweep | 20k nodes | 2 | 35, 66.7 / 316.7 | 47, 33.4 / 66.7 |
+| Continuous pan | F-LARGE and 20k | 1, 2 | 60, 16.8 / 16.8 | 60, 16.8 / 16.8 |
+| Move selection (about 200 to 270 nodes) | F-LARGE and 20k | 1, 2 | 60, commit 5.3 to 6.6 ms | 60, commit 6.9 to 8.0 ms |
+| Live status stream (1,000 nodes at 30 Hz) | F-LARGE and 20k | 1, 2 | 60, patch apply p95 1.3 to 1.9 ms | 60 to 62, p95 1.3 to 1.9 ms |
+
+The zoom sweep is the one stress that crosses into the fit-all overview, so it is where
+the change shows; pan, move and live updates were already at the display rate. The move
+commit is about 1.5 ms slower; segment indexing of the moved wires is the likely cause,
+not yet profiled.
+
 ## Fixtures
 
 `bench/fixtures/` holds a mulberry32 PRNG, the specs (`F-SMALL` 100 nodes and 200
