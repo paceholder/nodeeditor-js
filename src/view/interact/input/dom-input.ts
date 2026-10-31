@@ -11,7 +11,6 @@ import type {
   CancelReason,
   CursorKind,
   Modifiers,
-  PointerType,
   ToolContext,
   ToolInput,
 } from "../tools/tool-types.js";
@@ -21,6 +20,12 @@ import {
   isTextTarget,
   shouldHandleKey,
 } from "./input-scope.js";
+import {
+  BUTTONS,
+  type ModifierKeys,
+  modifiersOf,
+  pointerInputOf,
+} from "./pointer-input.js";
 
 export interface DomInputDeps {
   readonly router: ToolRouter;
@@ -52,16 +57,6 @@ export interface DomInput {
   /** World position of the pointer while it is over the root, else undefined. */
   pointerWorld(): Point<"world"> | undefined;
   dispose(): void;
-}
-
-const BUTTONS = new Set([0, 1, 2]);
-
-function pointerTypeOf(e: PointerEvent): PointerType | undefined {
-  return e.pointerType === "mouse" ||
-    e.pointerType === "touch" ||
-    e.pointerType === "pen"
-    ? e.pointerType
-    : undefined;
 }
 
 export function attachDomInput(
@@ -110,16 +105,8 @@ export function attachDomInput(
     cursor: setCursor,
   });
 
-  const modifiers = (e: {
-    shiftKey: boolean;
-    altKey: boolean;
-    ctrlKey: boolean;
-    metaKey: boolean;
-  }): Modifiers => ({
-    shift: e.shiftKey,
-    alt: e.altKey,
-    mod: deps.platform === "mac" ? e.metaKey : e.ctrlKey,
-  });
+  const modifiers = (e: ModifierKeys): Modifiers =>
+    modifiersOf(e, deps.platform);
 
   const send = (input: ToolInput) => {
     const result = router.handle(input, deps.context());
@@ -137,23 +124,7 @@ export function attachDomInput(
   ) {
     const at = deps.coords(e.clientX, e.clientY);
     if (!at) return undefined;
-    const pointerType = pointerTypeOf(e);
-    const base = {
-      pointerId: e.pointerId,
-      button: BUTTONS.has(e.button) ? (e.button as 0 | 1 | 2) : 0,
-      viewport: at.viewport,
-      world: at.world,
-      modifiers: modifiers(e),
-      time: e.timeStamp,
-      ...(pointerType ? { pointerType } : {}),
-    } as const;
-    return send(
-      type === "pointer-down"
-        ? { type, ...base }
-        : type === "pointer-move"
-          ? { type, ...base }
-          : { type, ...base },
-    );
+    return send(pointerInputOf(type, e, at, deps.platform));
   }
 
   const onPointerDown = (e: PointerEvent): void => {
