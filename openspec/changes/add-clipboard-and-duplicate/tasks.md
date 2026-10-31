@@ -2,9 +2,9 @@
 
 ## 1. Command contract (core/edit)
 
-- [ ] 1.1 Add the `paste` and `duplicate` kinds and the `Placement` type to `Command` in `src/core/edit/commands/types.ts` (D2), the `FragmentPlanners` interface and the optional `fragments` slot on `PlanContext` and `CommandEnvironment` (D1), and the optional `excluded` list on `PlanEffects`; verify `npm run typecheck` (including the core-only pass) fails nowhere except the exhaustive `planCommand` switch
-- [ ] 1.2 Add rejection codes `unsupported-command`, `empty-fragment`, `not-a-fragment` and `clipboard-unavailable` to `RejectionCode` in `src/core/base/result.ts`; verify `src/core/base/result.test.ts` still passes
-- [ ] 1.3 Dispatch `paste`/`duplicate` in `src/core/edit/commands/plan.ts` to `ctx.fragments`, rejecting with `unsupported-command` without it; verify a test in `src/core/edit/commands/graph-model-commands.test.ts` named for the rule that commands are planners that a command API built without the slot rejects both kinds and changes nothing
+- [x] 1.1 Add the `paste` and `duplicate` kinds and the `Placement` type to `Command` in `src/core/edit/commands/types.ts` (D2), the `FragmentPlanners` interface and the optional `fragments` slot on `PlanContext` and `CommandEnvironment` (D1), and the optional `excluded` list on `PlanEffects`; verify `npm run typecheck` (including the core-only pass) fails nowhere except the exhaustive `planCommand` switch
+- [x] 1.2 Add rejection codes `unsupported-command`, `empty-fragment`, `not-a-fragment` and `clipboard-unavailable` to `RejectionCode` in `src/core/base/result.ts`; verify `src/core/base/result.test.ts` still passes
+- [x] 1.3 Dispatch `paste`/`duplicate` in `src/core/edit/commands/plan.ts` to `ctx.fragments`, rejecting with `unsupported-command` without it; verify a test in `src/core/edit/commands/graph-model-commands.test.ts` named for the rule that commands are planners that a command API built without the slot rejects both kinds and changes nothing
 
 ## 2. Fragment extraction and clipboard text (core/io/fragment)
 

@@ -25,6 +25,11 @@ export type RejectionCode =
   | "duplicate-type"
   | "not-creatable"
   | "factory-failed"
+  | "unsupported-command"
+  // Clipboard fragments
+  | "empty-fragment"
+  | "not-a-fragment"
+  | "clipboard-unavailable"
   // Connection policy
   | "same-port"
   | "direction-mismatch"

@@ -26,6 +26,7 @@ import type {
   Availability,
   Command,
   ExecuteResult,
+  FragmentPlanners,
   PlanResult,
 } from "./types.js";
 
@@ -48,6 +49,8 @@ export interface CommandEnvironment {
   readonly policy: ConnectionPolicy;
   /** Validators that `plan` dry-runs; the same ones registered for commits. */
   readonly validators: readonly PatchValidator[];
+  /** Paste and duplicate planners; without them those commands are unsupported. */
+  readonly fragments?: FragmentPlanners;
 }
 
 export interface CommandApi {
@@ -81,6 +84,7 @@ export function createCommandApi(
       ids: createIdAllocator(host.idGenerator, host.idCursor()),
       registry: env.registry,
       policy: env.policy,
+      ...(env.fragments ? { fragments: env.fragments } : {}),
     });
     if (planned.kind === "history") {
       const state = history(planned.direction);
