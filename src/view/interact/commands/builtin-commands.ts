@@ -1,6 +1,7 @@
 /**
  * Built-in editor commands (INT-07, MOD-11, D9): edit.delete, history.undo/redo,
- * selection.selectAll/clear, nodes.nudge, and the view.* commands. Each is a thin wrapper
+ * selection.selectAll/clear, nodes.nudge, the view.* commands, and edit.copy/cut/paste/
+ * duplicate when a clipboard service is given. Each is a thin wrapper
  * over the model's command API or the view-local services, so a shortcut and an API call
  * produce identical patches on equal models.
  */
@@ -16,6 +17,11 @@ import {
   rejectionOf,
   type SubmitResult,
 } from "../../../core/index.js";
+import {
+  CLIPBOARD_COMMAND_IDS,
+  registerClipboardCommands,
+} from "../clipboard/clipboard-commands.js";
+import type { ClipboardService } from "../clipboard/clipboard-service.js";
 import { connectionKey, nodeKey } from "../selection/selection-model.js";
 import { capabilityProbe } from "../tools/tool-context.js";
 import type {
@@ -43,6 +49,7 @@ export const COMMAND_IDS = {
   fitSelection: "view.fitSelection",
   resetView: "view.resetView",
   reveal: "view.reveal",
+  ...CLIPBOARD_COMMAND_IDS,
 } as const;
 
 interface Refusal {
@@ -176,7 +183,11 @@ function selectAll(ctx: CommandContext): CommandOutcome {
   return ok({ changed: selection.replace(keys) });
 }
 
-export function registerBuiltinCommands(registry: CommandRegistry): void {
+/** Registers every built-in command; the clipboard ones need the view's service. */
+export function registerBuiltinCommands(
+  registry: CommandRegistry,
+  clipboard?: ClipboardService,
+): void {
   registry.register(modelEdit<void>(COMMAND_IDS.delete, planDelete));
   registry.register(history("undo"));
   registry.register(history("redo"));
@@ -226,4 +237,5 @@ export function registerBuiltinCommands(registry: CommandRegistry): void {
     availability: () => OK,
     run: (id: NodeId | ConnectionId, { view }) => view.reveal(id),
   });
+  if (clipboard) registerClipboardCommands(registry, clipboard);
 }

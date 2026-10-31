@@ -5,6 +5,8 @@ import {
   createToolHarness,
   type HarnessOptions,
 } from "../../test-support/tool-harness.js";
+import { clipboardModel } from "../clipboard/clipboard-fixtures.js";
+import { createClipboardService } from "../clipboard/clipboard-service.js";
 import { connectionKey, nodeKey } from "../selection/selection-model.js";
 import { COMMAND_IDS, registerBuiltinCommands } from "./builtin-commands.js";
 import { createCommandRegistry } from "./command-registry.js";
@@ -32,8 +34,15 @@ function setup(opts: HarnessOptions = {}) {
     selection: h.selection,
     view,
   }));
-  registerBuiltinCommands(commands);
-  return { h, commands, viewport: () => viewport };
+  const clipboard = createClipboardService({
+    reader: h.model.reader,
+    model: h.model,
+    selection: h.selection,
+    pointer: () => undefined,
+    system: undefined,
+  });
+  registerBuiltinCommands(commands, clipboard);
+  return { h, commands, clipboard, viewport: () => viewport };
 }
 
 const trio = (): HarnessOptions => ({
@@ -156,5 +165,72 @@ describe("builtin commands", () => {
     const { commands } = setup(trio());
     const r = commands.run("no.such.command");
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("clipboard commands", () => {
+  const reasonOf = (a: { available: boolean; reason?: { code: string } }) =>
+    a.available ? undefined : a.reason?.code;
+
+  it("INT-07, MOD-11 availability explains each refusal", () => {
+    const { h, commands } = setup({
+      model: clipboardModel(undefined, undefined, {
+        capabilityPolicy: {
+          decide: (action) => (action === "delete" ? false : undefined),
+        },
+      }),
+    });
+    expect(reasonOf(commands.availability(COMMAND_IDS.copy))).toBe(
+      "empty-fragment",
+    );
+    expect(reasonOf(commands.availability(COMMAND_IDS.duplicate))).toBe(
+      "empty-fragment",
+    );
+    expect(reasonOf(commands.availability(COMMAND_IDS.paste))).toBe(
+      "not-a-fragment",
+    );
+    h.selection.replace([nodeKey(nodeId("a"))]);
+    expect(commands.availability(COMMAND_IDS.copy).available).toBe(true);
+    expect(reasonOf(commands.availability(COMMAND_IDS.cut))).toBe(
+      "capability-denied",
+    );
+    expect(commands.run(COMMAND_IDS.copy).ok).toBe(true);
+    expect(commands.availability(COMMAND_IDS.paste).available).toBe(true);
+    expect(commands.availability(COMMAND_IDS.duplicate).available).toBe(true);
+  });
+
+  it("MOD-11 paste on a read-only model is unavailable with the read-only reason", () => {
+    const source = setup({ model: clipboardModel() });
+    source.h.selection.replace([nodeKey(nodeId("a"))]);
+    const text = source.clipboard.exportText();
+    const { commands, clipboard } = setup({
+      model: clipboardModel([], [], { readOnly: true }),
+    });
+    expect(clipboard.importText(text.ok ? text.value : "").ok).toBe(false);
+    const a = clipboard.canPaste(text.ok ? text.value : "");
+    expect(!a.available && a.reason.message).toMatch(/read-only/);
+    expect(commands.run(COMMAND_IDS.paste).ok).toBe(false);
+  });
+
+  it("INT-07 paste via the command and via importText produce identical patches", () => {
+    const source = setup({ model: clipboardModel() });
+    source.h.selection.replace([nodeKey(nodeId("a")), nodeKey(nodeId("b"))]);
+    const text = source.clipboard.exportText();
+    if (!text.ok) throw new Error("setup");
+    const patches = (s: ReturnType<typeof setup>) => {
+      const out: unknown[] = [];
+      s.h.model.on("change", (e) => out.push(e.patch));
+      return out;
+    };
+    const viaCommand = setup({ model: clipboardModel() });
+    const viaImport = setup({ model: clipboardModel() });
+    const one = patches(viaCommand);
+    const two = patches(viaImport);
+    expect(
+      viaCommand.commands.run(COMMAND_IDS.paste, { text: text.value }),
+    ).toEqual({ ok: true, value: { changed: true } });
+    expect(viaImport.clipboard.importText(text.value).ok).toBe(true);
+    expect(one).toHaveLength(1);
+    expect(one).toEqual(two);
   });
 });
