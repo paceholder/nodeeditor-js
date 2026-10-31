@@ -14,10 +14,14 @@
         max-width: 560px;
       }
       #hint kbd { color: #e6e9ef; }
-      #snap {
+      #snap, #tools, #status {
         position: fixed; right: 12px; top: 10px;
         font: 12px/1.5 system-ui, sans-serif; color: #aeb6c4;
       }
+      #tools { top: 34px; display: flex; gap: 6px; }
+      #status { top: auto; bottom: 10px; left: 12px; right: auto; margin: 0; }
+      #fragment textarea { width: min(80vw, 640px); height: 40vh; font: 11px monospace; }
+      #fragment p { margin: 6px 0 0; display: flex; gap: 6px; }
     </style>
   </head>
   <body>
@@ -27,12 +31,27 @@
       selects what it touches). <kbd>Click</kbd> / <kbd>Shift+click</kbd> select; drag a
       node to move it; drag from a port to connect (red cross = refused, pipe and signal
       ports don't mix). <kbd>G</kbd> toggles grid snapping (<kbd>Alt</kbd> skips it for
-      one drag). <kbd>Del</kbd> delete, <kbd>Ctrl/Cmd+Z</kbd> undo,
+      one drag). <kbd>Ctrl/Cmd+C</kbd>, <kbd>X</kbd>, <kbd>V</kbd> copy, cut, paste
+      (at the pointer), <kbd>Ctrl/Cmd+D</kbd> duplicate. <kbd>Del</kbd> delete, <kbd>Ctrl/Cmd+Z</kbd> undo,
       <kbd>Ctrl/Cmd+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> redo, arrows nudge, <kbd>F</kbd>
       fit all, wheel zoom.
       Outside edits: <kbd>M</kbd> move pump, <kbd>E</kbd> toggle valve error.
     </p>
     <label id="snap"><input type="checkbox" /> Snap to grid</label>
+    <div id="tools">
+      <button type="button" id="export">Export fragment</button>
+      <button type="button" id="import">Import fragment</button>
+    </div>
+    <p id="status"></p>
+    <dialog id="fragment">
+      <form method="dialog">
+        <textarea spellcheck="false" aria-label="Fragment text"></textarea>
+        <p>
+          <button type="button" id="do-import">Paste this fragment</button>
+          <button value="close">Close</button>
+        </p>
+      </form>
+    </dialog>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
