@@ -46,3 +46,13 @@ Deviations from design.md, clarifications made while implementing, and observati
 - **The resize preview paints at full opacity** (the move preview's ghosts use 0.75):
   the node being resized is not left behind anywhere, so a faded copy would only look
   disabled.
+- **Resize gesture order** (D7 lists the pieces, not their order): raw local delta, then
+  grid snapping of the moving corner, then the aspect ratio, then the limits. Snapping
+  before the ratio keeps every Shift preview exactly at the ratio (the scenario), and
+  clamping last keeps every commit inside the limits.
+- **The resize probe tries four one-unit trials** (wider, narrower, taller, shorter), each
+  clamped into the limits, and uses the first that differs from the current size. So a
+  node fixed on one axis only still resizes on the other, and a loaded node outside its
+  limits is probed with a size inside them. No differing trial means `out-of-range`.
+- **`ToolContextDeps.sizeLimits`** takes the model's lookup; `sizeLimitsOf(model)` reads
+  it structurally, since `EditableModel` does not include it (host models may lack it).
