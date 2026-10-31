@@ -56,6 +56,7 @@ export type {
   CursorKind,
   Modifiers,
   PointerInput,
+  PointerType,
   PressInfo,
   Tool,
   ToolContext,
