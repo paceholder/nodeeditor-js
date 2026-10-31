@@ -1,42 +1,46 @@
 ## ADDED Requirements
 
-### Requirement: INT-10 Resize handles
-When exactly one node is selected and it may be resized, the view SHALL show eight handles at its corners and edge midpoints, placed in the node's frame so they follow rotation and mirroring. Dragging a handle SHALL resize the node with the opposite corner or edge fixed, and Shift SHALL keep the aspect ratio. Handles SHALL have a fixed screen size and be picked geometrically. A completed resize SHALL be one command and one history entry.
+### Requirement: INT-10 Resize handle
+When exactly one node is selected and it may be resized, the view SHALL show one resize handle at the node's bottom-right corner as seen on screen, whatever its rotation and mirroring. Dragging it SHALL resize the node with the diagonally opposite screen corner fixed; Shift SHALL keep the aspect ratio. The handle SHALL have a fixed screen size and be picked geometrically, and a press on it SHALL resize, never connect. A completed resize SHALL be one command and one history entry.
 
 #### Scenario: Corner drag keeps the opposite corner
-- **WHEN** the bottom-right handle of a selected 100-by-60 node is dragged by 40 world units right and 20 down and released
+- **WHEN** the handle of a selected, resizable 100-by-60 node is dragged by 40 world units right and 20 down and released
 - **THEN** the node is 140 by 80, its top-left corner is where it was, and the history gains exactly one entry
 
-#### Scenario: Edge handle changes one dimension
-- **WHEN** the left edge handle of a selected node is dragged to the left
-- **THEN** only the width grows, the right edge stays in place, and the height is unchanged
-
 #### Scenario: Shift keeps the aspect ratio
-- **WHEN** a corner handle of a 100-by-50 node is dragged with Shift held
+- **WHEN** the handle of a 100-by-50 node is dragged with Shift held
 - **THEN** every preview and the committed size keep a width-to-height ratio of 2
 
-#### Scenario: Handles follow rotation
-- **WHEN** a non-square node rotated by one quarter turn is selected
-- **THEN** its handles sit on the corners and edge midpoints of the rotated body, and dragging the handle on its screen-right side widens the node on screen to the right
+#### Scenario: Handle on a rotated and mirrored node
+- **WHEN** a non-square resizable node rotated by one quarter turn and mirrored is selected
+- **THEN** the handle sits on the body corner that is lowest and rightmost on screen, dragging it right and down grows the node on screen to the right and down, and the screen top-left corner stays in place
 
 #### Scenario: Clamped while dragging
-- **WHEN** a handle is dragged so that the width would fall below the node's minimum
-- **THEN** the preview stops at the minimum width, the fixed side stays in place, and the committed size equals the minimum
+- **WHEN** the handle is dragged so that the width would fall below the node's minimum
+- **THEN** the preview stops at the minimum width, the opposite corner stays in place, and the committed size equals the minimum
 
-#### Scenario: No handles for several nodes
-- **WHEN** two nodes are selected
-- **THEN** no resize handles are shown and a press on a node's corner starts a move
+#### Scenario: Grid snapping only when enabled
+- **WHEN** the handle is dragged with no grid step configured
+- **THEN** the size follows the pointer exactly; with a grid step configured the moving corner snaps to the grid unless the snap-suppression modifier is held
 
-#### Scenario: No handles without the capability
-- **WHEN** the only selected node's resize capability is denied
-- **THEN** no resize handles are shown
+#### Scenario: Resize and connect are exclusive
+- **WHEN** a port anchor lies on the corner under the handle of the selected node and the user presses there
+- **THEN** a resize starts and no connection gesture starts; a press on any other part of that port's capture area starts a connection
+
+#### Scenario: No handle for several nodes
+- **WHEN** two resizable nodes are selected
+- **THEN** no resize handle is shown and a press on a node's corner starts a move
+
+#### Scenario: No handle without the capability
+- **WHEN** the only selected node belongs to a type that did not opt in to resizing, or its resize capability is denied
+- **THEN** no resize handle is shown
 
 #### Scenario: Cancel a resize
-- **WHEN** Escape is pressed or pointer capture is lost while a handle is being dragged
+- **WHEN** Escape is pressed or pointer capture is lost while the handle is being dragged
 - **THEN** the preview is discarded, no command is submitted, and the node keeps its committed size and position (INT-05)
 
 #### Scenario: Preview is not submitted
-- **WHEN** a handle is dragged across 100 pointer move events and released
+- **WHEN** the handle is dragged across 100 pointer move events and released
 - **THEN** the adapter receives exactly one resize command (INT-08)
 
 ## MODIFIED Requirements
@@ -67,6 +71,10 @@ The view SHALL auto-pan when the pointer nears the viewport edge during moving o
 #### Scenario: No frames after stopping
 - **WHEN** an auto-panned gesture ends and no other input or model change follows for 5 seconds
 - **THEN** no animation frames are requested
+
+#### Scenario: Auto-pan turned off
+- **WHEN** the host sets the auto-pan option to off and a node is dragged into the edge band
+- **THEN** the viewport does not move; with the default options auto-pan is on
 
 #### Scenario: Pan gestures do not auto-pan
 - **WHEN** the user pans by dragging empty canvas and the pointer reaches the edge band
