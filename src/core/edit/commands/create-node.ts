@@ -62,7 +62,8 @@ function runFactories(
   }
 }
 
-function frontZ(ctx: {
+/** One above the current top of the paint order, or 0 in an empty graph. */
+export function frontZ(ctx: {
   reader: { paintOrder(): readonly { z: number }[] };
 }): number {
   const order = ctx.reader.paintOrder();
