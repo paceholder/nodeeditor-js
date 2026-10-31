@@ -35,8 +35,8 @@
 
 ## 6. Rotate and mirror commands (view/interact, headless)
 
-- [ ] 6.1 Implement `src/view/interact/commands/transform-commands.ts` (`nodes.rotate` with `{ turns }`, `nodes.mirror` with `{ axis }`, filtering nodes the probe refuses, unavailable with the first capability reason when none remain) and register them from `builtin-commands.ts`; verify tests in `src/view/interact/commands/commands.test.ts` titled INT-07, MOD-11, NOD-04: command and API give identical patches on equal models, the "Locked node in a rotated selection" scenario, and an empty selection is unavailable
-- [ ] 6.2 Add `R`, `Shift+R`, `M`, `Shift+M` to `DEFAULT_KEYMAP`; verify `keymap.test.ts` titled UX-01 that each chord resolves to its command and arguments on both platforms, `Shift+R` does not resolve to the clockwise binding, and `Mod+R` resolves to nothing (the browser reload stays available)
+- [x] 6.1 Implement `src/view/interact/commands/transform-commands.ts` (`nodes.rotate` with `{ turns }`, `nodes.mirror` with `{ axis }`, filtering nodes the probe refuses, unavailable with the first capability reason when none remain) and register them from `builtin-commands.ts`; verify tests in `src/view/interact/commands/commands.test.ts` titled INT-07, MOD-11, NOD-04: command and API give identical patches on equal models, the "Locked node in a rotated selection" scenario, and an empty selection is unavailable
+- [x] 6.2 Add `R`, `Shift+R`, `M`, `Shift+M` to `DEFAULT_KEYMAP`; verify `keymap.test.ts` titled UX-01 that each chord resolves to its command and arguments on both platforms, `Shift+R` does not resolve to the clockwise binding, and `Mod+R` resolves to nothing (the browser reload stays available)
 
 ## 7. Auto-pan (view/interact, headless)
 
