@@ -3,7 +3,8 @@
  *
  * Appearance, geometry and painters are registered separately by type key, so changing
  * one never requires touching another. This definition holds only what the model needs:
- * label, creatability, default size, payload and port factories, capability defaults.
+ * label, creatability, default size and size limits, payload and port factories,
+ * capability defaults.
  */
 
 import type { Result } from "../../base/result.js";
@@ -26,6 +27,19 @@ export interface PortSpec {
   readonly placement?: PortPlacement;
 }
 
+/**
+ * Minimum and maximum body size (NOD-04a). Each bound is optional and replaces the
+ * library default for its own field only: `min` defaults to 1 x 1, `max` to unbounded
+ * (`Infinity`). Checked by resize commands, not by raw patches, undo or load.
+ */
+export interface SizeLimits {
+  readonly min?: Size;
+  readonly max?: Size;
+}
+
+/** The library's minimum body size: a zero-width node can be neither seen nor picked. */
+export const DEFAULT_MIN_SIZE: Size = { width: 1, height: 1 };
+
 export interface NodeTypeDefinition {
   /** Unique key stored on node records. */
   readonly type: string;
@@ -33,6 +47,8 @@ export interface NodeTypeDefinition {
   /** Defaults to true. Non-creatable types can still exist in loaded documents. */
   readonly creatable?: boolean;
   readonly defaultSize: Size;
+  /** Bounds for resize commands; refined per node by the model's `sizeLimits` hook. */
+  readonly sizeLimits?: SizeLimits;
   /** Called with the world position of the new node. A failure rejects the command. */
   readonly createPayload?: (ctx: {
     readonly position: Vec2;

@@ -22,6 +22,7 @@ import type { ConnectionPolicy } from "../policy/types.js";
 import { dryRun } from "./dry-run.js";
 import { createIdAllocator } from "./id-allocator.js";
 import { planCommand } from "./plan.js";
+import { resolveSizeLimits, type SizeLimitPolicy } from "./size-limits.js";
 import type {
   Availability,
   Command,
@@ -49,6 +50,8 @@ export interface CommandEnvironment {
   readonly policy: ConnectionPolicy;
   /** Validators that `plan` dry-runs; the same ones registered for commits. */
   readonly validators: readonly PatchValidator[];
+  /** Host refinement of the type's size limits (NOD-04a). */
+  readonly sizeLimits?: SizeLimitPolicy;
   /** Paste and duplicate planners; without them those commands are unsupported. */
   readonly fragments?: FragmentPlanners;
 }
@@ -84,6 +87,8 @@ export function createCommandApi(
       ids: createIdAllocator(host.idGenerator, host.idCursor()),
       registry: env.registry,
       policy: env.policy,
+      sizeLimits: (node) =>
+        resolveSizeLimits(node, env.registry, env.sizeLimits),
       ...(env.fragments ? { fragments: env.fragments } : {}),
     });
     if (planned.kind === "history") {

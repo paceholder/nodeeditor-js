@@ -2,6 +2,7 @@
 import type { NodeId } from "../../base/ids/ids.js";
 import { ok } from "../../base/result.js";
 import { createIdAllocator } from "../../edit/commands/id-allocator.js";
+import { resolveSizeLimits } from "../../edit/commands/size-limits.js";
 import { end, make } from "../../edit/commands/test-kit.js";
 import type { PlanContext } from "../../edit/commands/types.js";
 import { createDefaultConnectionPolicy } from "../../edit/policy/default-policy.js";
@@ -31,6 +32,7 @@ export function contextOf(
     ids: createIdAllocator(model.idGenerator, model.idCursor()),
     registry: model.registry,
     policy,
+    sizeLimits: (node) => resolveSizeLimits(node, model.registry),
   };
 }
 

@@ -3,7 +3,7 @@
  *
  * `CapabilityAction` is defined with the records, since records carry per-action
  * overrides. Resolution order: model read-only, host policy, record override, type
- * default, then allow.
+ * default, then the library default (deny `resize`, allow everything else).
  */
 import type { GraphReader } from "../../data/model/reader.js";
 import type {
