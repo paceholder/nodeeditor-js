@@ -3,6 +3,29 @@
 // Mounting and customizing an editor needs only `nodeeditor-js/view`.
 // Importing this module has no side effects (REA-06).
 
+export {
+  CLIPBOARD_COMMAND_IDS,
+  registerClipboardCommands,
+} from "./interact/clipboard/clipboard-commands.js";
+export type {
+  ClipboardEvents,
+  ClipboardEventsDeps,
+} from "./interact/clipboard/clipboard-events.js";
+export { attachClipboardEvents } from "./interact/clipboard/clipboard-events.js";
+export { createClipboardService } from "./interact/clipboard/clipboard-service.js";
+export type {
+  ClipboardService,
+  ClipboardServiceDeps,
+} from "./interact/clipboard/clipboard-types.js";
+export type { PlacementState } from "./interact/clipboard/placement.js";
+export {
+  copiedPlacement,
+  DEFAULT_PASTE_STEP,
+  duplicatePlacement,
+  INITIAL_PLACEMENT,
+  pastePlacement,
+} from "./interact/clipboard/placement.js";
+export { systemClipboardOf } from "./interact/clipboard/view-clipboard.js";
 export { registerBuiltinCommands } from "./interact/commands/builtin-commands.js";
 export { createCommandRegistry } from "./interact/commands/command-registry.js";
 export { isEditable } from "./interact/commands/editable-model.js";

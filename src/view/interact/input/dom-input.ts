@@ -34,8 +34,12 @@ export interface DomInputDeps {
   ) => { viewport: Point<"viewport">; world: Point<"world"> } | undefined;
   readonly overlay: HTMLElement;
   readonly platform: "mac" | "other";
-  /** Run the command bound to a key event; true when the key was bound. */
-  readonly onKey: (event: KeyboardEvent) => boolean;
+  /**
+   * Run the command bound to a key event; true when the key was bound (the key-down is
+   * then default-prevented). `"native"` means the browser's own action carries the
+   * command (clipboard chords), so the key-down keeps its default (UX-01, D8).
+   */
+  readonly onKey: (event: KeyboardEvent) => boolean | "native";
   /** The topmost hit under an idle pointer, undefined when none. */
   readonly onHover: (hit: HitCandidate | undefined) => void;
 }
@@ -45,6 +49,8 @@ export interface DomInput {
   entitiesRemoved(ids: readonly string[]): void;
   /** Tell the active tool the document was replaced: any gesture in flight cancels. */
   modelReset(): void;
+  /** World position of the pointer while it is over the root, else undefined. */
+  pointerWorld(): Point<"world"> | undefined;
   dispose(): void;
 }
 
@@ -68,6 +74,13 @@ export function attachDomInput(
   // Pointers we released ourselves: their `lostpointercapture` is not a cancellation.
   const released = new Set<number>();
   let lastCursor: CursorKind = "default";
+  // Last client position inside the root; converted on demand so pans and zooms count.
+  let lastClient: { x: number; y: number } | undefined;
+  const track = (e: PointerEvent): void => {
+    if (e.pointerType === "mouse" || e.pointerType === "pen") {
+      lastClient = { x: e.clientX, y: e.clientY };
+    }
+  };
 
   const setCursor = (cursor: CursorKind): void => {
     if (cursor === lastCursor) return;
@@ -144,6 +157,7 @@ export function attachDomInput(
   }
 
   const onPointerDown = (e: PointerEvent): void => {
+    track(e);
     if (!BUTTONS.has(e.button) || isOverlayContent(e.target, deps.overlay)) {
       return;
     }
@@ -157,6 +171,7 @@ export function attachDomInput(
   };
 
   const onPointerMove = (e: PointerEvent): void => {
+    track(e);
     if (router.activePointer !== undefined) {
       pointer("pointer-move", e);
       return;
@@ -183,6 +198,9 @@ export function attachDomInput(
   };
 
   const onPointerLeave = (e: PointerEvent): void => {
+    if (e.pointerType === "mouse" || e.pointerType === "pen") {
+      lastClient = undefined;
+    }
     if (router.activePointer === undefined && e.pointerType === "mouse") {
       deps.onHover(undefined);
     }
@@ -222,7 +240,7 @@ export function attachDomInput(
     }
     // No shortcuts in the middle of a gesture: one gesture is one history entry.
     if (router.activePointer !== undefined) return;
-    if (deps.onKey(e)) e.preventDefault();
+    if (deps.onKey(e) === true) e.preventDefault();
   };
 
   const onKeyUp = (e: KeyboardEvent): void => {
@@ -277,6 +295,9 @@ export function attachDomInput(
     modelReset() {
       cancel("reset");
     },
+    pointerWorld() {
+      return lastClient && deps.coords(lastClient.x, lastClient.y)?.world;
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -289,6 +310,7 @@ export function attachDomInput(
       root.style.cursor = "";
       deps.onHover(undefined);
       released.clear();
+      lastClient = undefined;
     },
   };
 }

@@ -3,6 +3,21 @@
 // building blocks from `nodeeditor-js/view/advanced`; no name has two paths (PKG-01).
 // Browser APIs may only be touched during explicit mount, never at import time (REA-06).
 
+export type {
+  CopyArgs,
+  PasteArgs,
+} from "./interact/clipboard/clipboard-commands.js";
+export type {
+  ClipboardEventMap,
+  ClipboardOptions,
+  CopyOutcome,
+  CopyReport,
+  PasteOutcome,
+  PasteReport,
+  SystemClipboard,
+  TextSink,
+} from "./interact/clipboard/clipboard-types.js";
+export type { ViewClipboard } from "./interact/clipboard/view-clipboard.js";
 export type { NudgeArgs } from "./interact/commands/builtin-commands.js";
 export { COMMAND_IDS } from "./interact/commands/builtin-commands.js";
 export type {
