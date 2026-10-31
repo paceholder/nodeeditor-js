@@ -92,6 +92,7 @@ export const marqueeTool: Tool<MarqueeState> = {
       input.modifiers.shift ||
       input.modifiers.mod),
   isIdle: (state) => state.kind === "idle",
+  autoPans: (state) => state.kind === "pressed" && state.dragging,
   transition(state, input, ctx) {
     switch (state.kind) {
       case "idle":

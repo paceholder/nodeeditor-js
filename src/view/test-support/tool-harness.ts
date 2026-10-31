@@ -48,6 +48,7 @@ import {
   NO_MODIFIERS,
   type ToolInput,
   type ToolPreview,
+  type ViewportOp,
 } from "../interact/tools/tool-types.js";
 
 export interface HarnessOptions {
@@ -68,6 +69,8 @@ export interface ToolHarness {
   readonly selection: SelectionModel;
   readonly router: ToolRouter;
   viewport(): Viewport;
+  /** Apply a viewport effect directly, as the view's viewport state would. */
+  applyViewport(op: ViewportOp): void;
   /** Everything the runner was asked to do, in order. */
   readonly log: {
     readonly commits: Command[];
@@ -141,6 +144,25 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     releases: [],
     cursors: [],
   };
+  function applyViewport(op: ViewportOp): void {
+    switch (op.kind) {
+      case "panBy":
+        viewport = {
+          ...viewport,
+          panX: viewport.panX + op.dx,
+          panY: viewport.panY + op.dy,
+        };
+        break;
+      case "zoomAt": {
+        const next = zoomAt(viewport, viewport.zoom * op.factor, op.anchor);
+        if (next.ok) viewport = next.value;
+        break;
+      }
+      case "set":
+        viewport = op.viewport;
+        break;
+    }
+  }
   const run = createEffectRunner({
     capture: (id) => void log.captures.push(id),
     release: (id) => void log.releases.push(id),
@@ -151,25 +173,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
       log.submits.push(model.execute(command));
     },
     selection,
-    viewport(op) {
-      switch (op.kind) {
-        case "panBy":
-          viewport = {
-            ...viewport,
-            panX: viewport.panX + op.dx,
-            panY: viewport.panY + op.dy,
-          };
-          break;
-        case "zoomAt": {
-          const next = zoomAt(viewport, viewport.zoom * op.factor, op.anchor);
-          if (next.ok) viewport = next.value;
-          break;
-        }
-        case "set":
-          viewport = op.viewport;
-          break;
-      }
-    },
+    viewport: applyViewport,
   });
 
   let time = 0;
@@ -197,6 +201,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     selection,
     router,
     viewport: () => viewport,
+    applyViewport,
     log,
     send,
     down: pointer("pointer-down"),

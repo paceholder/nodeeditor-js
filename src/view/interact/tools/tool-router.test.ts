@@ -159,3 +159,62 @@ describe("resize and connect", () => {
     expect(g.log.commits).toEqual([]);
   });
 });
+
+describe("which gestures auto-pan", () => {
+  it("node, connection, marquee and resize drags do; their idle and pressed states do not", () => {
+    const h = createToolHarness({
+      modelOptions: {
+        capabilityPolicy: {
+          decide: (a) => (a === "resize" ? true : undefined),
+        },
+      },
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+    });
+    expect(h.router.autoPanning()).toBe(false);
+    // select-move
+    h.down({ x: 20, y: 10 });
+    expect(h.router.autoPanning()).toBe(false);
+    h.move({ x: 60, y: 10 });
+    expect(h.router.autoPanning()).toBe(true);
+    h.up({ x: 60, y: 10 });
+    expect(h.router.autoPanning()).toBe(false);
+    // connect, from b's left port at (200, 10)
+    h.down({ x: 200, y: 10 });
+    expect(h.router.activeTool).toBe("connect");
+    h.move({ x: 150, y: 80 });
+    expect(h.router.autoPanning()).toBe(true);
+    h.key("Escape");
+    // marquee (Shift on empty canvas)
+    h.down({ x: 100, y: 200 }, { modifiers: { shift: true } });
+    expect(h.router.activeTool).toBe("marquee");
+    expect(h.router.autoPanning()).toBe(false);
+    h.move({ x: 150, y: 260 }, { modifiers: { shift: true } });
+    expect(h.router.autoPanning()).toBe(true);
+    h.up({ x: 150, y: 260 }, { modifiers: { shift: true } });
+    // resize: a is selected alone after the move above; its handle is at the corner
+    h.selection.replace([nodeKey(nodeId("a"))]);
+    const corner = h.scene.node(nodeId("a"))?.bodyBounds;
+    if (!corner) throw new Error("no node");
+    const at = { x: corner.x + corner.w - 2, y: corner.y + corner.h - 2 };
+    h.down(at);
+    expect(h.router.activeTool).toBe("resize");
+    h.move({ x: at.x + 20, y: at.y + 20 });
+    expect(h.router.autoPanning()).toBe(true);
+    h.up({ x: at.x + 20, y: at.y + 20 });
+    expect(h.router.autoPanning()).toBe(false);
+  });
+
+  it("Pan gestures do not auto-pan: middle button, Space and empty-canvas drags", () => {
+    const h = fixture();
+    h.down({ x: 500, y: 500 }, { button: 1 });
+    h.move({ x: 600, y: 600 }, { button: 1 });
+    expect(h.router.activeTool).toBe("pan");
+    expect(h.router.autoPanning()).toBe(false);
+    h.up({ x: 600, y: 600 }, { button: 1 });
+    h.down({ x: 500, y: 500 });
+    h.move({ x: 600, y: 600 });
+    expect(h.router.activeTool).toBe("empty-pan");
+    expect(h.router.autoPanning()).toBe(false);
+    h.up({ x: 600, y: 600 });
+  });
+});

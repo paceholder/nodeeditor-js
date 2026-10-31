@@ -2,6 +2,7 @@
  * Interaction thresholds and tool options (D4). Every distance here is in CSS
  * pixels of viewport space and does not change with zoom or device pixel ratio.
  */
+import { type AutoPanOptions, DEFAULT_AUTO_PAN } from "./auto-pan.js";
 
 export interface ToolOptions {
   /** Movement before a press becomes a drag. */
@@ -22,6 +23,11 @@ export interface ToolOptions {
   readonly wheel: "zoom" | "scroll-page-unless-modifier";
   /** Wheel zoom exponent: `factor = exp(-deltaY * wheelSensitivity)`. */
   readonly wheelSensitivity: number;
+  /**
+   * Pan the view while a node, connection, marquee or resize drag is near an edge;
+   * `false` turns it off.
+   */
+  readonly autoPan: AutoPanOptions | false;
 }
 
 export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
@@ -32,6 +38,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
   marquee: "direction",
   wheel: "zoom",
   wheelSensitivity: 0.0015,
+  autoPan: DEFAULT_AUTO_PAN,
 };
 
 export function resolveToolOptions(
