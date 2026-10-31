@@ -22,11 +22,17 @@ export interface KeyBinding {
   readonly command: string;
   /** Arguments built from the nudge step (world units); omitted for most commands. */
   readonly args?: (step: number) => unknown;
+  /**
+   * The browser's own action for this chord carries the command (copy, cut, paste: the
+   * native clipboard event runs it), so the key-down is not default-prevented.
+   */
+  readonly native?: boolean;
 }
 
 export interface ResolvedKey {
   readonly command: string;
   readonly args: unknown;
+  readonly native: boolean;
 }
 
 export interface Keymap {
@@ -49,6 +55,10 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { chord: "Ctrl+Y", command: COMMAND_IDS.redo },
   { chord: "Mod+A", command: COMMAND_IDS.selectAll },
   { chord: "Escape", command: COMMAND_IDS.clearSelection },
+  { chord: "Mod+C", command: COMMAND_IDS.copy, native: true },
+  { chord: "Mod+X", command: COMMAND_IDS.cut, native: true },
+  { chord: "Mod+V", command: COMMAND_IDS.paste, native: true },
+  { chord: "Mod+D", command: COMMAND_IDS.duplicate },
   ...(["Left", "Right", "Up", "Down"] as const).flatMap((dir) => {
     const dx = dir === "Left" ? -1 : dir === "Right" ? 1 : 0;
     const dy = dir === "Up" ? -1 : dir === "Down" ? 1 : 0;
@@ -118,7 +128,11 @@ export function createKeymap(
     resolve(event, step) {
       const hit = parsed.find((p) => matches(p.chord, event, platform));
       return (
-        hit && { command: hit.binding.command, args: hit.binding.args?.(step) }
+        hit && {
+          command: hit.binding.command,
+          args: hit.binding.args?.(step),
+          native: hit.binding.native === true,
+        }
       );
     },
   };

@@ -51,10 +51,12 @@ describe("default keymap", () => {
     expect(other.resolve(key("ArrowRight"), 20)).toEqual({
       command: COMMAND_IDS.nudge,
       args: { dx: 20, dy: 0 },
+      native: false,
     });
     expect(other.resolve(key("ArrowUp", { shiftKey: true }), 1)).toEqual({
       command: COMMAND_IDS.nudge,
       args: { dx: 0, dy: -10 },
+      native: false,
     });
   });
 
@@ -72,6 +74,29 @@ describe("default keymap", () => {
     ]);
     expect(command(custom, key("f"))).toBe("view.fitAll");
     expect(command(custom, key("Delete"))).toBeUndefined();
+  });
+
+  it("copy, cut, paste and duplicate use the platform modifier", () => {
+    const chords = [
+      ["c", COMMAND_IDS.copy, true],
+      ["x", COMMAND_IDS.cut, true],
+      ["v", COMMAND_IDS.paste, true],
+      ["d", COMMAND_IDS.duplicate, false],
+    ] as const;
+    for (const [k, id, native] of chords) {
+      expect(mac.resolve(key(k, { metaKey: true }), 1)).toEqual({
+        command: id,
+        args: undefined,
+        native,
+      });
+      expect(other.resolve(key(k, { ctrlKey: true }), 1)).toEqual({
+        command: id,
+        args: undefined,
+        native,
+      });
+    }
+    expect(command(mac, key("c", { ctrlKey: true }))).toBeUndefined();
+    expect(command(other, key("c", { metaKey: true }))).toBeUndefined();
   });
 
   it("platform detection is injected and tolerant of a missing navigator", () => {
