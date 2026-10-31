@@ -42,7 +42,7 @@
 
 ## 7. Example
 
-- [ ] 7.1 Add Export and Import fragment buttons with a plain `<textarea>` dialog to `examples/plain-js` using `view.clipboard.exportText`/`importText`, and show excluded external connections in the status line; verify `npm run demo:build` succeeds and a headless Chrome run of the demo copies, pastes and imports with no console errors
+- [x] 7.1 Add Export and Import fragment buttons with a plain `<textarea>` dialog to `examples/plain-js` using `view.clipboard.exportText`/`importText`, and show excluded external connections in the status line; verify `npm run demo:build` succeeds and a headless Chrome run of the demo copies, pastes and imports with no console errors
 
 ## 8. Gates
 

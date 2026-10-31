@@ -77,3 +77,11 @@ versions and try:
 8. Note whether the `paste` event fires at all on the focused canvas (Safari is the
    suspect); if not, paste only works from the in-app buffer through the one-task
    fallback, which should be reported here.
+
+## Demo check (task 7.1)
+
+A headless Chrome (Playwright, installed Chrome channel) run against `npm run
+demo:preview`: Mod+A, Mod+C, pointer over the canvas, Mod+V pasted 6 nodes; Export then
+Import of the exported text pasted 6 nodes; importing plain text reported "The text holds
+no graph fragment"; Mod+D duplicated the selection. No console errors. The demo's own
+window-level `M`/`G`/`E` shortcuts now ignore keys typed into the dialog's textarea.

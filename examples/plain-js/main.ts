@@ -193,6 +193,7 @@ snapBox?.addEventListener("change", () => {
 const here = (n: NodeRecord) => model.reader.getNode(n.id)?.position;
 window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target instanceof HTMLTextAreaElement) return;
   switch (e.key.toLowerCase()) {
     case "m": {
       const at = here(pump);
@@ -214,6 +215,50 @@ window.addEventListener("keydown", (e) => {
       break;
   }
 });
+
+// Clipboard: Ctrl/Cmd+C, X, V and D come with the default keymap. The status line shows
+// what a paste left out; the buttons are a minimal host export/import dialog, the path
+// that keeps working when the browser denies the system clipboard.
+const status = document.getElementById("status");
+const say = (text: string) => {
+  if (status) status.textContent = text;
+};
+view.clipboard.on("paste", (outcome) => {
+  if (!outcome.ok) say(`Paste refused: ${outcome.error.message}`);
+  else {
+    const left = outcome.value.excluded.map((x) => x.connection);
+    say(
+      `Pasted ${outcome.value.created.nodes.length} node(s)` +
+        (left.length > 0
+          ? `; external connections not copied: ${left.join(", ")}`
+          : ""),
+    );
+  }
+});
+view.clipboard.on("copy", (r) =>
+  say(`Copied (${r.excluded.length} external connection(s) left out)`),
+);
+view.clipboard.on("clipboard-error", (e) => say(e.message));
+
+const dialog = document.querySelector<HTMLDialogElement>("#fragment");
+const text = dialog?.querySelector("textarea");
+const open = (value: string) => {
+  if (!dialog || !text) return;
+  text.value = value;
+  dialog.showModal();
+};
+document.getElementById("export")?.addEventListener("click", () => {
+  const exported = view.clipboard.exportText();
+  if (exported.ok) open(exported.value);
+  else say(`Export refused: ${exported.error.message}`);
+});
+document.getElementById("import")?.addEventListener("click", () => open(""));
+document.getElementById("do-import")?.addEventListener("click", () => {
+  if (text) view.clipboard.importText(text.value);
+  dialog?.close();
+  view.element.focus();
+});
+dialog?.addEventListener("close", () => view.element.focus());
 
 // Hot reload: release the old view before the module is replaced.
 import.meta.hot?.dispose(() => {
