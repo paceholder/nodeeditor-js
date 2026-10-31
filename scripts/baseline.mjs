@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { keepAwake } from "./keep-awake.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const results = `${root}bench/.results`;
@@ -21,6 +22,8 @@ function run(cmd, args, env = {}) {
     process.exit(r.status ?? 1);
   }
 }
+
+keepAwake();
 
 const config = ["--config", "bench/vitest.bench.config.ts"];
 rmSync(results, { recursive: true, force: true });

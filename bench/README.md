@@ -19,6 +19,12 @@ Quick iteration: `BENCH_QUICK=1 npm run bench:browser` runs each workload once f
 instead of three times 30 s. Quick results are marked as such and the baseline writer
 refuses them.
 
+On macOS, `bench:browser` and `bench:baseline` hold a `caffeinate -d -i` assertion for
+the length of the run (`scripts/keep-awake.mjs`) and warn when the machine is on battery.
+If the display turns off mid-run, Chrome drops the test runner's connection ("Browser
+connection was closed while running tests"), headed or headless, and idle system sleep
+follows; on battery the CPU is throttled and the numbers are not comparable.
+
 `npm run bench:baseline` runs the browser headed (a Chrome window opens; leave it alone
 while it runs, a hidden or covered window can be throttled). Set `BENCH_HEADLESS=1` to
 run it headless; the provenance records which one was used. Headed runs apply the
