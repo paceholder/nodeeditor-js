@@ -5,12 +5,14 @@
  */
 import {
   type Availability,
+  type ExecuteResult,
   err,
   type GraphReader,
   ok,
   type Rejection,
   type Result,
   rejectionOf,
+  type SubmitResult,
 } from "../../../core/index.js";
 import type { SelectionModel } from "../selection/selection-model.js";
 import type { EditableModel } from "./editable-model.js";
@@ -18,6 +20,25 @@ import type { ViewCommands } from "./view-commands.js";
 
 /** `changed: false` is a successful no-op. */
 export type CommandOutcome = Result<{ readonly changed: boolean }, Rejection>;
+
+/** A model result as a command outcome: accepted changes, queued or pending do not. */
+export function outcomeOf(
+  result: ExecuteResult | SubmitResult,
+): CommandOutcome {
+  switch (result.status) {
+    case "accepted":
+      return ok({ changed: true });
+    case "rejected":
+      return err(result.error);
+    case "queued":
+    case "pending":
+      return ok({ changed: false });
+    case "choice-required":
+      return err(rejectionOf("choice-required", "A choice is required"));
+    case "unverified":
+      return err(rejectionOf("pending-validation", result.reason));
+  }
+}
 
 export interface CommandContext {
   /** Absent when the view shows a read-only model. */

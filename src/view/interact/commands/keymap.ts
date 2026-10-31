@@ -20,7 +20,7 @@ export interface KeyBinding {
   /** `Mod+Shift+Z`, `Ctrl+Y`, `Delete`, `ArrowLeft`: `+`-joined modifiers, then a key. */
   readonly chord: string;
   readonly command: string;
-  /** Arguments built from the nudge step (world units); omitted for most commands. */
+  /** Arguments, built from the nudge step (world units) where they need it. */
   readonly args?: (step: number) => unknown;
   /**
    * The browser's own action for this chord carries the command (copy, cut, paste: the
@@ -59,6 +59,23 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { chord: "Mod+X", command: COMMAND_IDS.cut, native: true },
   { chord: "Mod+V", command: COMMAND_IDS.paste, native: true },
   { chord: "Mod+D", command: COMMAND_IDS.duplicate },
+  // Single letters are safe: text fields and IME never reach the keymap.
+  { chord: "R", command: COMMAND_IDS.rotate, args: () => ({ turns: 1 }) },
+  {
+    chord: "Shift+R",
+    command: COMMAND_IDS.rotate,
+    args: () => ({ turns: -1 }),
+  },
+  {
+    chord: "M",
+    command: COMMAND_IDS.mirror,
+    args: () => ({ axis: "horizontal" }),
+  },
+  {
+    chord: "Shift+M",
+    command: COMMAND_IDS.mirror,
+    args: () => ({ axis: "vertical" }),
+  },
   ...(["Left", "Right", "Up", "Down"] as const).flatMap((dir) => {
     const dx = dir === "Left" ? -1 : dir === "Right" ? 1 : 0;
     const dy = dir === "Up" ? -1 : dir === "Down" ? 1 : 0;

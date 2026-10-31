@@ -1,7 +1,7 @@
 /**
  * Built-in editor commands (D9): edit.delete, history.undo/redo,
- * selection.selectAll/clear, nodes.nudge, the view.* commands, and edit.copy/cut/paste/
- * duplicate when a clipboard service is given. Each is a thin wrapper
+ * selection.selectAll/clear, nodes.nudge, nodes.rotate/mirror, the view.* commands, and
+ * edit.copy/cut/paste/duplicate when a clipboard service is given. Each is a thin wrapper
  * over the model's command API or the view-local services, so a shortcut and an API call
  * produce identical patches on equal models.
  */
@@ -9,13 +9,11 @@ import {
   type Availability,
   type Command,
   type ConnectionId,
-  type ExecuteResult,
   err,
   type NodeId,
   ok,
   type Rejection,
   rejectionOf,
-  type SubmitResult,
 } from "../../../core/index.js";
 import {
   CLIPBOARD_COMMAND_IDS,
@@ -24,13 +22,18 @@ import {
 import type { ClipboardService } from "../clipboard/clipboard-service.js";
 import { connectionKey, nodeKey } from "../selection/selection-model.js";
 import { capabilityProbe } from "../tools/tool-context.js";
-import type {
-  CommandContext,
-  CommandOutcome,
-  CommandRegistry,
-  EditorCommand,
+import {
+  type CommandContext,
+  type CommandOutcome,
+  type CommandRegistry,
+  type EditorCommand,
+  outcomeOf,
 } from "./command-registry.js";
 import type { EditableModel } from "./editable-model.js";
+import {
+  registerTransformCommands,
+  TRANSFORM_COMMAND_IDS,
+} from "./transform-commands.js";
 
 export interface NudgeArgs {
   /** World units. */
@@ -45,6 +48,7 @@ export const COMMAND_IDS = {
   selectAll: "selection.selectAll",
   clearSelection: "selection.clear",
   nudge: "nodes.nudge",
+  ...TRANSFORM_COMMAND_IDS,
   fitAll: "view.fitAll",
   fitSelection: "view.fitSelection",
   resetView: "view.resetView",
@@ -65,24 +69,6 @@ const refusal = (message: string, ids: readonly string[] = []): Refusal => ({
 const READ_ONLY: Refusal = refusal("The view has no editable model");
 const MODEL_MISSING = rejectionOf("unknown-entity", "The view has no model");
 const OK: Availability = { available: true };
-
-export function outcomeOf(
-  result: ExecuteResult | SubmitResult,
-): CommandOutcome {
-  switch (result.status) {
-    case "accepted":
-      return ok({ changed: true });
-    case "rejected":
-      return err(result.error);
-    case "queued":
-    case "pending":
-      return ok({ changed: false });
-    case "choice-required":
-      return err(rejectionOf("choice-required", "A choice is required"));
-    case "unverified":
-      return err(rejectionOf("pending-validation", result.reason));
-  }
-}
 
 /** A command that is one model command; availability is the model's own dry run. */
 function modelEdit<A>(
@@ -209,6 +195,7 @@ export function registerBuiltinCommands(
     ),
   );
   registry.register(modelEdit<NudgeArgs>(COMMAND_IDS.nudge, planNudge));
+  registerTransformCommands(registry);
   registry.register(
     simple(
       COMMAND_IDS.fitAll,

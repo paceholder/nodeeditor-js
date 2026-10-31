@@ -56,3 +56,7 @@ Deviations from design.md, clarifications made while implementing, and observati
   limits is probed with a size inside them. No differing trial means `out-of-range`.
 - **`ToolContextDeps.sizeLimits`** takes the model's lookup; `sizeLimitsOf(model)` reads
   it structurally, since `EditableModel` does not include it (host models may lack it).
+- **`outcomeOf` moved from `builtin-commands.ts` to `command-registry.ts`**, so
+  `transform-commands.ts` can use it without an import cycle (builtin registers the
+  transform commands). Bad arguments to nodes.rotate / nodes.mirror are unavailable with
+  `invalid-shape`.

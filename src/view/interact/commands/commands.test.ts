@@ -168,6 +168,68 @@ describe("builtin commands", () => {
   });
 });
 
+describe("rotate and mirror commands", () => {
+  const pair = (): HarnessOptions => ({
+    nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+  });
+  const both = [nodeKey(nodeId("a")), nodeKey(nodeId("b"))];
+
+  it("command and API give identical patches on equal models", () => {
+    for (const [id, args, command] of [
+      [COMMAND_IDS.rotate, { turns: -1 }, { kind: "rotateNodes", turns: -1 }],
+      [
+        COMMAND_IDS.mirror,
+        { axis: "vertical" },
+        { kind: "mirrorNodes", axis: "vertical" },
+      ],
+    ] as const) {
+      const viaCommand = setup(pair());
+      const viaApi = setup(pair());
+      viaCommand.h.selection.replace(both);
+      const seen: unknown[][] = [[], []];
+      viaCommand.h.model.on("change", (e) => seen[0]?.push(e.patch));
+      viaApi.h.model.on("change", (e) => seen[1]?.push(e.patch));
+      expect(viaCommand.commands.run(id, args).ok).toBe(true);
+      viaApi.h.model.execute({ ...command, nodes: [nodeId("a"), nodeId("b")] });
+      expect(seen[0]).toHaveLength(1);
+      expect(seen[0]).toEqual(seen[1]);
+    }
+  });
+
+  it("Locked node in a rotated selection: the others rotate; only locked is unavailable", () => {
+    const { h, commands } = setup({
+      nodes: [
+        cornerNode("a", 0, 0),
+        cornerNode("b", 200, 0),
+        cornerNode("c", 400, 0),
+      ],
+      modelOptions: {
+        capabilityPolicy: {
+          decide: (action, node) =>
+            action === "rotate" && node.id === "b" ? false : undefined,
+        },
+      },
+    });
+    h.selection.replace(["a", "b", "c"].map((id) => nodeKey(nodeId(id))));
+    expect(commands.run(COMMAND_IDS.rotate, { turns: 1 }).ok).toBe(true);
+    expect(h.model.reader.nodes().map((n) => n.rotation)).toEqual([1, 0, 1]);
+    h.selection.replace([nodeKey(nodeId("b"))]);
+    const a = commands.availability(COMMAND_IDS.rotate, { turns: 1 });
+    expect(a.available === false && a.reason.code).toBe("capability-denied");
+  });
+
+  it("an empty selection is unavailable", () => {
+    const { commands } = setup(pair());
+    expect(
+      commands.availability(COMMAND_IDS.rotate, { turns: 1 }).available,
+    ).toBe(false);
+    expect(
+      commands.availability(COMMAND_IDS.mirror, { axis: "horizontal" })
+        .available,
+    ).toBe(false);
+  });
+});
+
 describe("clipboard commands", () => {
   const reasonOf = (a: { available: boolean; reason?: { code: string } }) =>
     a.available ? undefined : a.reason?.code;

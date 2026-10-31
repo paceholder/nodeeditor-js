@@ -105,3 +105,35 @@ describe("default keymap", () => {
     expect(detectPlatform(undefined)).toBe("other");
   });
 });
+
+describe("rotate and mirror keys", () => {
+  const resolve = (m: ReturnType<typeof createKeymap>, e: KeyLike) =>
+    m.resolve(e, 1);
+
+  it("R, Shift+R, M and Shift+M resolve to their commands on both platforms", () => {
+    for (const m of [mac, other]) {
+      expect(resolve(m, key("r"))).toMatchObject({
+        command: COMMAND_IDS.rotate,
+        args: { turns: 1 },
+      });
+      expect(resolve(m, key("R", { shiftKey: true }))).toMatchObject({
+        command: COMMAND_IDS.rotate,
+        args: { turns: -1 },
+      });
+      expect(resolve(m, key("m"))).toMatchObject({
+        command: COMMAND_IDS.mirror,
+        args: { axis: "horizontal" },
+      });
+      expect(resolve(m, key("M", { shiftKey: true }))).toMatchObject({
+        command: COMMAND_IDS.mirror,
+        args: { axis: "vertical" },
+      });
+    }
+  });
+
+  it("Mod+R resolves to nothing, so the browser reload stays available", () => {
+    expect(resolve(mac, key("r", { metaKey: true }))).toBeUndefined();
+    expect(resolve(other, key("r", { ctrlKey: true }))).toBeUndefined();
+    expect(resolve(other, key("r", { altKey: true }))).toBeUndefined();
+  });
+});
