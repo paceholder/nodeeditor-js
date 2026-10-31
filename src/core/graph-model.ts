@@ -8,6 +8,7 @@
  */
 
 import type { IdCursor, IdGenerator } from "./base/ids/id-generator.js";
+import type { NodeId } from "./base/ids/ids.js";
 import { MisuseError } from "./base/result.js";
 import type { GraphReader } from "./data/model/reader.js";
 import {
@@ -35,6 +36,11 @@ import {
   type ConvenienceMethods,
   createConvenience,
 } from "./edit/commands/convenience.js";
+import {
+  type ResolvedSizeLimits,
+  resolveSizeLimits,
+  type SizeLimitPolicy,
+} from "./edit/commands/size-limits.js";
 import type { EventHub } from "./edit/events/event-hub.js";
 import { createDefaultConnectionPolicy } from "./edit/policy/default-policy.js";
 import type { ConnectionPolicy } from "./edit/policy/types.js";
@@ -54,6 +60,8 @@ export interface GraphModelOptions extends LocalAdapterOptions {
   readonly capabilityPolicy?: CapabilityPolicy;
   /** Denies every edit while reads keep working. */
   readonly readOnly?: boolean;
+  /** Host refinement of node types' size limits, per node. */
+  readonly sizeLimits?: SizeLimitPolicy;
   /** Codecs for non-JSON payloads in pasted and duplicated fragments. */
   readonly payloadCodecs?: PayloadCodecRegistry;
   /** Size limits for pasted fragments. Defaults to `DEFAULT_SNAPSHOT_LIMITS`. */
@@ -107,6 +115,11 @@ export interface GraphModel
   readonly payloadCodecs?: PayloadCodecRegistry;
   /** The fragment limits paste uses. */
   readonly fragmentLimits?: Partial<SnapshotLimits>;
+  /**
+   * The size limits resize commands check for a node: the library default,
+   * the type's `sizeLimits`, then the host hook. `undefined` for an unknown node.
+   */
+  sizeLimits(id: NodeId): ResolvedSizeLimits | undefined;
 }
 
 export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
@@ -140,6 +153,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
       registry,
       policy,
       validators,
+      ...(options.sizeLimits ? { sizeLimits: options.sizeLimits } : {}),
       fragments: createFragmentPlanners({
         ...(options.payloadCodecs ? { codecs: options.payloadCodecs } : {}),
         ...(options.fragmentLimits ? { limits: options.fragmentLimits } : {}),
@@ -151,6 +165,12 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     ...api,
     ...createConvenience(api),
     registry,
+    sizeLimits(id) {
+      const node = adapter.reader.getNode(id);
+      return node
+        ? resolveSizeLimits(node, registry, options.sizeLimits)
+        : undefined;
+    },
     ...(options.payloadCodecs ? { payloadCodecs: options.payloadCodecs } : {}),
     ...(options.fragmentLimits
       ? { fragmentLimits: options.fragmentLimits }

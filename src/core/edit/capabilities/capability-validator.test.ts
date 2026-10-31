@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { moveOp } from "../../data/model/model-fixtures.js";
 import type { CapabilityOverrides } from "../../data/model/records.js";
+import { mkNode } from "../../data/model/test-helpers.js";
+import type { Size } from "../../data/model/values.js";
+import type { PatchOp } from "../../data/patch/types.js";
+import { createLocalAdapter } from "../adapter/local-adapter.js";
+import { toOperationId } from "../adapter/types.js";
 import { end, firstConnection, make, makeModel } from "../commands/test-kit.js";
+import { createCapabilityValidator } from "./validator.js";
 
 describe("API enforcement", () => {
   it("rejects a raw move patch on a node with move: false", () => {
@@ -141,5 +147,95 @@ describe("read-only", () => {
     expect(raw.status).toBe("rejected");
     expect(model.reader.nodes()).toEqual([]);
     expect(model.reader.state().nodes).toEqual([]);
+  });
+});
+
+function sizeOp(id: string, from: Size, to: Size): PatchOp {
+  return {
+    op: "update",
+    entity: "node",
+    id: id as never,
+    fields: { size: { old: from, new: to } },
+  };
+}
+
+const SIZE = { width: 40, height: 20 };
+const WIDER = { width: 60, height: 20 };
+
+describe("resizing is opt-in", () => {
+  it("Type without resize declared: a local raw patch changing the size is rejected", () => {
+    const model = makeModel();
+    const a = make(model, "source");
+    const result = model.submit({ ops: [sizeOp(a.node, SIZE, WIDER)] });
+    expect(result.status === "rejected" && result.error.code).toBe(
+      "capability-denied",
+    );
+    expect(model.reader.getNode(a.node)?.size).toEqual(SIZE);
+  });
+
+  it("move, rotate and mirror still default to allowed", () => {
+    const model = makeModel();
+    const a = make(model, "source");
+    expect(
+      model.moveNodes([{ node: a.node, position: { x: 3, y: 3 } }]).status,
+    ).toBe("accepted");
+    expect(model.rotateNodes([a.node], 1).status).toBe("accepted");
+    expect(model.mirrorNodes([a.node]).status).toBe("accepted");
+  });
+
+  it("Type opts in, instance opts out", () => {
+    const model = makeModel();
+    model.registry.register({
+      type: "tank",
+      label: "Tank",
+      defaultSize: SIZE,
+      capabilities: { resize: true },
+    });
+    const a = make(model, "tank");
+    const b = make(model, "tank");
+    model.submit({
+      ops: [
+        {
+          op: "update",
+          entity: "node",
+          id: b.node,
+          fields: { capabilities: { new: { resize: false } } },
+        },
+      ],
+    });
+    expect(model.submit({ ops: [sizeOp(a.node, SIZE, WIDER)] }).status).toBe(
+      "accepted",
+    );
+    const denied = model.submit({ ops: [sizeOp(b.node, SIZE, WIDER)] });
+    expect(denied.status === "rejected" && denied.error.code).toBe(
+      "capability-denied",
+    );
+    expect(model.reader.getNode(b.node)?.size).toEqual(SIZE);
+  });
+
+  it("Externally applied sizes are applied without an opt-in", () => {
+    const adapter = createLocalAdapter();
+    adapter.addValidator(
+      createCapabilityValidator({
+        readOnly: () => false,
+        typeDefaults: () => undefined,
+      }),
+    );
+    const submit = (op: PatchOp, origin: "local" | "external") =>
+      adapter.submit({
+        operationId: toOperationId(`op-${origin}`),
+        baseRevision: adapter.revision(),
+        patch: { ops: [op] },
+        label: "Edit",
+        history: "record",
+        origin,
+      });
+    submit({ op: "add", entity: "node", record: mkNode("n1") }, "local");
+    const small = { width: 10, height: 10 };
+    expect(submit(sizeOp("n1", small, WIDER), "local").status).toBe("rejected");
+    expect(submit(sizeOp("n1", small, WIDER), "external").status).toBe(
+      "accepted",
+    );
+    expect(adapter.reader.getNode("n1" as never)?.size).toEqual(WIDER);
   });
 });

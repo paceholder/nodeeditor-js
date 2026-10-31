@@ -9,7 +9,11 @@ import type { IdGenerator } from "../../base/ids/id-generator.js";
 import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
 import type { Rejection, RejectionCode } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import type { Endpoint, Payload } from "../../data/model/records.js";
+import type {
+  Endpoint,
+  NodeRecord,
+  Payload,
+} from "../../data/model/records.js";
 import type { Vec2 } from "../../data/model/values.js";
 import type { PortSpec } from "../../data/node-types/definition.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
@@ -17,6 +21,7 @@ import type { Patch } from "../../data/patch/types.js";
 import type { SubmitResult } from "../adapter/types.js";
 import type { ConnectionPlan, ConnectionPolicy } from "../policy/types.js";
 import type { IdAllocator } from "./id-allocator.js";
+import type { ResolvedSizeLimits } from "./size-limits.js";
 
 /**
  * Where a pasted or duplicated fragment lands. `center` puts the fragment's
@@ -185,6 +190,8 @@ export interface PlanContext {
   readonly ids: IdAllocator;
   readonly registry: NodeTypeRegistry;
   readonly policy: ConnectionPolicy;
+  /** Resolved size limits of a node: library default, type, host hook. */
+  sizeLimits(node: NodeRecord): ResolvedSizeLimits;
   /** Paste and duplicate planners, injected by the facade (they live in `core/io`). */
   readonly fragments?: FragmentPlanners;
 }

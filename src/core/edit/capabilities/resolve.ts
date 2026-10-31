@@ -2,8 +2,9 @@
  * Capability resolution.
  *
  * The first layer with an opinion wins: read-only mode, host policy, record override,
- * type default. If nobody has an opinion the action is allowed. View-local restrictions
- * may narrow this later but never relax it.
+ * type default, library default. The library default denies only `resize`, so resizing
+ * is opt-in per node type; every other action is allowed when nobody has an
+ * opinion. View-local restrictions may narrow this later but never relax it.
  */
 
 import {
@@ -13,8 +14,15 @@ import {
   rejectionOf,
 } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import type { CapabilityAction, NodeRecord } from "../../data/model/records.js";
+import type {
+  CapabilityAction,
+  CapabilityOverrides,
+  NodeRecord,
+} from "../../data/model/records.js";
 import type { CapabilityContext } from "./types.js";
+
+/** The last layer: resizing needs an opt-in, every other action is allowed. */
+const LIBRARY_DEFAULTS: CapabilityOverrides = { resize: false };
 
 export function readOnlyRejection(): Rejection {
   return rejectionOf("capability-denied", "The model is read-only");
@@ -39,6 +47,7 @@ export function resolveCapability(
     ctx.policy?.decide(action, node, graph),
     node.capabilities?.[action],
     ctx.typeDefaults(node.type)?.[action],
+    LIBRARY_DEFAULTS[action],
   ];
   const decision = layers.find((v) => v !== undefined);
   return decision === false
