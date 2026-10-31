@@ -174,3 +174,16 @@ describe("DOM input adapter: real pointer capture", () => {
     expect(posOf(s.model, "a")).toEqual({ x: 160, y: 130 });
   });
 });
+
+describe("DOM input adapter: clipboard chords", () => {
+  it("Mod+C keeps its default while Mod+D is consumed", () => {
+    const s = setup();
+    s.view.element.focus();
+    const mac = /mac/i.test(navigator.platform);
+    const mods = mac ? { meta: true } : { ctrl: true };
+    expect(key(s.view.element, "c", mods).defaultPrevented).toBe(false);
+    expect(key(s.view.element, "v", mods).defaultPrevented).toBe(false);
+    expect(key(s.view.element, "x", mods).defaultPrevented).toBe(false);
+    expect(key(s.view.element, "d", mods).defaultPrevented).toBe(true);
+  });
+});

@@ -11,6 +11,20 @@ import {
   type Rejection,
   rejectionOf,
 } from "../core/index.js";
+import {
+  attachClipboardEvents,
+  type ClipboardEvents,
+} from "./interact/clipboard/clipboard-events.js";
+import {
+  type ClipboardService,
+  createClipboardService,
+} from "./interact/clipboard/clipboard-service.js";
+import {
+  fragmentOptionsOf,
+  systemClipboardOf,
+  UNBOUND_CLIPBOARD,
+  type ViewClipboard,
+} from "./interact/clipboard/view-clipboard.js";
 import { registerBuiltinCommands } from "./interact/commands/builtin-commands.js";
 import {
   type CommandRegistry,
@@ -65,6 +79,7 @@ export interface EditingDeps {
 
 export interface Editing {
   readonly commands: CommandRegistry;
+  readonly clipboard: ViewClipboard;
   toolOptions(): ToolOptions;
   setToolOptions(patch: Partial<ToolOptions>): void;
   dispose(): void;
@@ -116,10 +131,25 @@ export function attachEditing(deps: EditingDeps): Editing {
     selection,
     view,
   }));
-  registerBuiltinCommands(commands);
-
   const offs: Array<() => void> = [];
   let input: DomInput | undefined;
+  let bridge: ClipboardEvents | undefined;
+  const clipOptions = deps.input === false ? undefined : deps.input?.clipboard;
+  const clipboard: ClipboardService | undefined = reader
+    ? createClipboardService({
+        reader,
+        model: editable,
+        selection,
+        pointer: () => input?.pointerWorld(),
+        system:
+          clipOptions?.system === false
+            ? undefined
+            : systemClipboardOf(deps.root),
+        ...(clipOptions ? { options: clipOptions } : {}),
+        ...fragmentOptionsOf(model),
+      })
+    : undefined;
+  registerBuiltinCommands(commands, clipboard);
   // One object per change, so the tool context re-resolves only after `setToolOptions`.
   let toolOptions: Partial<ToolOptions> =
     (deps.input !== false && deps.input?.toolOptions) || {};
@@ -165,11 +195,16 @@ export function attachEditing(deps: EditingDeps): Editing {
       onKey(event) {
         const resolved = keymap.resolve(event, toolOptions.gridStep ?? 1);
         if (!resolved) return false;
+        // Clipboard chords: the browser's copy/cut/paste event runs the command.
+        if (resolved.native && bridge) return "native";
         commands.run(resolved.command, resolved.args);
         return true;
       },
       onHover: (hit) => deps.setHovered(hoverId(hit)),
     });
+    if (clipboard) {
+      bridge = attachClipboardEvents(deps.root, { run: commands.run });
+    }
     const live = input;
     offs.push(
       model.on("change", (e) => live.entitiesRemoved(removedIds(e.patch.ops))),
@@ -179,14 +214,18 @@ export function attachEditing(deps: EditingDeps): Editing {
 
   return {
     commands,
+    clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     toolOptions: () => resolveToolOptions(toolOptions),
     setToolOptions(patch) {
       toolOptions = { ...toolOptions, ...patch };
     },
     dispose() {
       for (const off of offs.splice(0)) off();
+      bridge?.dispose();
+      bridge = undefined;
       input?.dispose();
       input = undefined;
+      clipboard?.dispose();
     },
   };
 }

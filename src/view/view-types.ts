@@ -10,6 +10,8 @@ import type {
   SceneStats,
   Viewport,
 } from "../core/index.js";
+import type { ClipboardOptions } from "./interact/clipboard/clipboard-types.js";
+import type { ViewClipboard } from "./interact/clipboard/view-clipboard.js";
 import type { CommandRegistry } from "./interact/commands/command-registry.js";
 import type { KeyBinding, Platform } from "./interact/commands/keymap.js";
 import type {
@@ -42,6 +44,11 @@ export interface InputOptions {
   readonly keymap?: readonly KeyBinding[];
   /** `Mod` is Cmd on macOS and Ctrl elsewhere; detected from `navigator` when omitted. */
   readonly platform?: Platform;
+  /**
+   * Copy, cut, paste and duplicate: the placement step, external-connection
+   * handling, and `system: false` to keep the clipboard in-app only.
+   */
+  readonly clipboard?: ClipboardOptions;
 }
 
 export interface ViewOptions {
@@ -124,6 +131,12 @@ export interface ViewHandle {
     CommandRegistry,
     "run" | "availability" | "list" | "register"
   >;
+  /**
+   * Clipboard text for host export/import dialogs and a toolbar Paste button.
+   * `on("paste")` reports every paste and duplicate, with the excluded external
+   * connections; `on("clipboard-error")` reports a refused system clipboard.
+   */
+  readonly clipboard: ViewClipboard;
   /** The tool options in effect (defaults merged with the mount and runtime overrides). */
   toolOptions(): ToolOptions;
   /**
