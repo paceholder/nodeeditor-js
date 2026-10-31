@@ -7,8 +7,6 @@
  */
 import {
   affine,
-  buildPath,
-  type ConnectionEntry,
   compose,
   type GeometryScene,
   type GraphReader,
@@ -17,6 +15,7 @@ import {
 } from "../../../../core/index.js";
 import type { PaintFrame } from "../../primitives/frame.js";
 import { paintEntries, type SceneLayerDeps } from "../scene-layer.js";
+import { ghostConnections } from "./ghost-entries.js";
 import type { ToolPreview } from "./preview-types.js";
 
 type MovePreview = Extract<ToolPreview, { kind: "move" }>;
@@ -27,19 +26,6 @@ const LOCK_SIZE_PX = 12;
 export interface MovePreviewDeps extends SceneLayerDeps {
   readonly reader: GraphReader;
   readonly scene: GeometryScene;
-}
-
-/** IDs the scene layer must skip while the preview runs: moved nodes and their paths. */
-export function movedEntityIds(
-  reader: GraphReader,
-  preview: MovePreview,
-): Set<string> {
-  const ids = new Set<string>();
-  for (const id of preview.moving) {
-    ids.add(id);
-    for (const c of reader.connectionsOfNode(id)) ids.add(c.id);
-  }
-  return ids;
 }
 
 function shiftNode(e: NodeEntry, dx: number, dy: number): NodeEntry {
@@ -53,26 +39,6 @@ function shiftNode(e: NodeEntry, dx: number, dy: number): NodeEntry {
         position: { x: a.position.x + dx, y: a.position.y + dy },
       }),
     ),
-  };
-}
-
-function ghostConnection(
-  e: ConnectionEntry,
-  moved: ReadonlyMap<string, NodeEntry>,
-  deps: MovePreviewDeps,
-): ConnectionEntry | undefined {
-  const end = (node: string, port: string) => {
-    const entry = moved.get(node) ?? deps.scene.node(node as never);
-    const a = entry?.anchors.find((x) => x.portId === port);
-    return a ? { position: a.position, normal: a.normal } : undefined;
-  };
-  const from = end(e.record.from.node, e.record.from.port);
-  const to = end(e.record.to.node, e.record.to.port);
-  if (!from || !to) return undefined;
-  return {
-    ...e,
-    path: buildPath("bezier", from, to),
-    paintedBounds: undefined,
   };
 }
 
@@ -116,17 +82,7 @@ export function paintMovePreview(
     const e = deps.scene.node(id);
     if (e) moved.set(id, shiftNode(e, dx, dy));
   }
-  const connections: ConnectionEntry[] = [];
-  const seen = new Set<string>();
-  for (const id of preview.moving) {
-    for (const c of deps.reader.connectionsOfNode(id)) {
-      if (seen.has(c.id)) continue;
-      seen.add(c.id);
-      const entry = deps.scene.connection(c.id);
-      const ghost = entry && ghostConnection(entry, moved, deps);
-      if (ghost) connections.push(ghost);
-    }
-  }
+  const connections = ghostConnections(moved, deps);
   ctx.save();
   ctx.globalAlpha = GHOST_ALPHA;
   paintEntries(ctx, deps, frame, [...moved.values()], connections);
