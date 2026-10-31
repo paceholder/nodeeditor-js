@@ -1,6 +1,6 @@
 /**
  * Preview host: stores the active tool preview, paints it on the interaction layer, and
- * keeps the scene layer's hidden set in step (D6). Setting a preview repaints the
+ * keeps the scene layer's hidden set in step (D6, D8). Setting a preview repaints the
  * interaction layer; the scene repaints only when the hidden set changes (drag start and
  * end), never per pointer move. Previews are never serialized and never
  * reach the model.
@@ -9,9 +9,11 @@ import type { GeometryScene, GraphReader } from "../../../../core/index.js";
 import type { InteractionLayer } from "../interaction-layer.js";
 import type { SceneLayerDeps } from "../scene-layer.js";
 import { paintConnectPreview } from "./connect-preview-painter.js";
+import { previewedEntityIds } from "./ghost-entries.js";
 import { paintMarquee } from "./marquee-painter.js";
-import { movedEntityIds, paintMovePreview } from "./move-preview-painter.js";
+import { paintMovePreview } from "./move-preview-painter.js";
 import type { ToolPreview } from "./preview-types.js";
+import { paintResizePreview } from "./resize-preview-painter.js";
 
 /** Mutable set of entity IDs the scene layer skips; read through `isHidden`. */
 export interface HiddenIds {
@@ -52,6 +54,21 @@ export interface PreviewHost {
   dispose(): void;
 }
 
+/** Entities a preview draws itself, which the scene layer skips (D6, D8). */
+function hiddenBy(
+  reader: GraphReader,
+  preview: ToolPreview | null,
+): Set<string> {
+  switch (preview?.kind) {
+    case "move":
+      return previewedEntityIds(reader, preview.moving);
+    case "resize":
+      return previewedEntityIds(reader, [preview.node]);
+    default:
+      return new Set();
+  }
+}
+
 export function createPreviewHost(env: PreviewHostEnv): PreviewHost {
   let current: ToolPreview | null = null;
   const remove = env.interaction.add({
@@ -65,10 +82,16 @@ export function createPreviewHost(env: PreviewHostEnv): PreviewHost {
       }
       const bound = env.bound();
       if (!bound) return;
-      if (current.kind === "connect") {
-        paintConnectPreview(ctx, bound.scene, frame, current);
-      } else {
-        paintMovePreview(ctx, bound, frame, current);
+      switch (current.kind) {
+        case "connect":
+          paintConnectPreview(ctx, bound.scene, frame, current);
+          return;
+        case "move":
+          paintMovePreview(ctx, bound, frame, current);
+          return;
+        case "resize":
+          paintResizePreview(ctx, bound, frame, current);
+          return;
       }
     },
   });
@@ -76,10 +99,7 @@ export function createPreviewHost(env: PreviewHostEnv): PreviewHost {
     set(preview) {
       current = preview;
       const bound = env.bound();
-      const ids =
-        preview?.kind === "move" && bound
-          ? movedEntityIds(bound.reader, preview)
-          : new Set<string>();
+      const ids = bound ? hiddenBy(bound.reader, preview) : new Set<string>();
       if (env.hidden.set(ids)) env.invalidateScene();
       env.interaction.invalidate();
     },

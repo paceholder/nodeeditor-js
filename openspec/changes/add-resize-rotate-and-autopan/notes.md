@@ -38,3 +38,11 @@ Deviations from design.md, clarifications made while implementing, and observati
   `geometry-scene.test.ts`, which is already 376 lines. `project` counts no node rebuild.
 - **Extra core exports**: `DEFAULT_SIZE_LIMITS` (the view's default for models without
   `sizeLimits`), `MirrorAxis` and `NodePlacementChange`, besides the five task 3.5 names.
+- **Handle source logic lives in the painter file** (`resizeHandleEntry`), fed by plain
+  closures (`target`, `resizable`, `preview`), because view/render may not import the
+  selection model in view/interact. The mount wiring supplies the closures.
+- **`ghost-entries.ts`** also owns `previewedEntityIds` (the hidden set for move and
+  resize previews); `movedEntityIds` in the move painter was folded into it.
+- **The resize preview paints at full opacity** (the move preview's ghosts use 0.75):
+  the node being resized is not left behind anywhere, so a faded copy would only look
+  disabled.
