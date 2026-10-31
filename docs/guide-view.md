@@ -687,6 +687,45 @@ view.setPresence([]); // clear
 Cursor glyphs keep their size on screen; selection outlines are dashed boxes around the
 nodes' bodies. (`point` comes from `nodeeditor-js`.)
 
+### Clipboard: copy, cut, paste, duplicate
+
+With an editable model the keyboard does it all (Mod+C, X, V, D; see
+[interaction.md](interaction.md#clipboard-shortcuts-the-native-route)).
+`view.clipboard` covers what a host adds around it:
+
+```ts
+// Export / import dialog: the path that works when the browser denies clipboard access.
+const exported = view.clipboard.exportText();      // Result<string>: the selection as text
+if (exported.ok) textarea.value = exported.value;
+view.clipboard.importText(textarea.value);         // PasteOutcome, like a paste
+
+// A toolbar Paste button: the async Clipboard API, which may prompt.
+const outcome = await view.clipboard.pasteFromSystem();
+if (!outcome.ok && outcome.error.code === "clipboard-unavailable") showImportDialog();
+
+// Every paste and duplicate, from any route: what was created and what was left out.
+view.clipboard.on("paste", (o) => {
+  if (o.ok && o.value.excluded.length > 0) notify(o.value.excluded);
+});
+view.clipboard.on("clipboard-error", (e) => console.warn(e.message));
+```
+
+`view.commands.run("edit.copy")` and the other clipboard commands also work from code.
+Copy from code fills the view's in-app buffer at once and starts
+`navigator.clipboard.writeText` best-effort; a refusal comes back through
+`on("clipboard-error")`, never as an exception. `edit.paste` from code pastes the in-app
+buffer. `navigator.clipboard` is read when the view mounts, never at import, and
+`input.clipboard.system: false` keeps everything in-app.
+
+The trade-offs, for a reader coming from `QClipboard`: the only prompt-free way to read
+the clipboard is the browser's own `paste` event, which fires only for a real key press,
+so the keyboard shortcuts use it. The async API is fine for writing but makes reading
+prompt (Chromium) or show a "Paste" button (Firefox, Safari). Custom MIME types are not
+portable, so the fragment travels as JSON text with a format marker
+([format.md](format.md#9-clipboard-envelope)); that same text pastes into another tab and
+serves as the export format. Each view owns its own buffer; the system clipboard is the
+shared channel.
+
 ## 9. Viewport, picking and coordinate conversion
 
 ```ts

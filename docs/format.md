@@ -84,8 +84,8 @@ cannot cause reuse. A custom generator without `observe` has its cursor used as-
 
 A fragment is a snapshot without `idCursor` whose connections reference only nodes
 inside it. Pass `fragment: true` to `validateSnapshot`, or `exportSnapshot(model,
-{ fragment: true })`. Paste semantics (ID remapping, external references) are a later
-change.
+{ fragment: true })`. Copy, cut, paste and duplicate use fragments; see
+[§9](#9-clipboard-envelope) for the clipboard text around them.
 
 ## 2. Document
 
@@ -177,3 +177,46 @@ validated target snapshot: removes (connections, ports, nodes), then adds, then 
 updates, then in-place connection endpoint updates (connections keep their ID). Equal
 state gives an empty patch. New entities receive fresh insertion sequence numbers when
 the patch is applied. Snapshot-mode adapters will build on this.
+
+## 9. Clipboard envelope
+
+Copy writes a fragment as `text/plain`, wrapped in a small envelope with its own format
+marker (`FRAGMENT_FORMAT`, `"nodeeditor-js/fragment"`) and version (`FRAGMENT_VERSION`,
+1):
+
+```json
+{ "format": "nodeeditor-js/fragment", "version": 1,
+  "fragment": { "format": "nodeeditor-js/graph", "version": 1,
+                "nodes": [...], "connections": [...] },
+  "external": [ { "id": "c7", "from": { "node": "n3", "port": "p9" },
+                  "to": { "node": "n5", "port": "p2" } } ] }
+```
+
+- `fragment` is an ordinary fragment snapshot: the copied nodes in paint order with their
+  ports in presentation order, payloads in their JSON form (through the type's codec when
+  one is registered), and every connection whose two ends are copied nodes, selected or
+  not, in collection order. Original IDs are kept; paste remaps them, so one fragment can
+  be pasted any number of times.
+- `external` lists, by original IDs and in collection order, the connections that reached
+  outside the copied nodes. They are never part of `fragment.connections`, so the fragment
+  stays valid on its own. A paste drops them unless the host asks to preserve them.
+- `fragmentToText` writes the keys in a fixed order, so equal selections give equal text.
+
+`parseFragmentText(text, { limits, codecs })` treats the text as untrusted:
+
+1. The length is checked against `maxDocumentChars` before `JSON.parse`
+   (`limit-exceeded`).
+2. Text without the marker, or that is not JSON, is `not-a-fragment` and is never parsed
+   as a graph. That is how ordinary clipboard text is told apart.
+3. A newer envelope version is `unsupported-version`.
+4. `fragment` goes through `validateSnapshot` in fragment mode with the limits; `external`
+   entries are shape-checked; payloads must decode through their codecs.
+
+Every error is returned, sorted by JSON path (paths start with `fragment.` or
+`external[i]`). `parseFragmentValue` does the same for an object that is already parsed.
+
+Why plain text and not a custom MIME type: the async Clipboard API only guarantees
+`text/plain`, `text/html` and `image/png`; custom types work in Chromium only, and Safari
+hands them back only to pages of the same origin. Text works in every supported browser,
+across tabs and origins, and doubles as the export/import format. Pasting into a text
+editor shows JSON, which is acceptable.

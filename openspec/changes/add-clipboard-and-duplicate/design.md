@@ -383,9 +383,13 @@ sequenceDiagram
 ## Risks / Trade-offs
 
 - [Safari or an embedding page does not fire `paste` on a focused non-editable element] →
-  After a native clipboard chord, the bridge waits one task (`setTimeout(0)`); if no
-  clipboard event arrived it runs the command on the in-app buffer. A manual check in
-  Safari and Firefox is a task (6.5); the automated browser tests run in Chrome only.
+  No timed fallback: the key-down alone does nothing and only the event runs the command,
+  because a wait for "no event" races the real, asynchronously delivered event (a one-task
+  wait pasted twice in Chrome, see notes; a longer wait is still a guess). Such a browser
+  gets no keyboard paste; `view.clipboard` stays available. If the manual check (6.5) finds
+  one, the planned remedy is a focused hidden text field inside the root, which receives
+  clipboard events in every browser (user decision 2026-10-31). The automated browser
+  tests run in Chrome only.
 - [Clipboard text is attacker-controlled (pasted from a web page or chat)] → Length check
   before parsing, the marker, the full snapshot validator with limits, codecs that return
   Results, and the normal capability and policy dry run. No code from the text is run.

@@ -19,9 +19,12 @@ import {
   createNodeTypeRegistry,
   createDefaultConnectionPolicy,
   exportSnapshot,
+  extractFragment,
+  fragmentToText,
   invertPatch,
   loadDocument,
   loadSnapshot,
+  parseFragmentText,
   saveDocument,
   type ChangeEvent,
   type Patch,
@@ -173,6 +176,71 @@ model.reader.connections();                // []
 `payload` is your own JSON-compatible data attached to a node; the library stores it and
 never interprets it. There are also `rotateNodes`, `mirrorNodes`, `reorderNodes`,
 `reconnect`, `disconnect` and `setPorts`; see `ConvenienceMethods`.
+
+### Copy, paste and duplicate
+
+A selection becomes a *fragment* with `extractFragment`; `paste` and `duplicate` are
+ordinary commands, so `plan`, `can` and `execute` work on them and each is one patch and
+one history entry.
+
+```ts
+const copied = extractFragment(model.reader, { nodes: [a.id, b.id] });
+if (copied.ok) {
+  const text = fragmentToText(copied.value.fragment);  // what a clipboard would hold
+  copied.value.excluded;  // connections to unselected nodes: listed, not copied
+
+  const parsed = parseFragmentText(text);              // untrusted text: validated
+  if (parsed.ok) {
+    model.execute({
+      kind: "paste",
+      fragment: parsed.value,
+      placement: { kind: "center", at: { x: 400, y: 300 } },
+    });
+  }
+}
+
+// Extract and paste in one step, offset from the originals:
+model.execute({
+  kind: "duplicate",
+  nodes: [a.id],
+  placement: { kind: "offset", by: { x: 20, y: 20 } },
+});
+```
+
+- **Placement.** `center` puts the bounding-box centre of the fragment's node bodies at
+  `at`; `offset` adds `by` to every original position. Pasted nodes go on top of the
+  paint order, keeping their relative order. (The view picks the placement: at the
+  pointer, or a growing offset for repeated pastes.)
+- **Fresh IDs.** Every node, port and connection gets a new ID and every internal
+  endpoint is rewritten, so pasting twice gives two independent copies. Retired IDs are
+  never reused.
+- **What is copied.** Payloads, ports exactly as they are now (including ports changed by
+  `setPorts`), titles, status, capability overrides (a copy of a locked node is locked),
+  and every connection between two copied nodes, whether or not it was selected.
+- **External connections.** A connection to a node outside the copy is excluded by
+  default and reported in `plan.effects.excluded` as `{ connection, reason: "external" }`.
+  Pass `external: "preserve"` to re-create each one from the copy to the same outside
+  port; when that port is gone or the connection policy refuses, it is excluded with
+  `endpoint-missing` or the policy's code instead.
+- **Validation before anything changes.** The fragment is checked like a loaded file
+  (shape, limits, codecs), every node type must be registered and creatable
+  (`unknown-type` / `not-creatable` naming the types), and the patch is dry-run through
+  the capability and connection-policy validators. Any refusal rejects the whole paste.
+  A fragment without nodes is `empty-fragment`.
+- **Why paste refuses unregistered types although load keeps them.** Load must not lose
+  data, so it keeps such nodes as placeholders. A paste creates new nodes; a placeholder
+  the host cannot edit is not a useful thing to create, so paste reports the missing type
+  instead.
+- **Codecs and limits.** `createGraphModel({ payloadCodecs, fragmentLimits })` sets the
+  codecs and limits the planners use; pass the same codecs to `extractFragment` and
+  `parseFragmentText` (`model.payloadCodecs` holds them).
+- **Cut** is a copy followed by `deleteEntities`: one history entry, and one undo brings
+  the originals back with their original IDs. Check `can({ kind: "deleteEntities", ... })`
+  first, so a protected node rejects the cut before anything is copied.
+
+A model assembled without the fragment planners (only `createGraphModel` supplies them)
+rejects both commands with `unsupported-command`. The clipboard text format is described
+in [format.md](format.md#9-clipboard-envelope).
 
 ## 5. Subscribing to events
 

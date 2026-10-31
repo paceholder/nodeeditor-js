@@ -188,6 +188,10 @@ an unavailable command returns the reason (for example a capability denial).
 | `view.fitSelection` | Fit the selection in view. |
 | `view.resetView` | Zoom 1, origin at the top-left. |
 | `view.reveal` | Pan, and zoom out if needed, so one node or connection (a bare ID) is fully visible. |
+| `edit.copy` | Copy the selected nodes (and every connection between them) as a fragment. Unavailable without a selected node. Adds no history entry. |
+| `edit.cut` | Copy, then delete like `edit.delete`: one history entry. Unavailable when the delete would be refused; then nothing is copied. |
+| `edit.paste` | Paste `{ text }` from a native paste event, or else the in-app buffer, as one history entry; the new entities become the selection. Unavailable with an empty buffer, or when the dry run refuses (read-only, policy, types). |
+| `edit.duplicate` | Copy the selected nodes one placement step away, as one history entry; the copy becomes the selection. |
 
 Default keymap (`DEFAULT_KEYMAP`). `Mod` is Cmd on macOS and Ctrl elsewhere; the platform
 is detected once at mount, or set with `input.platform`:
@@ -201,11 +205,52 @@ is detected once at mount, or set with `input.platform`:
 | Escape | cancel the gesture, otherwise `selection.clear` |
 | Arrow keys | `nodes.nudge` by the grid step (1 world unit without a grid) |
 | Shift+Arrow keys | `nodes.nudge` by ten steps |
+| Mod+C | `edit.copy` (native route, below) |
+| Mod+X | `edit.cut` (native route) |
+| Mod+V | `edit.paste` (native route) |
+| Mod+D | `edit.duplicate` (also stops the browser's bookmark shortcut) |
 
 Replace or extend the map with `input.keymap`, for example
 `[...DEFAULT_KEYMAP, { chord: "F", command: "view.fitAll" }]`. Chords are `+`-joined
 modifiers (`Mod`, `Ctrl`, `Shift`, `Alt`) then a key. Keys are ignored while a gesture is
 running: one gesture is one history entry.
+
+### Clipboard shortcuts: the native route
+
+Reading and writing the clipboard works differently in browsers than in Qt, where
+`QClipboard` is always there:
+
+| Route | Read (paste) | Write (copy) | Prompt | Where it works |
+| --- | --- | --- | --- | --- |
+| `copy`/`cut`/`paste` events | `clipboardData.getData("text/plain")`, synchronous | `setData` + `preventDefault()`, synchronous | none | all supported browsers |
+| Async Clipboard API (`navigator.clipboard`) | `readText()` | `writeText()` | read: Chromium asks for permission; Firefox and Safari show a "Paste" button to click | secure context and a recent user gesture |
+| In-app buffer | yes | yes | none | always, but only inside this view |
+
+So Mod+C, Mod+X and Mod+V are bound with `native: true` in `DEFAULT_KEYMAP`: their
+key-down is not default-prevented, the browser fires its `copy`, `cut` or `paste` event,
+and the view's clipboard bridge runs `edit.copy`, `edit.cut` or `edit.paste` with the
+event's data. No prompt appears. A paste event's text decides what happens:
+
+1. Text that carries the fragment marker is pasted.
+2. Other text pastes nothing and the result is `not-a-fragment`. The in-app buffer is not
+   used: the user evidently copied something else since.
+
+There is no timed fallback. The browser reads the system clipboard asynchronously before
+it fires `paste`, so "no event came within N ms" can never be told apart from "the event is
+slow", and guessing wrong pastes twice. The key-down alone therefore does nothing; the
+event alone runs the command, so one shortcut is always one command. A browser or
+embedding page that fires no clipboard event on a focused non-editable element gets no
+keyboard copy and paste; the host can still call `view.clipboard` (`copy()`, `paste()` from the
+in-app buffer, `pasteFromSystem()`, `exportText`/`importText`).
+
+Browsers aim clipboard events at the focused element only when it is editable, so the
+bridge listens on the document and acts only while focus is inside this editor's root and
+not in a text field. A text field in the overlay therefore keeps its own copy and paste.
+
+Without a pointer over the view, repeated pastes land at the original position plus one,
+two, three placement steps (default 20 world units, `input.clipboard.step`). With the
+pointer over the view the copy is centred at the pointer; pasting again without moving
+the mouse adds the growing step, so copies cascade instead of stacking.
 
 ## 7. Scoping: which events belong to the editor
 
@@ -251,6 +296,7 @@ mountView(container, {
     toolOptions: { gridStep: 20, emptyDrag: "pan", marquee: "direction", wheel: "zoom" },
     keymap: [...DEFAULT_KEYMAP],
     platform: "other",
+    clipboard: { step: { x: 20, y: 20 }, external: "exclude" }, // system: false = in-app only
   },
 });
 ```

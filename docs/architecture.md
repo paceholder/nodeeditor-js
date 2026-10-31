@@ -334,6 +334,9 @@ src/core/                                                            (nodeeditor
               scene/             geometry scene and picking          implemented
   io/         snapshot/          JSON snapshot shape, validator,     implemented
                                  diff, versioned document save/load
+              fragment/          clipboard fragments: extract,       implemented
+                                 envelope text, paste/duplicate
+                                 planners
   graph-model.ts                 createGraphModel facade             implemented
   index.ts                       public entry
 src/view/                                                     (nodeeditor-js/view)
@@ -356,6 +359,8 @@ src/view/                                                     (nodeeditor-js/vie
               input/             DOM input adapter, effect runner    implemented
               commands/          command registry, keymap, view      implemented
                                  commands
+              clipboard/         clipboard service, native-event     implemented
+                                 bridge, paste placement
               overlay/           DOM overlay host, presence          implemented
   view-types.ts, view-editing.ts, mount-view.ts                      implemented
   index.ts                       host API (nodeeditor-js/view)
@@ -374,12 +379,12 @@ flowchart BT
     base["base/<br/>result, ids"] --> data["data/<br/>model, node-types, patch"]
     data --> edit["edit/<br/>policy, capabilities, commands,<br/>history, adapter, events"]
     edit --> space["space/<br/>geometry, spatial-index, scene"]
-    edit --> io["io/<br/>snapshot"]
+    edit --> io["io/<br/>snapshot, fragment"]
     space & io --> facade["graph-model.ts, index.ts"]
   end
   subgraph view["src/view"]
     platform["platform/<br/>dom, frame scheduler, viewport,<br/>model binding, render stats"] --> render["render/<br/>primitives, theme, assets,<br/>registries, presets, paint"]
-    render --> interact["interact/<br/>selection, tools, input,<br/>commands, overlay"]
+    render --> interact["interact/<br/>selection, tools, input,<br/>commands, clipboard, overlay"]
     interact --> mount["view-types.ts, view-editing.ts,<br/>mount-view.ts"]
     mount --> entries["index.ts (view)<br/>advanced.ts (view/advanced)"]
   end
@@ -402,6 +407,28 @@ Three things worth knowing about the layers, none of them a cycle between files:
 - `interact/commands/` imports `capabilityProbe` from `interact/tools/`, and
   `interact/overlay/` paints presence through `render/paint/`. Both follow the layer
   order.
+
+- `paste` and `duplicate` are `Command` kinds declared in `edit/commands/`, but their
+  planners need the snapshot validator, records mapping and codecs from `io/`. Rather
+  than import upward, `PlanContext` has an optional `fragments: FragmentPlanners` slot
+  (an interface declared in `edit/`). The facade, which may import everything below it,
+  fills the slot with the planners from `io/fragment/`; without it `planCommand` rejects
+  both kinds with `unsupported-command`. `io/fragment/` computes paste bounds from the
+  snapshot entries itself, so it never imports its sibling `space/`.
+
+```mermaid
+flowchart BT
+  types["edit/commands/types.ts<br/>Command, PlanContext,<br/>FragmentPlanners (interface)"]
+  plan["edit/commands/plan.ts<br/>planCommand: paste and duplicate<br/>call ctx.fragments"]
+  frag["io/fragment/<br/>extract, fragment-text, remap,<br/>plan-paste, plan-external"]
+  snap["io/snapshot/<br/>validateSnapshot, records, codecs"]
+  facade["graph-model.ts<br/>createFragmentPlanners() into<br/>the command environment"]
+  types --> plan
+  types --> frag
+  snap --> frag
+  plan --> facade
+  frag --> facade
+```
 
 Test-support files (fixtures, harnesses, builders) may reach across layers, and the test
 lists each of them; for example `view/test-support/tool-harness.ts` imports

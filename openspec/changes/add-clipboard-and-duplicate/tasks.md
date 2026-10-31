@@ -35,10 +35,12 @@
 ## 6. DOM wiring (browser)
 
 - [x] 6.1 Track the last pointer world position and `pointerleave` in `src/view/interact/input/dom-input.ts`, and skip `preventDefault()` for native chords when the clipboard bridge is attached; verify `dom-input.browser.test.ts` named for the input scoping rule and the keyboard editing shortcuts rule that a Mod+C keydown is not default-prevented while Mod+D is
-- [x] 6.2 Implement `clipboard-events.ts` (copy/cut/paste listeners on the root, `setData`/`getData` on `text/plain`, `preventDefault()` on handled events, one-task fallback to the in-app buffer when no event follows a native chord); verify `src/view/interact/clipboard/clipboard-events.browser.test.ts` named for the duplicate and paste fragments rule, the validated paste with fallback rule and the input scoping rule dispatching synthetic `ClipboardEvent`s with a `DataTransfer`, including a copy event from a focused overlay text field that leaves the graph alone
+- [x] 6.2 Implement `clipboard-events.ts` (copy/cut/paste listeners on the root, `setData`/`getData` on `text/plain`, `preventDefault()` on handled events; no timed fallback, see 6.6); verify `src/view/interact/clipboard/clipboard-events.browser.test.ts` named for the duplicate and paste fragments rule, the validated paste with fallback rule and the input scoping rule dispatching synthetic `ClipboardEvent`s with a `DataTransfer`, including a copy event from a focused overlay text field that leaves the graph alone
 - [x] 6.3 Wire the service into `src/view/view-editing.ts` and `mount-view.ts`: `InputOptions.clipboard`, `ViewHandle.clipboard`, `navigator.clipboard` read only at mount, `dispose()` removing listeners; verify `src/view/clipboard.browser.test.ts` named for the keyboard editing shortcuts rule, the duplicate and paste fragments rule, the rule that cut is copy plus atomic delete, the one committed edit per gesture rule and the per-instance disposal rule: the "Copy and paste shortcuts", "Duplicate shortcut" and "Cut is one history entry" scenarios end to end in Chrome, and no listener remains after dispose
 - [x] 6.4 Export the clipboard types (`PasteOutcome`, clipboard options) from `src/view/index.ts` and the service building blocks from `src/view/advanced.ts`; verify `src/view/entry-points.test.ts` and an SSR import test that importing the view entry touches no `navigator`
-- [ ] 6.5 Deferred: cross-browser check postponed; Chrome-only for now, user decision 2026-10-31. Originally: Manually check keyboard copy, cut, paste (including cross-tab paste and foreign text) and duplicate in current Firefox and Safari on the plain-js demo; verify by recording the browser versions and results in this change's notes, and report any browser that needs the one-task fallback
+- [ ] 6.5 Deferred: cross-browser check postponed; Chrome-only for now, user decision 2026-10-31. Originally: Manually check keyboard copy, cut, paste (including cross-tab paste and foreign text) and duplicate in current Firefox and Safari on the plain-js demo; verify by recording the browser versions and results in this change's notes, and report any browser that fires no clipboard event on the focused canvas (remedy: hidden focused text field, see design risks)
+
+- [x] 6.6 Fix a double paste found in manual use: the one-task fallback (run the command on the in-app buffer when no clipboard event follows a native chord) fired before Chrome's asynchronously delivered paste event, so Mod+V pasted twice. Removed the timed fallback (user decision 2026-10-31: a timed wait is a guess); the key-down alone does nothing and the event alone runs the command; verify `clipboard-events.browser.test.ts` named for the validated paste with fallback rule that a paste chord alone pastes nothing and its event pastes once
 
 ## 7. Example
 
@@ -46,13 +48,13 @@
 
 ## 8. Gates
 
-- [ ] 8.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new file stays under 300 lines
+- [x] 8.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new file stays under 300 lines
 
 ## 9. Documentation (separate commit)
 
-- [ ] 9.1 Update `docs/guide-using-the-model.md` (fragments, `paste`/`duplicate` commands, placement, external references, codecs and limits, why paste rejects unregistered types) and `docs/format.md` (clipboard envelope, marker, external list); verify every new rejection code and `FRAGMENT_FORMAT` appear in the docs by grep
-- [ ] 9.2 Update `docs/interaction.md` (the keymap table gains Mod+C/X/V/D, a section on the native clipboard route and its fallback) and `docs/guide-view.md` (`view.clipboard`, `InputOptions.clipboard`, browser clipboard trade-offs); verify by grepping for `edit.copy`, `edit.duplicate` and `pasteFromSystem`
-- [ ] 9.3 Update `docs/architecture.md` with the `core/io/fragment` module and the injected `FragmentPlanners` slot, with a Mermaid diagram of the dependency direction; verify the diagram renders in a Markdown preview and names no upward import
+- [x] 9.1 Update `docs/guide-using-the-model.md` (fragments, `paste`/`duplicate` commands, placement, external references, codecs and limits, why paste rejects unregistered types) and `docs/format.md` (clipboard envelope, marker, external list); verify every new rejection code and `FRAGMENT_FORMAT` appear in the docs by grep
+- [x] 9.2 Update `docs/interaction.md` (the keymap table gains Mod+C/X/V/D, a section on the native clipboard route and its fallback) and `docs/guide-view.md` (`view.clipboard`, `InputOptions.clipboard`, browser clipboard trade-offs); verify by grepping for `edit.copy`, `edit.duplicate` and `pasteFromSystem`
+- [x] 9.3 Update `docs/architecture.md` with the `core/io/fragment` module and the injected `FragmentPlanners` slot, with a Mermaid diagram of the dependency direction; verify the diagram renders in a Markdown preview and names no upward import
 
 ## Workflow follow-up
 

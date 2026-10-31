@@ -52,10 +52,9 @@ Deviations from design.md, clarifications made while implementing, and observati
 - Headless Google Chrome (MacIntel, Vitest browser mode via Playwright): pressing
   Meta+C / Meta+X / Meta+V with a focused non-editable `<div tabindex=0>` fires
   `copy`, `cut` and `paste` events targeted at that div, with readable/writable
-  `clipboardData`. The end-to-end shortcut tests therefore exercise the native route,
-  not the one-task fallback.
-- Synthetic `KeyboardEvent`s (untrusted) never trigger clipboard events; with them the
-  one-task fallback runs the command on the in-app buffer.
+  `clipboardData`. The end-to-end shortcut tests therefore exercise the native route.
+- Synthetic `KeyboardEvent`s (untrusted) never trigger clipboard events, so a synthetic
+  chord alone does nothing.
 
 ## Deferred: Firefox and Safari check (task 6.5)
 
@@ -75,8 +74,8 @@ versions and try:
 7. Click into an overlay text field (if the demo has one) and press Mod+C/Mod+V: the
    field's own copy/paste happens, the graph is untouched.
 8. Note whether the `paste` event fires at all on the focused canvas (Safari is the
-   suspect); if not, paste only works from the in-app buffer through the one-task
-   fallback, which should be reported here.
+   suspect); if not, keyboard paste does nothing there, which should be reported here
+   (remedy: a focused hidden text field, see design risks).
 
 ## Demo check (task 7.1)
 
@@ -85,3 +84,36 @@ demo:preview`: Mod+A, Mod+C, pointer over the canvas, Mod+V pasted 6 nodes; Expo
 Import of the exported text pasted 6 nodes; importing plain text reported "The text holds
 no graph fragment"; Mod+D duplicated the selection. No console errors. The demo's own
 window-level `M`/`G`/`E` shortcuts now ignore keys typed into the dialog's textarea.
+
+## Gates (task 8.1)
+
+Last run: lint clean, typecheck clean (all four passes), 534 Node tests, 131 browser
+tests (Chrome), build OK, `bench:size` core 29.6 KiB and view 35.8 KiB gzip (budgets 75
+and 150). Every new file is under 300 lines. Two existing files grew past 300:
+`src/view/interact/input/dom-input.ts` (294 to 316, pointer tracking) and
+`src/view/mount-view.ts` (326 to 332, the `clipboard` handle section); splitting them is
+left for a later tidy-up.
+
+## Docs (task 9.3)
+
+The new Mermaid diagram in `docs/architecture.md` was checked for syntax against the
+existing diagrams in that file, not rendered in a preview.
+
+## Double paste after review (task 6.6)
+
+Reported by the user in manual use of the demo in Chrome: Mod+C, Mod+V gave two copies,
+the second shifted by one placement step. Cause: the native-chord fallback waited one task
+(`setTimeout(0)`). In a real browser the paste event follows the system clipboard read and
+came later, so the fallback pasted the in-app buffer first and the event then pasted again
+(the repeat-paste offset explains the shift). Playwright's synthetic key presses deliver
+the event at once, so the end-to-end tests never saw the race. A late cut had the opposite
+problem: the fallback cut the selection, and the late event found nothing left to write to
+the system clipboard.
+
+Fix, after a first attempt: a 250 ms wait with late events swallowed worked but was still
+a guess (a slow clipboard read could exceed it, and a browser without events would pay the
+delay on every paste). The user chose to drop the timed fallback altogether (2026-10-31):
+the chord's key-down does nothing and only the clipboard event runs the command. Chrome
+fires the events for the focused canvas, so nothing is lost there; browsers that do not
+are for task 6.5. A browser test checks that a paste chord alone pastes nothing and that
+its event pastes once.
