@@ -163,9 +163,19 @@ const SIZE = { width: 40, height: 20 };
 const WIDER = { width: 60, height: 20 };
 
 describe("NOD-04a, MOD-11, NOD-01 resizing is opt-in", () => {
-  it("Type without resize declared: a local raw patch changing the size is rejected", () => {
+  it("Type without resize declared: the command and a local raw patch are rejected", () => {
     const model = makeModel();
     const a = make(model, "source");
+    const command = model.resizeNode(a.node, WIDER);
+    expect(command.status === "rejected" && command.error.code).toBe(
+      "capability-denied",
+    );
+    expect(
+      model.can({ kind: "resizeNode", node: a.node, size: WIDER }),
+    ).toEqual({
+      available: false,
+      reason: expect.objectContaining({ code: "capability-denied" }),
+    });
     const result = model.submit({ ops: [sizeOp(a.node, SIZE, WIDER)] });
     expect(result.status === "rejected" && result.error.code).toBe(
       "capability-denied",

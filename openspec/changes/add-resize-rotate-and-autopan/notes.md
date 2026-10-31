@@ -17,3 +17,15 @@ Deviations from design.md, clarifications made while implementing, and observati
 - **"Externally applied sizes"** is evidenced with a local adapter that carries the
   capability validator and receives an `origin: "external"` patch: the facade has no
   external-origin submit.
+- **Task 1.4's command assertion landed with task 2.1** (the `resizeNode` command did not
+  exist yet), so 1.4 is ticked in the group 2 commit.
+- **`MirrorAxis`** is a named type exported from `node-frame.ts` (`"horizontal" | "vertical"`), and
+  `mirroredRotation(rotation, axis)` in `core/data/model/node-frame.ts` holds the D5 table so the
+  planner and the capability rule (D4) use the same arithmetic. A mirror whose rotation
+  does not change emits only the `mirrored` field, so `r = 0` and `r = 2` horizontal
+  mirrors keep their old patches exactly.
+- **No existing test mirrored a node at an odd quarter turn** expecting only `mirrored`
+  to change; `geometry-scene.test.ts` mirrors an unrotated node and compares against a
+  fresh projection, so nothing needed updating (task 2.2 review).
+- **`resizeNode` copies the size** into the patch (`{ width, height }`) so extra fields on
+  a caller's object never reach the record.

@@ -27,6 +27,7 @@ export {
 } from "./base/ids/ids.js";
 export type { Rejection, RejectionCode, Result } from "./base/result.js";
 export { err, MisuseError, ok, reject, rejectionOf } from "./base/result.js";
+export type { MirrorAxis } from "./data/model/node-frame.js";
 export type { GraphReader } from "./data/model/reader.js";
 export type {
   AttachmentLimit,
