@@ -5,8 +5,9 @@
  * command give identical results by construction.
  */
 import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
+import type { MirrorAxis, ResizeFixed } from "../../data/model/node-frame.js";
 import type { Endpoint, Payload } from "../../data/model/records.js";
-import type { Vec2 } from "../../data/model/values.js";
+import type { Size, Vec2 } from "../../data/model/values.js";
 import type { CommandApi } from "./api.js";
 import type { Command, ExecuteResult, PortEdit } from "./types.js";
 
@@ -31,7 +32,10 @@ export interface ConvenienceMethods {
   disconnect(connection: ConnectionId): ExecuteResult;
   moveNodes(moves: Of<"moveNodes">["moves"]): ExecuteResult;
   rotateNodes(nodes: readonly NodeId[], turns: 1 | -1): ExecuteResult;
-  mirrorNodes(nodes: readonly NodeId[]): ExecuteResult;
+  /** `fixed` defaults to the centre. */
+  resizeNode(node: NodeId, size: Size, fixed?: ResizeFixed): ExecuteResult;
+  /** `axis` defaults to `horizontal` (screen left and right swap). */
+  mirrorNodes(nodes: readonly NodeId[], axis?: MirrorAxis): ExecuteResult;
   reorderNodes(nodes: readonly NodeId[], to: "front" | "back"): ExecuteResult;
   setPorts(
     node: NodeId,
@@ -67,7 +71,19 @@ export function createConvenience(api: CommandApi): ConvenienceMethods {
     moveNodes: (moves) => api.execute({ kind: "moveNodes", moves }),
     rotateNodes: (nodes, turns) =>
       api.execute({ kind: "rotateNodes", nodes, turns }),
-    mirrorNodes: (nodes) => api.execute({ kind: "mirrorNodes", nodes }),
+    resizeNode: (node, size, fixed) =>
+      api.execute({
+        kind: "resizeNode",
+        node,
+        size,
+        ...(fixed === undefined ? {} : { fixed }),
+      }),
+    mirrorNodes: (nodes, axis) =>
+      api.execute({
+        kind: "mirrorNodes",
+        nodes,
+        ...(axis === undefined ? {} : { axis }),
+      }),
     reorderNodes: (nodes, to) =>
       api.execute({ kind: "reorderNodes", nodes, to }),
     setPorts: (node, ports, affected) =>

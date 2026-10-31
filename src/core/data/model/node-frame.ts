@@ -72,3 +72,19 @@ export function anchoredPosition(
     y: node.position.y + shift.y,
   };
 }
+
+/** A screen axis to mirror across. */
+export type MirrorAxis = "horizontal" | "vertical";
+
+/**
+ * The rotation after a screen-axis mirror. With `world = R(r) . M(m)`, the
+ * screen flip `H` (left and right) gives `H . R(r) = R(-r) . H`, and `V = R(2) . H`, so
+ * a horizontal mirror stores `-r` and a vertical mirror `2 - r`, each with `!m`.
+ */
+export function mirroredRotation(
+  rotation: QuarterTurns,
+  axis: MirrorAxis,
+): QuarterTurns {
+  const base = axis === "vertical" ? 6 : 4;
+  return ((base - rotation) % 4) as QuarterTurns;
+}

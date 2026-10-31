@@ -8,13 +8,14 @@
 import type { IdGenerator } from "../../base/ids/id-generator.js";
 import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
 import type { Rejection, RejectionCode } from "../../base/result.js";
+import type { MirrorAxis, ResizeFixed } from "../../data/model/node-frame.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type {
   Endpoint,
   NodeRecord,
   Payload,
 } from "../../data/model/records.js";
-import type { Vec2 } from "../../data/model/values.js";
+import type { Size, Vec2 } from "../../data/model/values.js";
 import type { PortSpec } from "../../data/node-types/definition.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { Patch } from "../../data/patch/types.js";
@@ -78,7 +79,26 @@ export type Command =
       readonly nodes: readonly NodeId[];
       readonly turns: 1 | -1;
     }
-  | { readonly kind: "mirrorNodes"; readonly nodes: readonly NodeId[] }
+  /**
+   * Set a node's size with the local point `fixed` (default: the centre) kept in place
+   * in world space, for any rotation and mirroring.
+   */
+  | {
+      readonly kind: "resizeNode";
+      readonly node: NodeId;
+      readonly size: Size;
+      readonly fixed?: ResizeFixed;
+    }
+  /**
+   * Mirror each node about its own centre in screen axes: `horizontal` (the
+   * default) swaps screen-left and screen-right, `vertical` swaps top and bottom, for
+   * any rotation. Stored as a toggled `mirrored` flag plus the matching `rotation`.
+   */
+  | {
+      readonly kind: "mirrorNodes";
+      readonly nodes: readonly NodeId[];
+      readonly axis?: MirrorAxis;
+    }
   | {
       readonly kind: "reorderNodes";
       readonly nodes: readonly NodeId[];

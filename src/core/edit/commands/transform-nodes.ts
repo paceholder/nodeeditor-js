@@ -1,5 +1,6 @@
 /** moveNodes, rotateNodes, mirrorNodes, reorderNodes planners. */
 import type { NodeId } from "../../base/ids/ids.js";
+import { mirroredRotation } from "../../data/model/node-frame.js";
 import type { QuarterTurns } from "../../data/model/values.js";
 import type { PatchOp } from "../../data/patch/types.js";
 import { ready, unknownEntity } from "./ops.js";
@@ -59,15 +60,22 @@ export const planRotateNodes: PlannerFor<"rotateNodes"> = (command, ctx) => {
 export const planMirrorNodes: PlannerFor<"mirrorNodes"> = (command, ctx) => {
   const bad = missing(ctx, command.nodes);
   if (bad) return bad;
+  const axis = command.axis ?? "horizontal";
   const ops: PatchOp[] = [];
   for (const id of new Set(command.nodes)) {
     const node = ctx.reader.getNode(id);
     if (!node) continue;
+    const rotation = mirroredRotation(node.rotation, axis);
     ops.push({
       op: "update",
       entity: "node",
       id,
-      fields: { mirrored: { old: node.mirrored, new: !node.mirrored } },
+      fields: {
+        mirrored: { old: node.mirrored, new: !node.mirrored },
+        ...(rotation === node.rotation
+          ? {}
+          : { rotation: { old: node.rotation, new: rotation } }),
+      },
     });
   }
   return ready("Mirror", ops, ctx.ids);

@@ -7,6 +7,7 @@ import { planConnect, planDisconnect, planReconnect } from "./connect.js";
 import { planCreateNode } from "./create-node.js";
 import { planDeleteEntities } from "./delete-entities.js";
 import { rejected } from "./ops.js";
+import { planResizeNode } from "./resize-node.js";
 import { planSetPorts } from "./set-ports.js";
 import {
   planMirrorNodes,
@@ -33,6 +34,8 @@ export function planCommand(command: Command, ctx: PlanContext): PlanResult {
       return planMoveNodes(command, ctx);
     case "rotateNodes":
       return planRotateNodes(command, ctx);
+    case "resizeNode":
+      return planResizeNode(command, ctx);
     case "mirrorNodes":
       return planMirrorNodes(command, ctx);
     case "reorderNodes":
