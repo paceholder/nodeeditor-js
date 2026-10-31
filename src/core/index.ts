@@ -113,6 +113,9 @@ export type {
   CommandKind,
   EntityIds,
   ExecuteResult,
+  ExternalHandling,
+  FragmentPlanners,
+  Placement,
   PlanEffects,
   PlanResult,
   PortEdit,
@@ -149,6 +152,7 @@ export type {
   SubmitOptions,
 } from "./graph-model.js";
 export { createGraphModel } from "./graph-model.js";
+export * from "./io/fragment/index.js";
 export * from "./io/snapshot/index.js";
 export * from "./space/geometry/index.js";
 export * from "./space/scene/index.js";

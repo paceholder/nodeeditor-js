@@ -71,3 +71,26 @@ describe("snapshot API on the core entry", () => {
     }
   });
 });
+
+describe("clipboard fragment API on the core entry", () => {
+  it("exposes extraction, the text form and the marker", () => {
+    for (const fn of [
+      core.extractFragment,
+      core.fragmentToText,
+      core.parseFragmentText,
+      core.parseFragmentValue,
+    ]) {
+      expect(typeof fn).toBe("function");
+    }
+    expect(core.FRAGMENT_FORMAT).toBe("nodeeditor-js/fragment");
+    expect(core.FRAGMENT_VERSION).toBe(1);
+    const placement: core.Placement = { kind: "offset", by: { x: 1, y: 1 } };
+    const excluded: core.ExcludedReference[] = [];
+    const fragment: core.ClipboardFragment | undefined = undefined;
+    expect([placement.kind, excluded, fragment]).toEqual([
+      "offset",
+      [],
+      undefined,
+    ]);
+  });
+});
