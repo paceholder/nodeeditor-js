@@ -39,6 +39,11 @@ import type { EventHub } from "./edit/events/event-hub.js";
 import { createDefaultConnectionPolicy } from "./edit/policy/default-policy.js";
 import type { ConnectionPolicy } from "./edit/policy/types.js";
 import { createPolicyValidator } from "./edit/policy/validator.js";
+import { createFragmentPlanners } from "./io/fragment/plan-paste.js";
+import type {
+  PayloadCodecRegistry,
+  SnapshotLimits,
+} from "./io/snapshot/snapshot-errors.js";
 
 export interface GraphModelOptions extends LocalAdapterOptions {
   /** Node types known to this model. Defaults to an empty registry. */
@@ -49,6 +54,10 @@ export interface GraphModelOptions extends LocalAdapterOptions {
   readonly capabilityPolicy?: CapabilityPolicy;
   /** Denies every edit while reads keep working (MOD-11). */
   readonly readOnly?: boolean;
+  /** Codecs for non-JSON payloads in pasted and duplicated fragments (SER-02). */
+  readonly payloadCodecs?: PayloadCodecRegistry;
+  /** Size limits for pasted fragments (SAFE-03). Defaults to `DEFAULT_SNAPSHOT_LIMITS`. */
+  readonly fragmentLimits?: Partial<SnapshotLimits>;
 }
 
 export interface SubmitOptions {
@@ -94,6 +103,10 @@ export interface GraphModel
     CommandApi,
     ConvenienceMethods {
   readonly registry: NodeTypeRegistry;
+  /** The codecs paste and duplicate use; copy should pass the same ones. */
+  readonly payloadCodecs?: PayloadCodecRegistry;
+  /** The fragment limits paste uses. */
+  readonly fragmentLimits?: Partial<SnapshotLimits>;
 }
 
 export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
@@ -123,9 +136,26 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
       reportRejection: (id, rejection) =>
         adapter.reportRejection(id, rejection),
     },
-    { registry, policy, validators },
+    {
+      registry,
+      policy,
+      validators,
+      fragments: createFragmentPlanners({
+        ...(options.payloadCodecs ? { codecs: options.payloadCodecs } : {}),
+        ...(options.fragmentLimits ? { limits: options.fragmentLimits } : {}),
+      }),
+    },
   );
-  return { ...core, ...api, ...createConvenience(api), registry };
+  return {
+    ...core,
+    ...api,
+    ...createConvenience(api),
+    registry,
+    ...(options.payloadCodecs ? { payloadCodecs: options.payloadCodecs } : {}),
+    ...(options.fragmentLimits
+      ? { fragmentLimits: options.fragmentLimits }
+      : {}),
+  };
 }
 
 function buildCore(adapter: LocalAdapter): GraphModelCore {

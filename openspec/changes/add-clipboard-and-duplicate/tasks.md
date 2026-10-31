@@ -21,9 +21,9 @@
 
 ## 4. Model facade and public API
 
-- [ ] 4.1 Wire the fragment planners into `createGraphModel` and add the `payloadCodecs` and `fragmentLimits` options (D10); verify `src/core/io/fragment/paste-model.test.ts` titled EDT-03, EDT-05, TXN-01, INT-08 through `model.execute`: one paste is one history entry, one undo removes all pasted entities, the accepted result lists the new IDs as changed, an oversized fragment and a read-only model reject with the graph unchanged, and a host policy refusing an internal connection rejects the whole paste (CON-03)
-- [ ] 4.2 Add a cut sequence test in `src/core/io/fragment/cut-model.test.ts` titled EDT-06, EDT-02: extract then `deleteEntities` adds one history entry, undo restores original IDs, and a delete-protected node makes `can(deleteEntities)` unavailable before any extraction
-- [ ] 4.3 Export `extractFragment`, `fragmentToText`, `parseFragmentText`, `FRAGMENT_FORMAT` and the fragment types from `src/core/index.ts`; verify `src/core/index.test.ts` lists them and `npm run build` emits their declarations
+- [x] 4.1 Wire the fragment planners into `createGraphModel` and add the `payloadCodecs` and `fragmentLimits` options (D10); verify `src/core/io/fragment/paste-model.test.ts` titled EDT-03, EDT-05, TXN-01, INT-08 through `model.execute`: one paste is one history entry, one undo removes all pasted entities, the accepted result lists the new IDs as changed, an oversized fragment and a read-only model reject with the graph unchanged, and a host policy refusing an internal connection rejects the whole paste (CON-03)
+- [x] 4.2 Add a cut sequence test in `src/core/io/fragment/cut-model.test.ts` titled EDT-06, EDT-02: extract then `deleteEntities` adds one history entry, undo restores original IDs, and a delete-protected node makes `can(deleteEntities)` unavailable before any extraction
+- [x] 4.3 Export `extractFragment`, `fragmentToText`, `parseFragmentText`, `FRAGMENT_FORMAT` and the fragment types from `src/core/index.ts`; verify `src/core/index.test.ts` lists them and `npm run build` emits their declarations
 
 ## 5. View clipboard service and commands (headless)
 
