@@ -1,6 +1,7 @@
 export type {
   GeometryScene,
   GeometrySceneOptions,
+  NodePlacementChange,
   SceneItem,
   SceneLayer,
   SceneSource,

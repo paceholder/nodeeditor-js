@@ -95,3 +95,33 @@ describe("image-symbol port placement", () => {
     expect(applyVector(t, anchor.normal)).toEqual({ x: -1, y: 0 });
   });
 });
+
+describe("image-symbol anchors under resize", () => {
+  it("Port anchors follow the new size: edge-midpoint and fractional placements stay on their edge", () => {
+    const g = createImageSymbolGeometry();
+    const placements = [
+      { x: 1, y: 0.5 },
+      { x: 0.25, y: 0 },
+      { x: 0, y: 0.8 },
+      { x: 0.6, y: 1 },
+    ];
+    const resized = (width: number, height: number): NodeView => {
+      const v = symbol(placements);
+      return { ...v, node: { ...v.node, size: { width, height } } };
+    };
+    for (const [w, h] of [
+      [25, 49],
+      [50, 49],
+      [80, 30],
+    ] as const) {
+      const a = g.anchors(resized(w, h)).map((x) => x.position);
+      // Right-edge midpoint, top edge at a quarter, left edge, bottom edge.
+      expect(a[0]).toEqual({ x: w / 2, y: 0 });
+      expect(a[1]).toEqual({ x: -w / 2 + w * 0.25, y: -h / 2 });
+      expect(a[2]?.x).toBe(-w / 2);
+      expect(a[2]?.y).toBeCloseTo(-h / 2 + h * 0.8, 9);
+      expect(a[3]?.y).toBe(h / 2);
+      expect(a[3]?.x).toBeCloseTo(-w / 2 + w * 0.6, 9);
+    }
+  });
+});

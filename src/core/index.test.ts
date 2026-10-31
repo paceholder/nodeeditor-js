@@ -94,3 +94,27 @@ describe("clipboard fragment API on the core entry", () => {
     ]);
   });
 });
+
+describe("resize and mirror API on the core entry", () => {
+  it("exposes anchored resizing, size limits and the mirror axis", () => {
+    const fixed: core.ResizeFixed = { x: -1, y: 1 };
+    const limits: core.SizeLimits = { min: { width: 5, height: 5 } };
+    const hook: core.SizeLimitPolicy = () => limits;
+    const resolved: core.ResolvedSizeLimits = core.DEFAULT_SIZE_LIMITS;
+    const axis: core.MirrorAxis = "vertical";
+    expect(
+      core.anchoredPosition(
+        {
+          position: { x: 0, y: 0 },
+          size: { width: 10, height: 10 },
+          rotation: 0,
+          mirrored: false,
+        },
+        { width: 20, height: 10 },
+        fixed,
+      ),
+    ).toEqual({ x: 5, y: 0 });
+    expect(resolved.min).toEqual({ width: 1, height: 1 });
+    expect([typeof hook, axis]).toEqual(["function", "vertical"]);
+  });
+});

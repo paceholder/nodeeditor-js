@@ -9,7 +9,7 @@
 
 import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import type { ConnectionRecord } from "../../data/model/records.js";
+import type { ConnectionRecord, NodeRecord } from "../../data/model/records.js";
 import type { EventHub } from "../../edit/events/event-hub.js";
 import type { ChangeEvent } from "../../edit/events/types.js";
 import type { RouteMode } from "../geometry/connection-paths.js";
@@ -49,8 +49,19 @@ export interface SceneStats {
   readonly indexWrites: number;
 }
 
+/** A hypothetical placement and size for `GeometryScene.project`. */
+export type NodePlacementChange = Partial<
+  Pick<NodeRecord, "position" | "size" | "rotation" | "mirrored">
+>;
+
 export interface GeometryScene {
   node(id: NodeId): NodeEntry | undefined;
+  /**
+   * The entry the scene would build for node `id` with `change` applied, through the
+   * registered geometry, without touching the index or the cache. For previews
+   * such as a resize; `undefined` for an unknown node or an invalid placement.
+   */
+  project(id: NodeId, change: NodePlacementChange): NodeEntry | undefined;
   connection(id: ConnectionId): ConnectionEntry | undefined;
   /**
    * Culling query: items whose painted (default) or hit bounds intersect `rect`, in paint
@@ -196,6 +207,15 @@ export function createGeometryScene(
   return {
     node: (id) => nodes.get(id),
     connection: (id) => connections.get(id),
+    project(id, change) {
+      const record = reader.getNode(id);
+      if (!record) return undefined;
+      return buildNodeEntry(
+        { node: { ...record, ...change }, ports: reader.portsOf(id) },
+        reader.seqOf(id) ?? 0,
+        registry.get(record.type),
+      );
+    },
     queryRect: (rect, bounds = "painted") => query.queryRect(rect, bounds),
     pick: (point, o) =>
       pickAt(

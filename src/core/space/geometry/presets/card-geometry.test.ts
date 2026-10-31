@@ -36,6 +36,21 @@ describe("card port rows", () => {
     expect(a[1]?.normal).toEqual({ x: 0, y: 1 });
   });
 
+  it("rows sit at a fixed distance from the top, clamped to the bottom edge when the body is short", () => {
+    const g = createCardGeometry({ titleHeight: 30, rowPitch: 20 });
+    const sized = (height: number): NodeView => ({
+      ...card,
+      node: mkNode("n1", { size: { width: 100, height } }),
+    });
+    // Tall enough for both input rows (title + 2 rows = 70): rows keep their offsets.
+    const tall = g.anchors(sized(120)).map((x) => x.position.y + 60);
+    expect([tall[0], tall[2]]).toEqual([40, 60]);
+    // Shorter than the rows: the second input stacks on the bottom corner.
+    const short = g.anchors(sized(50));
+    expect(short[0]?.position).toEqual({ x: -50, y: -25 + 30 + 10 });
+    expect(short[2]?.position).toEqual({ x: -50, y: 25 });
+  });
+
   it("rows never extend below the body", () => {
     const small: NodeView = {
       ...card,
