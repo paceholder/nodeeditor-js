@@ -14,10 +14,10 @@
 
 ## 3. Paste and duplicate planning (core/io/fragment)
 
-- [ ] 3.1 Implement `remap.ts` (old-to-new ID maps in the D5 allocation order, endpoint rewriting) and the placement transform; verify `remap.test.ts` titled EDT-03, MOD-03 that every node, port and connection ID is new, endpoints point at the new ports of the new nodes, and allocating after a deletion never reuses a retired ID
-- [ ] 3.2 Implement `planPaste` in `plan-paste.ts` (D5: validate, `unknown-type`/`not-creatable`, remap, `center`/`offset` placement, front `z` keeping relative order, one add-only patch labelled "Paste"); verify `plan-paste.test.ts` titled EDT-03, EDT-05, PAT-04: pasting twice gives disjoint fresh IDs, the bounding-box centre lands on `at`, `offset` moves every node by `by`, the source entities are unchanged, and an unregistered type rejects naming it
-- [ ] 3.3 Implement external-reference handling (D6: default exclude reported in `effects.excluded`; `preserve` re-creates via `ctx.policy.evaluate` or excludes with `endpoint-missing` or the policy's code); verify `plan-paste-external.test.ts` titled EDT-04 covering all three scenarios of EDT-04 in the delta spec
-- [ ] 3.4 Implement `planDuplicate` as extract-then-paste on the current reader, labelled "Duplicate"; verify `plan-duplicate.test.ts` titled EDT-03 ("Duplicate connected pair", "Dynamic ports and payload copied") and that duplicate and paste of the same selection with the same placement produce equal patches apart from labels
+- [x] 3.1 Implement `remap.ts` (old-to-new ID maps in the D5 allocation order, endpoint rewriting) and the placement transform; verify `remap.test.ts` titled EDT-03, MOD-03 that every node, port and connection ID is new, endpoints point at the new ports of the new nodes, and allocating after a deletion never reuses a retired ID
+- [x] 3.2 Implement `planPaste` in `plan-paste.ts` (D5: validate, `unknown-type`/`not-creatable`, remap, `center`/`offset` placement, front `z` keeping relative order, one add-only patch labelled "Paste"); verify `plan-paste.test.ts` titled EDT-03, EDT-05, PAT-04: pasting twice gives disjoint fresh IDs, the bounding-box centre lands on `at`, `offset` moves every node by `by`, the source entities are unchanged, and an unregistered type rejects naming it
+- [x] 3.3 Implement external-reference handling (D6: default exclude reported in `effects.excluded`; `preserve` re-creates via `ctx.policy.evaluate` or excludes with `endpoint-missing` or the policy's code); verify `plan-paste-external.test.ts` titled EDT-04 covering all three scenarios of EDT-04 in the delta spec
+- [x] 3.4 Implement `planDuplicate` as extract-then-paste on the current reader, labelled "Duplicate"; verify `plan-duplicate.test.ts` titled EDT-03 ("Duplicate connected pair", "Dynamic ports and payload copied") and that duplicate and paste of the same selection with the same placement produce equal patches apart from labels
 
 ## 4. Model facade and public API
 

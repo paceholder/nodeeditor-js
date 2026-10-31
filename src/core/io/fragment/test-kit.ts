@@ -2,6 +2,7 @@
 import type { NodeId } from "../../base/ids/ids.js";
 import { ok } from "../../base/result.js";
 import { createIdAllocator } from "../../edit/commands/id-allocator.js";
+import { end, make } from "../../edit/commands/test-kit.js";
 import type { PlanContext } from "../../edit/commands/types.js";
 import { createDefaultConnectionPolicy } from "../../edit/policy/default-policy.js";
 import type { ConnectionPolicy } from "../../edit/policy/types.js";
@@ -10,6 +11,8 @@ import {
   createPayloadCodecRegistry,
   type PayloadCodecRegistry,
 } from "../snapshot/snapshot-errors.js";
+import { extractFragment } from "./extract.js";
+import type { ClipboardFragment } from "./fragment-types.js";
 
 export {
   end,
@@ -61,4 +64,24 @@ export function dateCodecs(type: string): PayloadCodecRegistry {
         : ok({ when: new Date((j as { when: number }).when) } as never),
   });
   return codecs;
+}
+
+/** Two connected pipes plus a third joined to the second; returns the copied pair. */
+export function pairWithNeighbour(model: GraphModel) {
+  const a = make(model, "pipe", 0, 0);
+  const b = make(model, "pipe", 100, 40);
+  const c = make(model, "pipe", 300, 0);
+  model.connect(end(a, 1), end(b, 0));
+  model.connect(end(b, 1), end(c, 0));
+  return { a, b, c };
+}
+
+/** Extract a fragment of `nodes` or throw. */
+export function fragmentOf(
+  model: GraphModel,
+  nodes: readonly NodeId[],
+): ClipboardFragment {
+  const r = extractFragment(model.reader, { nodes });
+  if (!r.ok) throw new Error(`extract failed: ${r.error.message}`);
+  return r.value.fragment;
 }
