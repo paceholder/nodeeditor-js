@@ -137,7 +137,7 @@ Seen in the demo with the option on:
 - 4 s into the pan at zoom 0.23: the graph is drawn, and the empty lower part is the
   graph's edge. The exact frame after Stop shows the same edge.
 
-## Task 7.1: culled F-LARGE pan at DPR 2 (not closed, reported)
+## Task 7.1: culled F-LARGE pan at DPR 2
 
 ### Profile
 
@@ -200,3 +200,36 @@ diff) came out 1.8 to 3.6 times slower than on 2026-10-30, so the DPR 2 pan regr
 cannot be attributed to the change from this run. It was not committed; the files are kept
 outside the repository. The baseline has to be rerun on an idle machine before 7.3 and the
 7.1 verdict on the headed 120 Hz display.
+
+### Verdict (task 7.3 baseline)
+
+The idle-machine baseline (`bench/baseline/2026-10-30-chrome-perf.json`, headed, 120 Hz
+display, on AC power) measures the culled F-LARGE pan at DPR 2 at p95 16.6 ms and p99
+18.1 ms (frame interval), latency p95 21.2 ms: the target (p95 <= 16.7 ms) is met, and
+the DPR 2 zoom improved from 16.6 / 23.9 to 10.1 / 15.5 ms. The per-painter
+`save`/`restore` stays as the largest cost; changing that contract is left to a later
+change.
+
+## Task 7.3: baseline
+
+`BENCH_BASELINE_SUFFIX=perf npm run bench:baseline` (headed installed Chrome 156,
+2026-10-31 00:40 to 00:53, load about 2.5), compared with the 2026-10-30 baseline in
+`bench/baseline/SUMMARY.md`. Every browser row meets its target:
+
+| Row | 2026-10-30 p95 / p99 | Now p95 / p99 |
+| --- | --- | --- |
+| drag F-LARGE pick, DPR 1 | 2.7 / 3.5 (missed) | 1.0 / 1.3 |
+| drag F-LARGE pick, DPR 2 | 2.7 / 3.5 (missed) | 0.9 / 1.3 |
+| pan F-LARGE frame interval, DPR 2 | 16.8 / 25.0 (missed) | 16.6 / 18.1 |
+| overview-pan frame interval, DPR 1 / 2 | - | 16.8 / 16.8 |
+| overview-zoom frame interval, DPR 1 / 2 | - | 25.1 / 25.1 |
+
+One headless row is reported as missed: "culling query at fit-all" (the bare world box,
+p95 20.1 ms against 2 ms). It is the uncached diagnostic case described above; the query
+the view makes at fit-all ("culling query at fit-all viewport") is p95 0.03 ms.
+
+Three earlier attempts the same evening, and six diagnostic runs, failed with "Browser
+connection was closed while running tests", headed and headless, at random points. Every failure coincided with the
+display turning off (2 min display sleep, on battery), followed by idle system sleep; the
+page itself neither crashed nor closed. The successful run kept the display awake with
+`caffeinate -d -i`.
