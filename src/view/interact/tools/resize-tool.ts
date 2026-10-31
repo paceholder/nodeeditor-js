@@ -145,6 +145,7 @@ export const resizeTool: Tool<ResizeState> = {
   accepts: ({ input, spaceHeld }, ctx) =>
     input.button === 0 && !spaceHeld && gripAt(input.world, ctx) !== undefined,
   isIdle: (state) => state.kind === "idle",
+  autoPans: (state) => state.kind === "dragging",
   transition(state, input, ctx) {
     switch (state.kind) {
       case "idle": {

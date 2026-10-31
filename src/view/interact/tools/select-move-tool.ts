@@ -194,6 +194,7 @@ export const selectMoveTool: Tool<SelectMoveState> = {
   accepts: ({ input, hits, spaceHeld }) =>
     input.button === 0 && !spaceHeld && targetOf(hits) !== undefined,
   isIdle: (state) => state.kind === "idle",
+  autoPans: (state) => state.kind === "dragging",
   transition(state, input, ctx) {
     switch (state.kind) {
       case "idle": {

@@ -60,3 +60,15 @@ Deviations from design.md, clarifications made while implementing, and observati
   `transform-commands.ts` can use it without an import cycle (builtin registers the
   transform commands). Bad arguments to nodes.rotate / nodes.mirror are unavailable with
   `invalid-shape`.
+- **Auto-pan arming starts at the press, not at the first auto-panning move.** The
+  driver's `update` takes every routed `ToolInput`: a pointer-down records the arming
+  start, pointer-moves update the arm and are remembered for replay, and anything that
+  leaves the router without an active pointer resets it. Arming at the first dragging
+  move would wrongly hold back a fast flick from the middle of the view to the edge.
+  Other inputs during a gesture (a wheel zoom) keep the last move, so panning goes on.
+- **The first frame after a start integrates 1/60 s**; later frames use the clock time
+  difference, capped at 50 ms. The replayed move carries the frame time as `time`.
+- **Arming per D10**: armed once the pointer is outside every band, or deeper toward an
+  edge than at the press (including entering the band of another edge).
+- **The tool harness gained `applyViewport(op)`** so the driver test can pan the
+  harness viewport the way the view's viewport state does.

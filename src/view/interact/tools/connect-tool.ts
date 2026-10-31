@@ -97,6 +97,7 @@ export const connectTool: Tool<ConnectState> = {
   accepts: ({ input, hits, spaceHeld }) =>
     input.button === 0 && !spaceHeld && portAt(hits) !== undefined,
   isIdle: (state) => state.kind === "idle",
+  autoPans: (state) => state.kind === "dragging",
   transition(state, input, ctx) {
     if (state.kind === "idle") return idle(input, ctx);
     const own =

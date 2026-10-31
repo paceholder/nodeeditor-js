@@ -161,4 +161,9 @@ export interface Tool<S> {
   accepts(press: PressInfo, ctx: ToolContext): boolean;
   transition(state: S, input: ToolInput, ctx: ToolContext): Transition<S>;
   isIdle(state: S): boolean;
+  /**
+   * Whether this state drags something the view should auto-pan for near an edge
+   * (INT-09). Omitted: never. Pan tools never do.
+   */
+  autoPans?(state: S): boolean;
 }

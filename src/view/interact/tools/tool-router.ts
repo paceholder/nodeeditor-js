@@ -24,6 +24,8 @@ export interface ToolSlot {
 export interface Gesture {
   step(input: ToolInput, ctx: ToolContext): readonly ToolEffect[];
   isIdle(): boolean;
+  /** The tool's `autoPans` for the current state (INT-09). */
+  autoPans(): boolean;
 }
 
 export function toolSlot<S>(tool: Tool<S>): ToolSlot {
@@ -39,6 +41,7 @@ export function toolSlot<S>(tool: Tool<S>): ToolSlot {
           return next.effects;
         },
         isIdle: () => tool.isIdle(state),
+        autoPans: () => tool.autoPans?.(state) === true,
       };
     },
   };
@@ -59,6 +62,8 @@ export interface ToolRouter {
   readonly activeTool: string | undefined;
   readonly activePointer: number | undefined;
   readonly spaceHeld: boolean;
+  /** Whether the active gesture wants auto-pan near the view edge now (INT-09). */
+  autoPanning(): boolean;
 }
 
 const IGNORED: RouteResult = { effects: [], handled: false };
@@ -108,6 +113,7 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
     get spaceHeld() {
       return space;
     },
+    autoPanning: () => active?.gesture.autoPans() === true,
     handle(input, ctx) {
       switch (input.type) {
         case "pointer-down":
