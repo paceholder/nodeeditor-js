@@ -17,7 +17,13 @@ builds on:
 - **Capabilities.** `validator.ts` maps each changed node field to an action in fixed
   order: `position → move`, `size → resize`, `rotation → rotate`, `mirrored → mirror`, and
   refuses the patch on the first denied action. A patch that changes `size` and `position`
-  together therefore needs both `resize` and `move` today.
+  together therefore needs both `resize` and `move` today. Resolution
+  (`resolve.ts`) takes the first opinion among read-only mode, the host
+  `CapabilityPolicy`, the record's `capabilities` override and the type's
+  `capabilities` default; with no opinion **every action is allowed**, `resize` included.
+  External-origin patches (external adapters, snapshot-mode diffs) are not checked.
+  Nothing in `src/` submits a local `size` change today (no planner writes `size`; grep
+  finds no test that does), so only the validator's field map mentions `resize`.
 - **Size limits.** None exist: `NodeTypeDefinition` has `defaultSize` only, and nothing
   reads a minimum or maximum. `isFiniteSize` allows zero.
 - **Port anchors as a function of size.** Every geometry computes anchors from the body
@@ -35,7 +41,8 @@ builds on:
   in `src/view/interact/tools/`, chosen on press by fixed precedence in
   `default-tools.ts` (pan, connect, select-move, empty-pan, marquee). The router holds one
   gesture; `dom-input.ts` turns DOM events into `ToolInput` and runs effects. Previews are
-  `ToolPreview` values painted by `preview-host.ts` on the interaction layer; a move
+  `ToolPreview` values painted by `preview-host.ts` on the interaction layer; snapping is
+  off unless `gridStep` is set, and Alt suppresses it during a move; a move
   preview hides the moved entities from the scene layer and ghosts them with the scene
   painters. `capabilityProbe` answers `move` and `delete` with trial commands and says
   "available" for every other action.
@@ -67,6 +74,40 @@ builds on:
 - Smooth (eased) auto-pan acceleration curves or inertia after release.
 
 ## Decisions
+
+### D0. Resizing is opt-in per node type
+
+A new last layer in `resolveCapability`, the library defaults `{ resize: false }`, sits
+below the type default. Every other action keeps its allow-by-default. A type opts in with
+the existing field:
+
+```ts
+registry.register({ type: "tank", label: "Tank", defaultSize, capabilities: { resize: true }, sizeLimits: { min: { width: 20, height: 20 } } });
+```
+
+The existing layer order still applies above it: a record override `{ resize: false }`
+turns one instance off (and `{ resize: true }` could turn one on), and a host
+`CapabilityPolicy` decides first. Without an opinion anywhere the action is denied with
+the existing `capability-denied` code, so `resizeNode` on a node of a type that did not
+opt in is rejected exactly like a resize of a locked node, the probe reports it
+unavailable, and the view shows no handle.
+
+Why this mechanism:
+
+- It reuses the capability model end to end (`can`, the probe, the validator, rejection
+  reasons, per-instance overrides); no second "is resizable" flag can disagree with it.
+- **Alternative: "declaring `sizeLimits` enables resizing".** Couples two concerns: a type
+  may want limits for documentation or for the API while never offering a handle, and the
+  record-override switch would no longer work.
+- **Alternative: keep allow-by-default and have the view hide the handle.** The API would
+  still resize every node, and the user asked for nodes not to be resizable all the time.
+
+Effect on existing behaviour: a **local** patch or command that changes `size` on a node
+whose type did not opt in is now rejected with `capability-denied` (raw `submit` and undo
+included, since they share the validator). External-origin patches are unaffected. No
+current code path or test does this (Context); task 1.4 runs the full suite to confirm and
+adds a test for the new default. The scenario from the type registration rule "Capability defaults from type" (a
+type declaring its nodes cannot be resized) stays true.
 
 ### D1. Size limits: type declaration plus a host hook, resolved by the model
 
@@ -132,7 +173,8 @@ Alternatives considered:
 - **Generic `updateNode` with `size` and `position`.** Callers would have to do the frame
   arithmetic, and the capability rule (D4) could not tell an anchored resize from a move.
 - **Fixed point as a world point.** Ambiguous when it is not on the body; the local
-  handle grid is exactly what both the tool and an API caller mean.
+  local grid of centre, edge midpoints and corners is what an API caller means, and the
+  tool's opposite corner is one of its points.
 
 ### D3. Clamp during the gesture, reject at the API; enforce at plan time only
 
@@ -166,8 +208,8 @@ way.
 
 Alternative considered: **keep checking `move` for every position change.** Then a node
 that may resize but not move (a common "locked in place, adjustable" case) could only be
-resized about its centre, and the left/top handles would always fail. Rejected; flagged in
-Open Questions for confirmation.
+resized about its centre, and the corner handle (which fixes the opposite corner) would
+always fail. Rejected; confirmed by the user (Resolved Questions).
 
 ### D5. Mirror axes are screen axes
 
@@ -186,8 +228,10 @@ For `r = 0` the horizontal row is exactly today's behaviour (toggle only). For o
 today's planner flips the node's local x, which on screen is a *vertical* flip; this change
 makes M always flip left↔right on screen, matching R (which is already a screen turn) and
 what a user sees. Vertical mirror is "horizontal mirror plus a half turn", one update op,
-one history entry, no data-format change (user decision). Pending confirmation of the axis
-frame: Open Questions 1.
+one history entry, no data-format change. Both the screen-axis frame and the
+half-turn encoding are user decisions (Resolved Questions). Existing tests that mirror a
+node at an odd quarter turn and expect only `mirrored` to change must be updated; task 2.2
+lists them.
 
 ### D6. Port anchors under resize
 
@@ -198,7 +242,7 @@ card nodes should declare a minimum height covering their port rows; the guide s
 (`titleHeight + rowPitch · rows`). The connection paths of incident connections follow
 through the existing scene rebuild.
 
-### D7. Resize tool
+### D7. Resize tool: one corner handle
 
 New tool `resize` in `src/view/interact/tools/resize-tool.ts`, inserted in the router
 order **before `connect`**: `pan, resize, connect, select-move, empty-pan, marquee`.
@@ -206,46 +250,50 @@ order **before `connect`**: `pan, resize, connect, select-move, empty-pan, marqu
 ```ts
 type ResizeState =
   | { kind: "idle" }
-  | { kind: "pressed"; pointerId; pointerType; startViewport; node: NodeId; handle: Handle; start: NodeRecord }
-  | { kind: "dragging"; pointerId; node; handle; start: NodeRecord; size: Size; position: Vec2 };
-type Handle = { x: -1 | 0 | 1; y: -1 | 0 | 1 }   // never { 0, 0 }; the fixed point is its negation
+  | { kind: "pressed"; pointerId; pointerType; startViewport; node: NodeId; corner: LocalCorner; start: NodeRecord }
+  | { kind: "dragging"; pointerId; node; corner; start: NodeRecord; size: Size; position: Vec2 };
+type LocalCorner = { x: -1 | 1; y: -1 | 1 }   // the handle's corner in the local frame; the fixed point is its negation
 ```
 
-- **When handles exist:** exactly one node selected (and no connection), the node is in
-  the scene, and `ctx.can("resize", id)` is available. `capabilityProbe` gains `resize`
-  (a trial `resizeNode` one unit wider, or narrower when at the maximum; when `min = max`
-  on both axes the node reports unavailable with `out-of-range`), `rotate` and `mirror`
-  (trial `rotateNodes` / `mirrorNodes`).
-- **Handle geometry** (`src/view/render/paint/previews/resize-handles.ts`, shared by the
-  painter and the tool, next to `preview-types.ts` for the same reason): the eight points
-  `(hx · w/2, hy · h/2)` of the stored size box, mapped by the entry's `toWorld` and then to
-  viewport space. Handles are 8 × 8 CSS pixels (`handleSizePx`), drawn centred on
-  those points, independent of zoom. Edge-midpoint handles are omitted when that side is
-  shorter than 3 handle sizes on screen; corners always show. Picking is geometric: the
-  handle whose viewport square contains the press, nearest centre first; no pixel reads.
-- **Why handles beat ports:** handles exist only on the one selected node, are small and
-  visible, and a port under a handle stays reachable from the rest of its capture circle
-  (8 px radius vs. a 4 px handle half-size). Ports winning would make the side handles of
-  every two-port symbol (ports at the left and right midpoints) unusable. Open Questions 3.
+- **When the handle exists:** exactly one node selected (and no connection), the node is
+  in the scene, and `ctx.can("resize", id)` is available, which by D0 means its type (or
+  an override or the host policy) opted in. `capabilityProbe` gains `resize` (a trial
+  `resizeNode` one unit wider, or narrower when at the maximum; when `min = max` on both
+  axes the node reports unavailable with `out-of-range`), `rotate` and `mirror` (trial
+  `rotateNodes` / `mirrorNodes`).
+- **Which corner (`src/view/render/paint/previews/resize-handle.ts`, shared by the painter
+  and the tool, next to `preview-types.ts` for the same reason):** map the four corners
+  `(±w/2, ±h/2)` of the stored size box through the entry's `toWorld`; the handle corner is
+  the one with the largest screen x and largest screen y (unique for quarter turns). Its
+  local coordinates give `LocalCorner`; the tool commits with `fixed = −corner`, so the
+  diagonally opposite screen corner (top-left on screen) stays put.
+- **Shape and picking:** an 8 × 8 CSS-pixel square (`handleSizePx`) inside the
+  body, with its outer corner on the body corner, independent of zoom; drawn as a grip like
+  the corner resize mark familiar from desktop node editors. Picking is geometric: the press
+  in viewport space inside that square; no pixel reads.
+- **Ports do not compete:** the handle sits on the one corner of one selected, opted-in
+  node, and ports normally sit on edges. If a port anchor coincides with that corner, the
+  handle wins inside its square (the router asks the resize tool first) and the port
+  connects from the rest of its capture circle (8 px radius vs. the 8 px square inside the
+  body). A press never starts both.
 - **Dragging:** the pointer is mapped into the local frame with the start entry's
   `toLocal`, so rotation and mirroring need no special cases. With local pointer delta `d`,
-  `w′ = w + hx · d.x` for `hx ≠ 0`, `h′ = h + hy · d.y` for `hy ≠ 0`. Pure helpers in
-  `resize-math.ts`:
-  - **Shift (aspect):** corner handles take the scale factor of the axis with the larger
-    relative change and apply it to both; edge handles scale the other axis by the same
-    factor, symmetric about the fixed edge's midpoint (fixed point `{hx, 0}` becomes
-    `{−hx, 0}` on that axis and `0` on the other).
+  `w′ = w + corner.x · d.x`, `h′ = h + corner.y · d.y`. Pure helpers in `resize-math.ts`:
+  - **Shift (aspect):** take the scale factor of the axis with the larger relative change
+    and apply it to both.
   - **Clamp:** to `ctx.sizeLimits(id)`; with Shift the common factor is clamped so both axes
     stay inside (limits win over the ratio when they cannot both hold).
-  - **Snap:** off by default. With `gridStep` set, the moving edge's world coordinate snaps
-    to the grid (edges are axis-aligned in world for quarter turns), Alt suppresses, as for
-    moves.
+  - **Snap:** only when `gridStep` is set: the moving corner's world coordinates snap to the
+    grid (body edges are axis-aligned in world for quarter turns). Alt suppresses it, the
+    existing move convention.
   - New position via `anchoredPosition(start, size′, fixed)`.
 - **Release:** one `commit` of `{ kind: "resizeNode", node, size, fixed }` if the size
   changed, then `preview: null`. Below the drag threshold nothing is committed and the
   selection is unchanged. `cancel` of any reason and `entities-removed` for the node discard
-  the preview. Cursor: `nwse-resize`/`nesw-resize`/`ew-resize`/`ns-resize` from the
-  handle's *screen* direction (`CursorKind` gains these four).
+  the preview. Cursor: `nwse-resize` (the handle is always the screen bottom-right
+  corner); `CursorKind` gains it.
+- The `resizeNode` command keeps its general `fixed` point for API callers (centre, edges,
+  corners); the tool only ever uses the opposite corner.
 
 ### D8. Resize preview and handle painting
 
@@ -258,9 +306,9 @@ type Handle = { x: -1 | 0 | 1; y: -1 | 0 | 1 }   // never { 0, 0 }; the fixed po
   `GeometryScene.project(id, change: { position?, size?, rotation?, mirrored? })`, which
   runs the registered geometry through the existing `buildNodeEntry` without touching the
   index. Painters never compute geometry themselves.
-- `resize-handles-painter.ts` is an interaction-layer painter (order 20, above previews)
+- `resize-handle-painter.ts` is an interaction-layer painter (order 20, above previews)
   fed by a source closure that the mount wiring builds from the selection, the probe and the
-  preview: no handles during a move preview, handles at the preview frame during a resize.
+  preview: no handle during a move preview, the handle at the preview frame during a resize.
   The interaction layer is invalidated when the selection or that node changes.
 
 ### D9. Rotate and mirror editor commands and keys
@@ -272,7 +320,8 @@ type Handle = { x: -1 | 0 | 1; y: -1 | 0 | 1 }   // never { 0, 0 }; the fixed po
 - `nodes.mirror` with args `{ axis: "horizontal" | "vertical" }` → `mirrorNodes` likewise.
 
 Filtering locked nodes and refusing only when none remain follows `nodes.nudge` (the group movement and snapping rule's
-"mixed locked selection"). Each node turns or flips about its own centre (Open Questions 2).
+"mixed locked selection"). Each node turns or flips about its own centre (user decision);
+a rigid group transform about the selection's centre would be a later, separate command.
 `DEFAULT_KEYMAP` gains `R`, `Shift+R`, `M`, `Shift+M`. Single letters are safe because
 `shouldHandleKey` already excludes text fields, contentEditable and IME, and
 `dom-input.ts` runs no shortcut during a gesture.
@@ -294,7 +343,9 @@ Three pieces, so each is testable alone:
    **Arming:** a gesture that starts inside the band does not pan until the pointer has
    been outside the band once or moved closer to that edge than where it started, so
    grabbing a node near the edge does not scroll the view.
-   `ToolOptions.autoPan: { edgePx: 32; maxSpeedPxPerSecond: 600 } | false`, default on.
+   `ToolOptions.autoPan: { edgePx: 32; maxSpeedPxPerSecond: 600 } | false`, on by default
+   (user decision); `false` turns it off. Unlike snapping it only acts during a drag that
+   is already at the edge.
 3. **Driver (`input/auto-pan-driver.ts`, DOM-free).** Takes a `FrameClock`, the router, the
    viewport size, and `send`. After every routed input it calls `update(lastMove)`: when the
    router is auto-panning and the velocity is non-zero it requests one frame (if none is
@@ -324,10 +375,10 @@ Alternatives considered:
 | Layer | New or changed file |
 | --- | --- |
 | core/data | `model/node-frame.ts` (new); `node-types/definition.ts`, `registry.ts` |
-| core/edit | `commands/resize-node.ts`, `commands/size-limits.ts`, `capabilities/compound-fields.ts` (new); `commands/types.ts`, `plan.ts`, `transform-nodes.ts`, `api.ts`, `convenience.ts`, `capabilities/validator.ts` |
+| core/edit | `capabilities/resolve.ts` (default `resize: false`); `commands/resize-node.ts`, `commands/size-limits.ts`, `capabilities/compound-fields.ts` (new); `commands/types.ts`, `plan.ts`, `transform-nodes.ts`, `api.ts`, `convenience.ts`, `capabilities/validator.ts` |
 | core/space | `scene/geometry-scene.ts` (`project`) |
 | core/facade | `graph-model.ts`, `index.ts` |
-| view/render | `paint/previews/resize-handles.ts`, `resize-handles-painter.ts`, `resize-preview-painter.ts`, `ghost-entries.ts` (new); `preview-types.ts`, `preview-host.ts`, `move-preview-painter.ts` |
+| view/render | `paint/previews/resize-handle.ts`, `resize-handle-painter.ts`, `resize-preview-painter.ts`, `ghost-entries.ts` (new); `preview-types.ts`, `preview-host.ts`, `move-preview-painter.ts` |
 | view/interact | `tools/resize-tool.ts`, `resize-math.ts`, `auto-pan.ts`, `input/auto-pan-driver.ts`, `input/pointer-input.ts`, `commands/transform-commands.ts` (new); `tool-types.ts`, `tool-router.ts`, `tool-context.ts`, `thresholds.ts`, `default-tools.ts`, `keymap.ts`, `builtin-commands.ts`, `dom-input.ts` |
 | view/mount | `view-editing.ts` (wiring); `view-types.ts` |
 
@@ -348,7 +399,7 @@ sequenceDiagram
   participant R as router + resize tool
   participant P as preview host
   participant M as model
-  U->>D: press on a handle of the selected node
+  U->>D: press on the corner handle of the selected node
   D->>R: pointer-down (resize precedes connect)
   R-->>D: capture, cursor
   U->>D: pointer moves
@@ -388,14 +439,18 @@ sequenceDiagram
 
 - [Mirror semantics change for nodes at odd quarter turns] → Pre-release, no consumers;
   for `r = 0` and `r = 2` the result is unchanged. Undo of mirrors made before the change
-  is unaffected (patches carry old and new values). Pending confirmation (Open Questions 1).
+  is unaffected (patches carry old and new values).
+- [Resize default flips from allowed to denied] → Only local size changes on types that
+  did not opt in are affected, and nothing does that today (D0); the guide and the
+  migration note say how to opt in.
 - [Compound capability rule could let a raw patch nudge a move-locked node] → Bounded: the
   position change must be no larger than the size change implies, so a "move" disguised as
   a resize also changes the size by at least twice that distance.
 - [Card nodes shorter than their port rows stack ports] → Existing behaviour; documented,
   with the minimum height formula in the guide.
-- [Handles over ports] → Ports stay reachable around the handle square; the precedence is
-  one line in `default-tools.ts` if the answer to Open Questions 3 differs.
+- [Small nodes at low zoom] → The 8 px handle can cover much of a tiny node's body; the
+  handle exists only on a single selected, opted-in node, so a move still starts from
+  anywhere else on the body or from a second click after deselecting.
 - [Auto-pan surprises when a drag starts near the edge] → Arming rule (D10).
 - [Auto-pan feeds synthetic moves] → They carry the last real pointer's ID, button and
   modifiers, so tools cannot tell them apart; tools are pure and see only the new world
@@ -404,7 +459,8 @@ sequenceDiagram
 
 ## Migration Plan
 
-Additive except for mirror semantics at odd quarter turns. `Command` gains `resizeNode`
+Additive except for two **breaking** behaviours: mirror semantics at odd quarter turns
+(D5), and resizing now needing an opt-in (D0: a type adds `capabilities: { resize: true }`). `Command` gains `resizeNode`
 and an optional `axis` on `mirrorNodes`: host code with an exhaustive `switch` over
 `Command["kind"]` needs one more branch. `NodeTypeDefinition`, `GraphModelOptions`,
 `ToolOptions`, `ToolPreview`, `CursorKind` and `Tool` gain optional members or union
@@ -413,49 +469,37 @@ unchanged.
 
 ## Resolved Questions
 
-Answered by the user on 2026-10-31:
+Answered by the user on 2026-10-31, before the proposal:
 
 - **Scope.** Resize tool with minimum and maximum sizes, rotate and mirror
   editor commands with default shortcuts, and auto-pan near the viewport edge
   while dragging nodes, connections or the marquee (SHOULD). Replace node
   and alignment guides are later, separate changes.
-- **Resize gesture.** Eight handles (corners and edge midpoints) on a single selected
-  resizable node; the opposite side or corner stays fixed; Shift keeps the aspect ratio;
-  handles follow the node's rotation and mirroring (resize happens in the node's local
-  frame); no resize when several nodes are selected. One completed resize is one history
-  entry, and the preview during the drag lives in the preview layer like a node
-  drag.
 - **Shortcuts.** R rotates the selected nodes 90° clockwise, Shift+R counter-clockwise, M
   mirrors horizontally, Shift+M vertically. The model keeps `mirrored: boolean` plus a
   quarter-turn `rotation`; a vertical mirror is a horizontal mirror plus a half turn,
   planned as one command and one history entry, with no data-format change. The plain-js
   demo's own M shortcut moves to another key.
+- **Resize gesture (first answer, superseded below).** Eight handles (corners and edge
+  midpoints) on a single selected resizable node, opposite side or corner fixed, Shift for
+  aspect ratio, handles following rotation and mirroring, no resize for several nodes, one
+  history entry per resize with the preview in the preview layer.
 
-## Open Questions
+Answered by the user on 2026-10-31, after reviewing the proposal:
 
-Each has a recommended answer that the specs, design and tasks already follow; a different
-answer changes only the named places.
+- **Resize gesture, revised (supersedes the eight handles).** Resize and port connection
+  must be mutually exclusive, and nodes are not resizable all the time: as in the
+  predecessor Qt node editor, there is just one handle, in the corner, and only if the node
+  declares it. Concretely: one handle at the node's bottom-right corner as seen on screen,
+  the diagonally opposite screen corner fixed, Shift for aspect ratio, grid snapping only
+  when enabled; resizing is opt-in per node type (D0), and per-instance overrides can turn
+  it off; the handle shows only on a single selected resizable node; one history entry per
+  resize, preview in the preview layer (D7).
+- **Mirror axes.** Screen axes: M swaps left and right on screen, Shift+M top and bottom,
+  for any rotation. The existing `mirrorNodes` behaviour changes for odd rotations (D5).
+- **Multi-node rotate and mirror.** Each node about its own centre (D9).
+- **Resize without the move capability.** A node that may not move can still be resized
+  from its handle; the implied position change is judged as part of the resize (D4).
+- **Auto-pan default.** On by default; `autoPan: false` turns it off (D10).
 
-1. **Mirror in screen axes or in the node's own axes?** Today `mirrorNodes` flips the
-   node's local x, which for a node at an odd quarter turn looks like a vertical flip on
-   screen. *Recommendation: screen axes* (D5): M always swaps screen-left and
-   screen-right, consistent with R being a screen turn. Otherwise: horizontal stays a plain
-   toggle, vertical becomes toggle plus `r + 2`; the Node transforms rule's "Mirror a rotated node" scenario,
-   D5's table, D4's rotation rule and task 2.2 change.
-2. **Rotate/mirror a multi-node selection about each node's own centre, or as one rigid
-   group about the selection's centre?** *Recommendation: each about its own centre for
-   now* (existing planners, no position changes, no extra capability interplay); a group
-   transform can be a later command (`transformSelection`) without changing these keys'
-   single-node behaviour. Otherwise: the keyboard editing shortcuts rule's "Rotate shortcut" scenario and tasks 2.2 and
-   6.1 change.
-3. **Where a resize handle overlaps a port, which wins?** *Recommendation: the handle*
-   (D7), since ports stay reachable around it and side handles on two-port symbols would
-   otherwise be unusable. Otherwise: the router order in task 5.4.
-4. **May a node whose move capability is denied be resized from a side other than its
-   centre?** *Recommendation: yes* (D4, compound rule), since the implied position change
-   is part of the resize. Otherwise: the capability-gated resizing rule's "Resize without the move capability"
-   scenario and task 3.1 change, and such nodes resize about their centre only.
-5. **Auto-pan on by default?** *Recommendation: on* (`ToolOptions.autoPan` defaults to
-   `{ edgePx: 32, maxSpeedPxPerSecond: 600 }`, `false` disables), unlike snapping, because
-   it only acts during a drag that is already at the edge. Otherwise: one default in task
-   7.1.
+No open questions remain.
