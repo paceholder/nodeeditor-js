@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { createNodeTypeRegistry } from "../../data/node-types/registry.js";
+import { createLocalAdapter } from "../adapter/local-adapter.js";
 import type { FailureEvent } from "../events/types.js";
+import { createDefaultConnectionPolicy } from "../policy/default-policy.js";
+import { createCommandApi } from "./api.js";
 import { end, make, makeModel } from "./test-kit.js";
 
 describe("TXN-10 failure events", () => {
@@ -109,5 +113,51 @@ describe("MOD-11 host capability policy", () => {
     expect(result.status === "rejected" && result.error.code).toBe(
       "capability-denied",
     );
+  });
+});
+
+describe("PAT-04 paste and duplicate need fragment planners", () => {
+  it("a command API built without the fragments slot rejects both kinds and changes nothing", () => {
+    const adapter = createLocalAdapter();
+    const api = createCommandApi(
+      {
+        reader: adapter.reader,
+        idGenerator: adapter.idGenerator,
+        idCursor: () => adapter.idCursor(),
+        submit: (patch, o) =>
+          adapter.submit({
+            operationId: adapter.mintOperationId(),
+            baseRevision: adapter.revision(),
+            patch,
+            label: o.label,
+            history: "record",
+            origin: "local",
+          }),
+        undo: () => adapter.undo(),
+        redo: () => adapter.redo(),
+        historyState: () => adapter.historyState(),
+        mintOperationId: () => adapter.mintOperationId(),
+        reportRejection: (id, r) => adapter.reportRejection(id, r),
+      },
+      {
+        registry: createNodeTypeRegistry(),
+        policy: createDefaultConnectionPolicy(),
+        validators: [],
+      },
+    );
+    const revision = adapter.revision();
+    const placement = { kind: "offset", by: { x: 1, y: 1 } } as const;
+    for (const command of [
+      { kind: "paste", fragment: {}, placement },
+      { kind: "duplicate", nodes: [], placement },
+    ] as const) {
+      const plan = api.plan(command);
+      expect(plan.kind === "rejected" && plan.error.code).toBe(
+        "unsupported-command",
+      );
+      expect(api.execute(command).status).toBe("rejected");
+    }
+    expect(adapter.revision()).toBe(revision);
+    expect(adapter.historyState().canUndo).toBe(false);
   });
 });

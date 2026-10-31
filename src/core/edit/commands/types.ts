@@ -7,7 +7,7 @@
 
 import type { IdGenerator } from "../../base/ids/id-generator.js";
 import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
-import type { Rejection } from "../../base/result.js";
+import type { Rejection, RejectionCode } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { Endpoint, Payload } from "../../data/model/records.js";
 import type { Vec2 } from "../../data/model/values.js";
@@ -17,6 +17,17 @@ import type { Patch } from "../../data/patch/types.js";
 import type { SubmitResult } from "../adapter/types.js";
 import type { ConnectionPlan, ConnectionPolicy } from "../policy/types.js";
 import type { IdAllocator } from "./id-allocator.js";
+
+/**
+ * Where a pasted or duplicated fragment lands (EDT-03). `center` puts the fragment's
+ * bounding-box centre at `at`; `offset` adds `by` to every original position.
+ */
+export type Placement =
+  | { readonly kind: "center"; readonly at: Vec2 }
+  | { readonly kind: "offset"; readonly by: Vec2 };
+
+/** External connections of a fragment: dropped (default) or re-created (EDT-04). */
+export type ExternalHandling = "exclude" | "preserve";
 
 /** Desired state of one port in `setPorts`. An `id` updates that port; none adds one. */
 export interface PortEdit extends PortSpec {
@@ -82,6 +93,23 @@ export type Command =
       readonly status?: string;
       readonly payload?: Payload;
     }
+  /**
+   * Paste a clipboard fragment (EDT-03, EDT-05). The fragment is untrusted input and is
+   * validated by the planner, like `loadSnapshot(input: unknown)`.
+   */
+  | {
+      readonly kind: "paste";
+      readonly fragment: unknown;
+      readonly placement: Placement;
+      readonly external?: ExternalHandling;
+    }
+  /** Copy the listed nodes and their internal connections in one step (EDT-03). */
+  | {
+      readonly kind: "duplicate";
+      readonly nodes: readonly NodeId[];
+      readonly placement: Placement;
+      readonly external?: ExternalHandling;
+    }
   | { readonly kind: "undo" }
   | { readonly kind: "redo" };
 
@@ -93,11 +121,23 @@ export interface EntityIds {
   readonly connections: readonly ConnectionId[];
 }
 
+/**
+ * A reference a paste left out (EDT-04): an external connection, with `external` as the
+ * reason under the default, or `endpoint-missing` / the policy's code when preserving
+ * failed.
+ */
+export interface ExcludedReference {
+  readonly connection: ConnectionId;
+  readonly reason: "external" | "endpoint-missing" | RejectionCode;
+}
+
 /** What a plan would do, for previews and confirmations (PRT-07, EDT-02). */
 export interface PlanEffects {
   readonly created: EntityIds;
   readonly removed: EntityIds;
   readonly updated: EntityIds;
+  /** References a paste or duplicate did not re-create (EDT-04). */
+  readonly excluded?: readonly ExcludedReference[];
 }
 
 export interface ChoiceAlternative {
@@ -145,11 +185,19 @@ export interface PlanContext {
   readonly ids: IdAllocator;
   readonly registry: NodeTypeRegistry;
   readonly policy: ConnectionPolicy;
+  /** Paste and duplicate planners, injected by the facade (they live in `core/io`). */
+  readonly fragments?: FragmentPlanners;
 }
 
 export type PlannerFor<K extends CommandKind> = (
   command: Extract<Command, { kind: K }>,
   ctx: PlanContext,
 ) => PlanResult;
+
+/** The fragment planners `planCommand` dispatches `paste` and `duplicate` to. */
+export interface FragmentPlanners {
+  readonly paste: PlannerFor<"paste">;
+  readonly duplicate: PlannerFor<"duplicate">;
+}
 
 export type { IdGenerator };

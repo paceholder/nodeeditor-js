@@ -6,6 +6,7 @@
 import { planConnect, planDisconnect, planReconnect } from "./connect.js";
 import { planCreateNode } from "./create-node.js";
 import { planDeleteEntities } from "./delete-entities.js";
+import { rejected } from "./ops.js";
 import { planSetPorts } from "./set-ports.js";
 import {
   planMirrorNodes,
@@ -40,6 +41,14 @@ export function planCommand(command: Command, ctx: PlanContext): PlanResult {
       return planSetPorts(command, ctx);
     case "updateNode":
       return planUpdateNode(command, ctx);
+    case "paste":
+      return ctx.fragments
+        ? ctx.fragments.paste(command, ctx)
+        : unsupported(command.kind);
+    case "duplicate":
+      return ctx.fragments
+        ? ctx.fragments.duplicate(command, ctx)
+        : unsupported(command.kind);
     case "undo":
       return { kind: "history", direction: "undo", label: "Undo" };
     case "redo":
@@ -49,4 +58,12 @@ export function planCommand(command: Command, ctx: PlanContext): PlanResult {
       return unreachable;
     }
   }
+}
+
+/** Paste and duplicate need fragment planners that only the facade supplies. */
+function unsupported(kind: string): PlanResult {
+  return rejected(
+    "unsupported-command",
+    `This model has no planner for ${kind} commands`,
+  );
 }
