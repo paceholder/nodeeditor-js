@@ -47,3 +47,14 @@ the end of `add-connection-chooser`).
   (MOD-08). It runs only on registration changes.
 - **Scene tests that need a resize register the node type with `resize: true`**: the
   fixture types have no capabilities, and the capability policy denies a resize.
+- **The move preview shifts the ghost node's `bodyBounds`** with its transform and
+  anchors, since the routers now read the body box; before, nothing read it.
+- **The connect preview also passes the source body** (and the target body when
+  snapped) to the default router; the free end has none.
+- **`mount-view.ts` grew by 8 lines (346)**, not about 3: the core import no longer
+  fits on one line once `createRouteRegistry` joins it (+4), plus `routes` in the
+  registry default, the binding, the preview deps and the handle.
+- **The overview batching case runs under `npm run bench:browser`** (it lives in
+  `bench/browser/`, which `npm run test:browser` does not include); it was run with
+  `BENCH_DPR=1` against the build. The fixture route option it needs
+  (`createFixtureRoutes`, `mountFixture(..., routes)`) therefore landed with group 4.

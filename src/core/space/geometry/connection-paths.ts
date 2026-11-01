@@ -1,8 +1,6 @@
 /**
- * Default connection path builders (ROU-01: straight and cubic-Bezier modes).
- *
- * Orthogonal and obstacle-aware routing arrive in later changes; `RouteMode` is a union
- * so they can be added without touching callers that switch exhaustively.
+ * Straight and cubic-Bezier path builders (ROU-01). The straight and Bezier routers in
+ * `routing/` wrap them; routing per connection kind lives there.
  */
 
 import type { PathGeometry } from "./path-geometry.js";
@@ -10,8 +8,6 @@ import type { Point } from "./spaces.js";
 import { normalize, sub } from "./vec.js";
 
 type W = "world";
-
-export type RouteMode = "straight" | "bezier";
 
 export const BEZIER_MIN_HANDLE = 20;
 export const BEZIER_MAX_HANDLE = 200;
@@ -43,22 +39,4 @@ export function bezierPath(
     c2: { x: p1.x + u1.x * k, y: p1.y + u1.y * k },
     p1,
   };
-}
-
-export interface PathEnd {
-  readonly position: Point<W>;
-  readonly normal: Point<W>;
-}
-
-export function buildPath(
-  mode: RouteMode,
-  from: PathEnd,
-  to: PathEnd,
-): PathGeometry {
-  switch (mode) {
-    case "straight":
-      return straightPath(from.position, to.position);
-    case "bezier":
-      return bezierPath(from.position, from.normal, to.position, to.normal);
-  }
 }

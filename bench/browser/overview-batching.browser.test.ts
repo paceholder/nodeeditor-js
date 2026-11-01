@@ -2,15 +2,16 @@
 /**
  * Overview batching (PERF-03, LAY-04, D3): an overview frame of F-TYPICAL issues a number
  * of `fill`/`stroke` calls bounded by its distinct styles plus the selected and diagnostic
- * entities, not by the number of entities on screen.
+ * entities, not by the number of entities on screen, for Bezier and orthogonal routes.
  */
 import { resolveStyle } from "nodeeditor-js/view/advanced";
 import { expect, it } from "vitest";
 import { DEFAULT_SEED, F_TYPICAL } from "../fixtures/fixture-specs.js";
+import type { FixtureRoutes } from "../fixtures/fixture-view.js";
 import { mountFixture, settle } from "./harness.js";
 
-it("PERF-03, LAY-04: an overview frame of F-TYPICAL batches fill and stroke calls by style", async () => {
-  const mounted = await mountFixture(F_TYPICAL, DEFAULT_SEED, 0.1);
+async function checkBatching(routes: FixtureRoutes): Promise<void> {
+  const mounted = await mountFixture(F_TYPICAL, DEFAULT_SEED, 0.1, routes);
   try {
     const { view, model } = mounted;
     const nodes = model.reader.nodes();
@@ -82,4 +83,12 @@ it("PERF-03, LAY-04: an overview frame of F-TYPICAL batches fill and stroke call
   } finally {
     mounted.dispose();
   }
+}
+
+it("PERF-03, LAY-04: an overview frame of F-TYPICAL batches fill and stroke calls by style", async () => {
+  await checkBatching("bezier");
+}, 60_000);
+
+it("PERF-03, PERF-06, ROU-01a: with every connection orthogonal the overview batches the same way", async () => {
+  await checkBatching("orthogonal");
 }, 60_000);

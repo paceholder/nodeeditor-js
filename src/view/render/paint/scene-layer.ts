@@ -37,6 +37,9 @@ import {
   paintOverviewNodes,
 } from "./overview-painter.js";
 
+/** Outcome reported for a path built before routes carried one. */
+const UNCHECKED_ROUTE = { status: "complete", clearOf: "nothing" } as const;
+
 /** View-local state the tools will own; this change only reads it. */
 export interface ViewState {
   isSelected(id: string): boolean;
@@ -91,6 +94,7 @@ function paintConnections(
     deps.painters.connections.get(e.record.kind).paint(ctx, {
       connection: e.record,
       path: e.path,
+      route: e.route ?? UNCHECKED_ROUTE,
       style: resolveStyle(frame.theme, { type: e.record.kind, id: e.id }),
       detail,
       unit,

@@ -16,6 +16,7 @@ import type {
   Point,
   PortRecord,
   Rect,
+  RouteOutcome,
 } from "../../../core/index.js";
 import type { AssetDrawer } from "../assets/asset-types.js";
 import type { DetailPolicy } from "../paint/level-of-detail.js";
@@ -66,6 +67,8 @@ export interface PortGlyphPainter {
 export interface ConnectionPaintInput {
   readonly connection: ConnectionRecord;
   readonly path: PathGeometry;
+  /** How the route turned out (ROU-06); a painter may mark an unroutable route. */
+  readonly route: RouteOutcome;
   readonly style: ResolvedStyle;
   readonly detail: DetailPolicy;
   readonly unit: number;

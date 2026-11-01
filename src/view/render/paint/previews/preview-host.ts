@@ -5,7 +5,11 @@
  * end), never per pointer move (LAY-01, PERF-03). Previews are never serialized and never
  * reach the model.
  */
-import type { GeometryScene, GraphReader } from "../../../../core/index.js";
+import type {
+  GeometryScene,
+  GraphReader,
+  RouteRegistry,
+} from "../../../../core/index.js";
 import type { InteractionLayer } from "../interaction-layer.js";
 import type { SceneLayerDeps } from "../scene-layer.js";
 import { paintConnectPreview } from "./connect-preview-painter.js";
@@ -44,6 +48,7 @@ export interface PreviewHostEnv {
     | (Omit<SceneLayerDeps, "reader" | "scene"> & {
         reader: GraphReader;
         scene: GeometryScene;
+        routes: RouteRegistry;
       })
     | undefined;
 }
@@ -84,7 +89,13 @@ export function createPreviewHost(env: PreviewHostEnv): PreviewHost {
       if (!bound) return;
       switch (current.kind) {
         case "connect":
-          paintConnectPreview(ctx, bound.scene, frame, current);
+          paintConnectPreview(
+            ctx,
+            bound.scene,
+            bound.routes.defaultRouter,
+            frame,
+            current,
+          );
           return;
         case "move":
           paintMovePreview(ctx, bound, frame, current);

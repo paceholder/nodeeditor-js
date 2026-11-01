@@ -84,6 +84,9 @@ export default defineConfig({
         define: {
           __BENCH_QUICK__: JSON.stringify(process.env.BENCH_QUICK === "1"),
           __BENCH_EMULATE_DPR__: JSON.stringify(headed ? (dprs[0] ?? 1) : 0),
+          __BENCH_ROUTES__: JSON.stringify(
+            process.env.BENCH_ROUTES === "orthogonal" ? "orthogonal" : "bezier",
+          ),
         },
         test: {
           name: "browser",

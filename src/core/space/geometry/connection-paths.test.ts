@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bezierPath, buildPath, straightPath } from "./connection-paths.js";
+import { bezierPath, straightPath } from "./connection-paths.js";
 import { pathBounds } from "./path-geometry.js";
 
 describe("ROU-01 straight and bezier modes", () => {
@@ -39,13 +39,6 @@ describe("ROU-01 straight and bezier modes", () => {
       p0: { x: 1, y: 2 },
       p1: { x: 3, y: 4 },
     });
-  });
-
-  it("ROU-01 buildPath switches on the mode and ignores normals when straight", () => {
-    const a = { position: { x: 0, y: 0 }, normal: { x: 1, y: 0 } };
-    const b = { position: { x: 100, y: 0 }, normal: { x: -1, y: 0 } };
-    expect(buildPath("straight", a, b).kind).toBe("line");
-    expect(buildPath("bezier", a, b).kind).toBe("cubic");
   });
 
   it("GEO-06 coincident anchors and zero normals produce finite paths", () => {

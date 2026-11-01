@@ -11,6 +11,7 @@ import {
   type GeometryScene,
   type GraphReader,
   type NodeEntry,
+  type RouteRegistry,
   type WorldAnchor,
 } from "../../../../core/index.js";
 import type { PaintFrame } from "../../primitives/frame.js";
@@ -26,13 +27,22 @@ const LOCK_SIZE_PX = 12;
 export interface MovePreviewDeps extends SceneLayerDeps {
   readonly reader: GraphReader;
   readonly scene: GeometryScene;
+  readonly routes: RouteRegistry;
 }
 
 function shiftNode(e: NodeEntry, dx: number, dy: number): NodeEntry {
   const move = affine<"world", "world">(1, 0, 0, 1, dx, dy);
+  const back = affine<"world", "world">(1, 0, 0, 1, -dx, -dy);
+  // The body box moves too (routers read it), so the inverse transform must follow.
   return {
     ...e,
     toWorld: compose(move, e.toWorld),
+    toLocal: compose(e.toLocal, back),
+    bodyBounds: {
+      ...e.bodyBounds,
+      x: e.bodyBounds.x + dx,
+      y: e.bodyBounds.y + dy,
+    },
     anchors: e.anchors.map(
       (a): WorldAnchor => ({
         ...a,

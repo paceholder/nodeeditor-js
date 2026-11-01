@@ -12,6 +12,8 @@ import { cdp, commands } from "vitest/browser";
 import { type FixtureSpec, worldSize } from "../fixtures/fixture-specs.js";
 import {
   createFixtureModel,
+  createFixtureRoutes,
+  type FixtureRoutes,
   mountFixtureView,
 } from "../fixtures/fixture-view.js";
 import { generateFixture } from "../fixtures/generate-fixture.js";
@@ -25,6 +27,11 @@ import {
 } from "./workloads.js";
 
 export const QUICK = __BENCH_QUICK__;
+/** Route mode of the workloads (`BENCH_ROUTES=orthogonal`); labels the result rows. */
+export const ROUTES: FixtureRoutes = __BENCH_ROUTES__;
+/** Fixture label for result rows: the spec name, plus the route when not the default. */
+export const fixtureLabel = (name: string): string =>
+  ROUTES === "bezier" ? name : `${name} ${ROUTES}`;
 /** Workload length, repeats and warm-up (design D4; quick runs are for iteration only). */
 export const DURATION_MS = QUICK ? 5_000 : 30_000;
 export const REPEATS = QUICK ? 1 : 3;
@@ -84,6 +91,7 @@ export async function mountFixture(
   spec: FixtureSpec,
   seed: number,
   zoom: number,
+  routes: FixtureRoutes = ROUTES,
 ): Promise<Mounted> {
   await emulateMetrics();
   if (
@@ -99,6 +107,7 @@ export async function mountFixture(
   const model = createFixtureModel(generateFixture(spec, seed));
   const view = mountFixtureView(host, model, {
     initialViewport: centred(spec, zoom),
+    routes: createFixtureRoutes(routes),
   });
   await settle(1_500); // first paint plus asynchronous symbol decoding
   return {

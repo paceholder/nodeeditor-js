@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CAPTURE_RADIUS_PX as CAPTURE,
+  createBezierRouter,
   createGeometryScene,
   nodeId,
   portId,
@@ -73,7 +74,7 @@ function pixels(
   };
   setMatrix(ctx, frame.worldToDevice);
   if (preview.kind === "connect")
-    paintConnectPreview(ctx, scene, frame, preview);
+    paintConnectPreview(ctx, scene, createBezierRouter(), frame, preview);
   return ctx.getImageData(0, 0, 220, 100).data;
 }
 
