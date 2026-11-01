@@ -18,7 +18,7 @@ import {
   type OrthogonalEnd,
   orthogonalCandidates,
 } from "./orthogonal-candidates.js";
-import { chooseCandidate, score } from "./orthogonal-check.js";
+import { chooseCandidate } from "./orthogonal-check.js";
 import type {
   ConnectionRoute,
   ConnectionRouter,
@@ -83,10 +83,8 @@ function routeOrdered(
   const p1 = to.position;
   if (p0.x === p1.x && p0.y === p1.y)
     return { path: polylinePath([p0, p1]), outcome: COMPLETE };
-  const scored = orthogonalCandidates(from, to, clearance).map((c) =>
-    score(c, from, to),
-  );
-  const best = chooseCandidate(scored);
+  const candidates = orthogonalCandidates(from, to, clearance);
+  const best = chooseCandidate(candidates, from, to);
   const points: readonly Point<W>[] = best?.candidate.points ?? [p0, p1];
   return {
     path: polylinePath(points, radius),
