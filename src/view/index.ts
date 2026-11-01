@@ -4,6 +4,11 @@
 // Browser APIs may only be touched during explicit mount, never at import time (REA-06).
 
 export type {
+  ConnectionChoiceOption,
+  ConnectionChoiceRequest,
+  ConnectionChooser,
+} from "./interact/choice/choice-types.js";
+export type {
   CopyArgs,
   PasteArgs,
 } from "./interact/clipboard/clipboard-commands.js";
@@ -78,6 +83,7 @@ export { toolSlot } from "./interact/tools/tool-router.js";
 export type {
   CancelReason,
   CandidateState,
+  ChoiceRelease,
   ConnectCandidate,
   ConnectionEvaluation,
   CursorKind,

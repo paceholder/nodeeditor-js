@@ -35,3 +35,19 @@ results and size. The size baseline is `ac4dc5b` (the end of `add-context-menu-h
   release while one is pending cancels the first (its signal aborts, its late answer is
   ignored).
 - **`cancel()` takes no reason**: nothing downstream distinguishes them.
+- **No `onKey` wrapper**: `view-connection-choice.ts` has one capture-phase `keydown`
+  listener on the root. While a choice is pending it cancels on Escape (from the root or
+  the overlay picker, stopping the event so `selection.clear` does not run) and stops
+  every other key not aimed at overlay content with `preventDefault` and
+  `stopImmediatePropagation`. The `preventDefault` also keeps Mod+V/C/X from firing the
+  native clipboard events that would otherwise paste or copy while pending. This also
+  keeps the menu key from opening a context menu while pending, without the context-menu
+  code knowing about choices.
+- **`view-connection-choice.ts` subscribes to the model itself** (removals and reset), so
+  `view-editing.ts` only creates it, passes `choose` and `chooserInstalled`, and exposes
+  `setConnectionChooser`. A pure refactor commit moved `removedIds` to
+  `platform/model-binding.ts` first, so both share it and `view-editing.ts` stays at 298
+  lines.
+- **`ChoiceRelease` is exported from `nodeeditor-js/view`** with the other tool types,
+  since `ToolEffect` names it.
+- **`setConnectionChooser` without editing input is a no-op**, like `on` without input.
