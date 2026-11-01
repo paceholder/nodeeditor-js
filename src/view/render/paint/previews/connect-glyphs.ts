@@ -1,7 +1,7 @@
 /**
  * Candidate-state glyphs for the connect preview (UX-02, PRT-06). Each state has its own
  * shape, so the meaning never relies on color alone: check, cross, ring, padlock,
- * hourglass. Drawn in CSS pixels around (0, 0); the caller translates first.
+ * hourglass, fork (a choice between alternatives). Drawn in CSS pixels around (0, 0); the caller translates first.
  */
 import type { CandidateState } from "./preview-types.js";
 
@@ -46,6 +46,15 @@ const SHAPES: Record<CandidateState, (ctx: CanvasRenderingContext2D) => void> =
       ctx.closePath();
       ctx.stroke();
     },
+    choice(ctx) {
+      ctx.beginPath();
+      ctx.moveTo(0, 4.5);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-4, -4);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(4, -4);
+      ctx.stroke();
+    },
   };
 
 export function colorOf(
@@ -59,6 +68,7 @@ export function colorOf(
 ): string {
   switch (state) {
     case "compatible":
+    case "choice":
       return theme.connectionColor;
     case "incompatible":
       return theme.error;

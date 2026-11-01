@@ -34,6 +34,7 @@ const STATES: readonly CandidateState[] = [
   "occupied",
   "unavailable",
   "pending",
+  "choice",
 ];
 
 function pixels(
@@ -99,6 +100,14 @@ describe("connect preview", () => {
     const plain = painted[0];
     const marked = pixels("compatible", true);
     expect(plain && differs(plain, marked)).toBe(true);
+  });
+
+  it("UX-02, INT-12b Choice required not color-only: its glyph differs from compatible, incompatible and pending", () => {
+    // Choice shares the compatible color, so only its shape tells them apart.
+    const choice = pixels("choice", false);
+    for (const other of ["compatible", "incompatible", "pending"] as const) {
+      expect(differs(choice, pixels(other, false)), other).toBe(true);
+    }
   });
 
   it("UX-02 states differ in shape, not only in color", () => {

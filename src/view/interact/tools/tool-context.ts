@@ -42,6 +42,8 @@ export interface ToolContextDeps {
    * then skip ports, so a press there selects, moves or pans. Omitted: ports always count.
    */
   readonly hidePortsBelow?: () => number;
+  /** Whether a host connection chooser is installed; omitted: none. */
+  readonly chooserInstalled?: () => boolean;
 }
 
 export type SizeLimitsLookup = (id: NodeId) => ResolvedSizeLimits | undefined;
@@ -111,6 +113,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       sizeLimits,
       evaluateConnection,
       options,
+      chooserInstalled: deps.chooserInstalled?.() === true,
     };
   };
 }

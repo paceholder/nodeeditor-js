@@ -4,6 +4,7 @@
  * painters and tools import them from here. Never serialized.
  */
 import type {
+  ChoiceAlternative,
   Endpoint,
   NodeId,
   Point,
@@ -20,7 +21,9 @@ export type CandidateState =
   | "incompatible"
   | "occupied"
   | "unavailable"
-  | "pending";
+  | "pending"
+  /** The policy offers several alternatives; a host chooser picks one (INT-12). */
+  | "choice";
 
 export interface ConnectionEvaluation {
   readonly state: CandidateState;
@@ -29,6 +32,8 @@ export interface ConnectionEvaluation {
   /** The policy's reason for any state other than `compatible`. */
   readonly reason: string | undefined;
   readonly code: RejectionCode | undefined;
+  /** The policy's alternatives, in policy order, for the `choice` state only. */
+  readonly alternatives?: readonly ChoiceAlternative[];
 }
 
 export interface ConnectCandidate {

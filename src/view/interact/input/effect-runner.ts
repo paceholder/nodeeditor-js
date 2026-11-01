@@ -6,6 +6,7 @@
 import type { Command } from "../../../core/index.js";
 import type { SelectionModel } from "../selection/selection-model.js";
 import type {
+  ChoiceRelease,
   CursorKind,
   ToolEffect,
   ToolPreview,
@@ -21,6 +22,8 @@ export interface EffectHost {
   commit(command: Command): void;
   readonly selection: Pick<SelectionModel, "apply">;
   viewport(op: ViewportOp): void;
+  /** Hand a choice release to the choice controller; omitted: ignored. */
+  choose?(request: ChoiceRelease): void;
 }
 
 export function createEffectRunner(
@@ -49,6 +52,9 @@ export function createEffectRunner(
           break;
         case "cursor":
           host.cursor(effect.cursor);
+          break;
+        case "choose":
+          host.choose?.(effect.request);
           break;
       }
     }

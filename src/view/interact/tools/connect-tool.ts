@@ -3,8 +3,10 @@
  *
  * A press on a port arms the gesture; past the drag threshold a provisional path follows
  * the pointer and snaps to the nearest compatible port. Releasing on a compatible port
- * commits exactly one `connect` command; releasing anywhere else, Escape, a removed
- * source, or any other cancellation submits nothing, so no dangling connection exists.
+ * commits exactly one `connect` command. Releasing on a port for which the policy offers
+ * several alternatives asks the host chooser (a `choose` effect, preview kept) or, with
+ * none installed, commits nothing (INT-12, INT-12b). Releasing anywhere else, Escape, a
+ * removed source, or any other cancellation submits nothing.
  * A press-release below the threshold selects the port's node instead.
  */
 import type { Endpoint, Point } from "../../../core/index.js";
@@ -47,10 +49,10 @@ const END: readonly ToolEffect[] = [
 function cursorFor(
   preview: Extract<ToolPreview, { kind: "connect" }>,
 ): CursorKind {
-  const hovered = preview.candidates[0];
-  return hovered && hovered.evaluation.state !== "compatible"
-    ? "not-allowed"
-    : "crosshair";
+  const state = preview.candidates[0]?.evaluation.state;
+  return state === undefined || state === "compatible" || state === "choice"
+    ? "crosshair"
+    : "not-allowed";
 }
 
 function follow(
@@ -127,18 +129,41 @@ export const connectTool: Tool<ConnectState> = {
       return follow(state.source, state.pointerId, input.world, ctx);
     }
     // Release: the target is decided at the release point, against the live model.
-    const { target } = connectPreview(state.source, input.world, ctx);
+    const { target, candidates } = connectPreview(
+      state.source,
+      input.world,
+      ctx,
+    );
+    const evaluation = candidates.find(
+      (c) => c.endpoint === target,
+    )?.evaluation;
+    if (!target || !evaluation) return { state: IDLE, effects: END };
+    if (evaluation.state === "choice") {
+      if (!ctx.chooserInstalled) return { state: IDLE, effects: END };
+      const request = {
+        source: state.source,
+        target,
+        alternatives: evaluation.alternatives ?? [],
+        at: input.world,
+      };
+      // The preview stays frozen while the host chooses (INT-12a).
+      return {
+        state: IDLE,
+        effects: [
+          { type: "cursor", cursor: "default" },
+          { type: "choose", request },
+        ],
+      };
+    }
     return {
       state: IDLE,
-      effects: target
-        ? [
-            ...END,
-            {
-              type: "commit",
-              command: { kind: "connect", from: state.source, to: target },
-            },
-          ]
-        : END,
+      effects: [
+        ...END,
+        {
+          type: "commit",
+          command: { kind: "connect", from: state.source, to: target },
+        },
+      ],
     };
   },
 };

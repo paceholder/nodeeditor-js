@@ -38,8 +38,14 @@ export function evaluationOf(
     case "pending":
       return pending(plan.reason);
     case "choice":
-      // Choosing between alternatives needs UI a later change adds; release does nothing.
-      return pending("Several connections are possible; a choice is required");
+      // Release asks the host chooser, if any (INT-12); without one nothing is committed.
+      return {
+        state: "choice",
+        occupiedMark: false,
+        reason: "Several connections are possible; a choice is required",
+        code: undefined,
+        alternatives: plan.alternatives,
+      };
     case "history":
       return { ...pending(undefined), state: "incompatible" };
   }
