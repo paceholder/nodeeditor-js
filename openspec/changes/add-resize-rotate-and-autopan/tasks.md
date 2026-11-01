@@ -57,7 +57,7 @@
 
 ## 10. Gates
 
-- [ ] 10.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new or changed file stays under 300 lines (`wc -l`)
+- [x] 10.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new or changed file stays under 300 lines (`wc -l`). Exception accepted: `src/view/mount-view.ts` is 336 (332 before); the user treats 300 as a soft guideline (2026-10-31: "300-something still looks ok"), so no split
 
 ## 11. Documentation (separate commit)
 

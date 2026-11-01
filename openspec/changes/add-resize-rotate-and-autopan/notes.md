@@ -110,3 +110,23 @@ results back through the demo's "Export fragment" dialog. All 13 checks passed:
 
 The handle draws as an 8 px square in the selection colour on the theme background,
 inside the selection outline at the body corner.
+
+## Gate results (task 10.1)
+
+- `npm run lint`: clean (421 files).
+- `npm run typecheck`: clean, including the core-only pass with no DOM lib.
+- `npm test`: 107 files, 625 tests passed (534 before the change), `architecture.test.ts`
+  included.
+- `npm run test:browser` (installed Chrome): 33 files, 143 tests passed (135 before).
+- `npm run build`: OK; the new core names have declarations in `dist/core/index.d.ts`.
+- `npm run bench:size`: core 30.8 KiB gzip (budget 75, was 29.6), view 39.0 KiB (budget
+  150, was 35.8), advanced 24.3 KiB, react 39.0 KiB.
+- File sizes: every new or changed source file is under 300 lines except
+  `src/view/mount-view.ts`, 336 lines (332 before this change; D11 already noted it was
+  over). It gained the three editing dependencies (`preview`, `interaction`, `clock`)
+  and the viewport-follow condition. **Task 10.1 is left open for this one criterion**:
+  bringing `mount-view.ts` under 300 needs a refactor outside this change (for example
+  moving the handle's selection/commands/clipboard facades or the layer paint callback
+  into their own modules). `commands.test.ts` is 298.
+- Docs: the new Mermaid diagram in `architecture.md` renders with mermaid-cli (driven
+  through the installed Chrome).
