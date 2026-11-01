@@ -75,6 +75,16 @@ for (const s of symbols) {
     label: s.label,
     defaultSize: s.size,
     ports: () => s.ports.map((p) => ({ ...p, typeKey: "pipe" })),
+    // Resizing is opt-in per type: only tanks get a corner handle, within these limits.
+    ...(s.type === "tank"
+      ? {
+          capabilities: { resize: true },
+          sizeLimits: {
+            min: { width: 40, height: 60 },
+            max: { width: 240, height: 360 },
+          },
+        }
+      : {}),
   });
 }
 model.registry.register({
@@ -187,7 +197,7 @@ snapBox?.addEventListener("change", () => {
   view.element.focus();
 });
 
-// Live updates: M and E edit the model from outside the view through commands; the view
+// Live updates: P and E edit the model from outside the view through commands; the view
 // only listens to committed changes, so it repaints by itself. They join the same undo
 // history as the gestures (Ctrl/Cmd+Z, provided by the library keymap).
 const here = (n: NodeRecord) => model.reader.getNode(n.id)?.position;
@@ -195,7 +205,7 @@ window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target instanceof HTMLTextAreaElement) return;
   switch (e.key.toLowerCase()) {
-    case "m": {
+    case "p": {
       const at = here(pump);
       if (at) {
         model.moveNodes([

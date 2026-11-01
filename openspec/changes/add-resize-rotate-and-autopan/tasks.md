@@ -53,7 +53,7 @@
 
 ## 9. Example
 
-- [ ] 9.1 In `examples/plain-js`, move the window-level "move the pump" shortcut from M to P (and the hint in `index.html`), and opt one demo node type into resizing with `capabilities: { resize: true }` and `sizeLimits`; verify `npm run demo:build` succeeds and a headless Chrome run of the demo resizes that node from its corner handle (other types show no handle), rotates and mirrors with R, Shift+R, M and Shift+M (P still moves the pump, M no longer does), auto-pans a drag at the edge, and logs no console errors
+- [x] 9.1 In `examples/plain-js`, move the window-level "move the pump" shortcut from M to P (and the hint in `index.html`), and opt one demo node type into resizing with `capabilities: { resize: true }` and `sizeLimits`; verify `npm run demo:build` succeeds and a headless Chrome run of the demo resizes that node from its corner handle (other types show no handle), rotates and mirrors with R, Shift+R, M and Shift+M (P still moves the pump, M no longer does), auto-pans a drag at the edge, and logs no console errors
 
 ## 10. Gates
 
