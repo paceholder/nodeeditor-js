@@ -215,7 +215,7 @@ reads at mount. Rules:
   during the hold. Overlay content can set its own `user-select`.
 
 Pen long-press is not armed, because pens report their barrel button through
-`contextmenu` (see Open Questions).
+`contextmenu` (user decision, Resolved Questions).
 
 ### D6. Keyboard invocation
 
@@ -237,40 +237,42 @@ choice is pending, and a listener exists. Then:
 The key handling sits in `context-menu-input.ts`, not in the keymap, because it is not a
 command: its result is an event with a position, not a patch.
 
-### D7. Connection options: ties and policy alternatives
+### D7. The release target is picked as today; only its policy alternatives are offered
 
-New pure `src/view/interact/choice/choice-options.ts` builds the options from the
-release-time `connectPreview`:
+Which port a drop lands on is never a question for the host. As in QtNodes, where the
+topmost item under the cursor wins, the existing deterministic order decides. The scene
+pick orders hits by interactive (paint) order, `connectPreview` sorts the ports in the
+capture radius nearest first, with equal distances kept in pick order, and the release
+target is the first candidate in that list that the policy accepts or answers with
+`choice`. Overlapping or coincident ports therefore resolve exactly as they do today,
+without a dialog. The one difference from today is that a `choice` port can now be the
+target. Before, it was mapped to `pending` and skipped, so a farther compatible port could
+win.
 
-1. Take candidates whose evaluation is `compatible` or the new `choice` state.
-2. Keep those whose screen distance is within `choiceTiePx` (new tool option, default 1
-   CSS px) of the first one. The list is already nearest first with stable pick-order
-   ties.
-3. Expand each kept port: a compatible port gives one option. A choice port gives one
-   option per policy alternative, in policy order.
-
-Each option is `{ key, target, connectionKind, label, plan, alternative? }`. `key` is
-opaque and unique in the request. It is built from the port IDs and the alternative's
-policy key, and hosts must not parse it. `connect-evaluation.ts` maps planner `choice`
-to state `choice` and keeps the alternatives (`ConnectionEvaluation.alternatives`), so
-building options needs no second policy call. `CandidateState` gains `choice`, and
-`connect-glyphs.ts` draws a distinct glyph for it (UX-02).
+`connect-evaluation.ts` maps planner `choice` to the new `choice` `CandidateState` and
+keeps the alternatives (`ConnectionEvaluation.alternatives`), so building the request
+needs no second policy call. `connect-glyphs.ts` draws a distinct glyph for the state
+(UX-02). A small pure `src/view/interact/choice/choice-request.ts` turns the target's
+alternatives into options `{ key, connectionKind, label, plan }` in policy order. The
+option key is the policy's alternative key (CON-04), so the host gets the same key the
+policy accepts back.
 
 Decision at release in `connect-tool.ts`, with `ctx.chooserInstalled` (new
 `ToolContext` flag):
 
-- No chooser: the target is the first `compatible` candidate. This is today's rule
-  unchanged: ties go to pick order, and choice ports are never picked (INT-12b).
-- With a chooser: no options means nothing is committed. One option that came from a
-  plain compatible port is committed directly. Anything else (two or more options, or
-  one port that needs a choice) emits the new effect
-  `{ type: "choose", request: { source, options, at } }` with the cursor reset, and
-  **without** clearing the preview. The tool goes idle, so the router releases capture.
+- No target: nothing is committed (as today).
+- Target accepted directly: one `connect` is committed (as today), and the chooser is
+  never called.
+- Target needs a choice, no chooser: nothing is committed (INT-12b).
+- Target needs a choice, with a chooser: emit the new effect
+  `{ type: "choose", request: { source, target, options, at } }` with the cursor reset
+  and **without** clearing the preview. The tool goes idle, so the router releases
+  capture.
 
-Why a 1 px tie: ports in the capture radius at different distances already have a clear
-winner that the preview shows as the target, so asking would add a dialog to almost
-every connection between dense nodes. Only coincident ports, such as stacked or
-overlapping nodes, are true ties. The option makes it tunable.
+Alternative considered and rejected after review: **asking the host when several ports
+are tied under the release point** (with a tie distance option). It would add a dialog
+where QtNodes users expect the topmost port to win, and the pick order is already
+deterministic and documented (GEO-04a).
 
 ### D8. The chooser: one async function with an `AbortSignal`
 
@@ -279,7 +281,8 @@ type ConnectionChooser = (request: ConnectionChoiceRequest) =>
   string | undefined | Promise<string | undefined>;
 interface ConnectionChoiceRequest {
   readonly source: Endpoint;
-  readonly options: readonly ConnectionChoiceOption[];
+  readonly target: Endpoint;
+  readonly options: readonly ConnectionChoiceOption[];   // the target's policy alternatives
   readonly client: { x: number; y: number };
   readonly viewport: Point<"viewport">;
   readonly world: Point<"world">;
@@ -311,14 +314,11 @@ Why this form:
 - **Callback pair (`resolve`, `reject` arguments).** Same power as a promise, more
   ceremony, rejected.
 
-Default without a chooser: never pick among policy alternatives, and keep the
-first-in-order pick for plain ties. The spec already forbids silent picks of policy
+Default without a chooser: never pick among policy alternatives. The spec already forbids silent picks of policy
 alternatives (CON-04, SIG-04 "not an automatic pick", SIG-05 "rather than array-order
 selection"). Cancelling is the only safe default. The library cannot know which
 alternative is the host's "usual" one, and a silent wrong connection kind is worse than
-none. Plain coincident ports are not a policy ambiguity. Picking the first in the
-documented interactive order is deterministic (GEO-04a) and is what hosts get today, so
-it does not change.
+none.
 
 ### D9. The pending choice lives outside the router
 
@@ -336,8 +336,7 @@ type ChoiceState =
   arrives, it is applied only if the token is still current and the signal is not
   aborted.
 - **Resolve:** clear the preview, then `host.commit({ kind: "connect", from: source,
-  to: option.target, connectionKind: option.connectionKind, choice:
-  option.alternative?.key })`. The commit goes through the same `editable.execute` path
+  to: request.target, connectionKind: option.connectionKind, choice: option.key })`. The commit goes through the same `editable.execute` path
   as tool commits: one command, one history entry, with policy and capability validation
   (CON-03, CON-05). A rejection is reported like any failed tool commit.
 - **Cancel:** abort, clear the preview, back to idle. No history entry. The triggers
@@ -347,7 +346,7 @@ type ChoiceState =
   - a `pointerdown` on the root (capture phase) outside overlay content, which is
     consumed with `stopPropagation` and `preventDefault`, so the click that dismisses a
     picker does not also start a pan or select;
-  - `entitiesRemoved` with the source node or port, or any option's node or port (from
+  - `entitiesRemoved` with the source or target node or port (from
     the model `change` listener `view-editing.ts` already has);
   - model `reset`, chooser replacement, and dispose.
 - **Shortcuts while pending.** The `onKey` wrapper in `view-hooks.ts` returns `false`
@@ -416,7 +415,7 @@ default presets never return `choice`. Core tests that build `choice` outcomes g
 | core/facade | `index.ts` (export `ConnectionAlternative`) |
 | view/platform | `dom/layer-stack.ts` (touch callout, user-select) |
 | view/render | `paint/previews/preview-types.ts` (`choice` state, `alternatives`), `connect-glyphs.ts` |
-| view/interact | new `context-menu/context-menu-types.ts`, `context-target.ts` (target from hits, D3 rule, keyboard placement), `long-press.ts`, `context-menu-input.ts`; new `choice/choice-types.ts`, `choice-options.ts`, `connection-choice.ts`; new `input/view-events.ts`, `input/key-input.ts`; changed `tools/connect-tool.ts`, `connect-evaluation.ts`, `tool-types.ts` (`choose` effect, `"context-menu"` reason, `chooserInstalled`), `thresholds.ts` (`longPressMs`, `choiceTiePx`), `input/effect-runner.ts`, `input/dom-input.ts`, `overlay/overlay-host.ts`, `clipboard/clipboard-commands.ts`, `clipboard/clipboard-service.ts`, `clipboard/clipboard-events.ts` |
+| view/interact | new `context-menu/context-menu-types.ts`, `context-target.ts` (target from hits, D3 rule, keyboard placement), `long-press.ts`, `context-menu-input.ts`; new `choice/choice-types.ts`, `choice-request.ts`, `connection-choice.ts`; new `input/view-events.ts`, `input/key-input.ts`; changed `tools/connect-tool.ts`, `connect-evaluation.ts`, `tool-types.ts` (`choose` effect, `"context-menu"` reason, `chooserInstalled`), `thresholds.ts` (`longPressMs`), `input/effect-runner.ts`, `input/dom-input.ts`, `overlay/overlay-host.ts`, `clipboard/clipboard-commands.ts`, `clipboard/clipboard-service.ts`, `clipboard/clipboard-events.ts` |
 | view/mount | new `view-hooks.ts` (event emitter, context-menu input, choice controller and their gates, wired from `view-editing.ts`); `view-types.ts` (`on`, `setConnectionChooser`, `InputOptions.chooseConnection`); `mount-view.ts` (two delegating members); `index.ts`, `advanced.ts` |
 
 `src/view/interact/` already matches every subfolder in `src/architecture.test.ts`, so
@@ -457,7 +456,7 @@ sequenceDiagram
   participant H as host chooser
   participant M as model
   U->>T: release over a port whose policy offers two kinds
-  T-->>X: effect choose {source, options, at} (preview kept)
+  T-->>X: effect choose {source, target, options = its alternatives, at} (preview kept)
   X->>H: chooser(request with signal)
   Note over X,H: pending: shortcuts off, Escape / new press / removal / dispose cancel
   H-->>X: "key of option 2"
@@ -530,22 +529,19 @@ Answered by the user on 2026-11-01, before the proposal:
 - **Demo.** The plain-js demo gets a small example context menu and choice picker as
   example code, application-neutral.
 
-## Open Questions
+Answered by the user on 2026-11-01, after reviewing the proposal:
 
-These can be answered during or after implementation without changing the specs'
-structure:
+- **Modifiers on right-click.** Shift+right-click (or any modifier) on an unselected
+  entity behaves like a plain right-click: it selects just that entity. Modifiers stay in
+  the payload (D3).
+- **Browser menu pass-through.** There is no per-event pass-through. The browser's menu
+  is suppressed while any listener is registered (D4).
+- **Long-press devices.** Touch only, not pen (D5).
+- **No port-tie choice.** The tie-distance idea (`choiceTiePx`, asking about several
+  ports near the release point) is dropped. As in QtNodes, the topmost element wins: the
+  existing pick order (interactive paint order, then nearest port) decides the target
+  deterministically, and the host is never asked which port. The chooser is asked only
+  when the policy returns a `choice` with several alternatives for the picked target,
+  and the request's options are that target's alternatives (D7).
 
-- **Modifiers on right-click.** Should Shift+right-click on an unselected entity *add* it
-  to the selection instead of replacing it? Recommendation: no for now (D3 ignores
-  modifiers, and they are reported in the payload so a host can act on them).
-  Revisit if users ask.
-- **Letting the browser menu through per event.** Should a listener be able to say "not
-  mine, show the browser's menu" (for example on empty canvas)? Recommendation: not in
-  this change. It would need the listener to run synchronously inside the DOM event,
-  which touch and keyboard paths do not guarantee. A host can unsubscribe instead.
-- **Pen long-press.** Pens are not armed (D5). Recommendation: keep it that way. Most
-  pens have a barrel button that browsers report as `contextmenu`. Add `pen` to the
-  long-press types only if a target device lacks one.
-- **Tie distance.** `choiceTiePx` defaults to 1 CSS px, so only coincident ports are
-  asked about. Recommendation: keep 1. A host that wants to ask whenever two ports are in
-  the capture radius can raise it to the capture radius.
+No open questions remain.

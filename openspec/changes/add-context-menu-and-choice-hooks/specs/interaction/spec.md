@@ -69,22 +69,22 @@ While a context-menu listener is registered, a touch that stays within the touch
 - **THEN** no event is raised and releasing selects the node as before
 
 ### Requirement: INT-12 Connection-choice request
-When a connection drag is released with more than one valid option, the view SHALL ask a host chooser instead of picking, and SHALL ship no picker. An option is a target port, with one policy alternative when the policy offered several (CON-04). Options SHALL cover the ports tied within a small screen distance of the nearest one, in deterministic order (GEO-04a). The request SHALL carry the source, keyed options, the release position, and a cancellation signal.
+The release target SHALL be the first port in the existing deterministic candidate order that is compatible or requires a choice; the host SHALL never be asked which port (GEO-04a). Only when the policy returns a choice with several alternatives for that target SHALL the view ask a host chooser, and it SHALL ship no picker. The request SHALL carry the source, the target, its alternatives as keyed options in policy order, the release position, and a cancellation signal (CON-04).
 
 #### Scenario: Policy offers two connection kinds
 - **WHEN** a chooser is installed, the policy returns two alternatives for a port pair, and the user releases a drag on that target port
 - **THEN** the chooser receives two options with distinct keys for that port, in policy order, and nothing is committed while it is pending
 
-#### Scenario: Coincident target ports
-- **WHEN** a chooser is installed and two compatible ports of overlapping nodes lie under the release point at the same screen distance
-- **THEN** the chooser receives one option per port in pick order
+#### Scenario: Overlapping ports are not a choice
+- **WHEN** a chooser is installed and two compatible ports of overlapping nodes lie under the release point
+- **THEN** the chooser is not called and one connect command is submitted to the first port in the existing candidate order
 
 #### Scenario: Single valid target does not ask
-- **WHEN** a chooser is installed and the release is over exactly one compatible port whose policy accepts directly
+- **WHEN** a chooser is installed and the release target is a compatible port whose policy accepts directly
 - **THEN** one connect command is submitted and the chooser is not called
 
 ### Requirement: INT-12a Pending choice resolution
-While a choice is pending, the preview SHALL stay at the release point, only Escape among graph shortcuts SHALL run, and nothing SHALL be committed. Choosing an option SHALL submit one connect command, revalidated at commit (CON-05). Declining, a failing chooser, an unknown key, Escape, a new press outside overlay content, disposal, a reset, or removal of the source or an option's port SHALL commit nothing, clear the preview, abort the signal, and ignore later answers (INT-08).
+While a choice is pending, the preview SHALL stay at the release point, only Escape among graph shortcuts SHALL run, and nothing SHALL be committed. Choosing an option SHALL submit one connect command, revalidated at commit (CON-05). Declining, a failing chooser, an unknown key, Escape, a new press outside overlay content, disposal, a reset, or removal of the source or target port SHALL commit nothing, clear the preview, abort the signal, and ignore later answers (INT-08).
 
 #### Scenario: Host picks an option
 - **WHEN** a choice between two connection kinds is pending and the chooser resolves with the second option's key
@@ -103,7 +103,7 @@ While a choice is pending, the preview SHALL stay at the release point, only Esc
 - **THEN** the choice is cancelled with nothing committed, and that press does not start a gesture
 
 #### Scenario: Target removed while choosing
-- **WHEN** a choice is pending and an external change removes the node of one option's port
+- **WHEN** a choice is pending and an external change removes the target port's node
 - **THEN** the choice is cancelled, the signal is aborted, and nothing is committed
 
 #### Scenario: Dispose while choosing
@@ -115,20 +115,20 @@ While a choice is pending, the preview SHALL stay at the release point, only Esc
 - **THEN** the connect command is rejected with the exhausted-capacity reason and no connection is created (CON-05)
 
 ### Requirement: INT-12b Release without a chooser
-Without a chooser the view SHALL never pick among policy alternatives. Releasing on a port that requires a choice SHALL commit nothing, and the target SHALL show a choice-required cue that is not color alone (UX-02). Ports that are only tied SHALL keep the deterministic first-in-pick-order target.
+Without a chooser the view SHALL never pick among policy alternatives. Releasing on a target that requires a choice SHALL commit nothing, and the target SHALL show a choice-required cue that is not color alone (UX-02). A target the policy accepts directly SHALL be connected as before.
 
 #### Scenario: No chooser and a policy choice
 - **WHEN** no chooser is installed and the user releases on a port whose policy returns alternatives
 - **THEN** nothing is committed, and before release the target showed a choice-required cue that is not color alone
 
-#### Scenario: No chooser and tied ports
-- **WHEN** no chooser is installed and two compatible ports are tied under the release point
-- **THEN** one connect command is submitted to the first in pick order, as before
+#### Scenario: No chooser and a direct accept
+- **WHEN** no chooser is installed and the user releases on a port the policy accepts directly
+- **THEN** one connect command is submitted for that port pair, as before
 
 ## MODIFIED Requirements
 
 ### Requirement: INT-04 Connection gestures
-The view SHALL support drag-to-connect and click-to-route with finish, backtrack of the last corner, cancel, and optional endpoint reconnection. Tool-specific right-click behavior SHALL NOT disable ordinary context menus outside that tool: outside such a tool a right-click raises the context-menu event (INT-11), or the browser's own menu when the host registered no listener. A release over several valid options SHALL be resolved through the connection-choice hook (INT-12).
+The view SHALL support drag-to-connect and click-to-route with finish, backtrack of the last corner, cancel, and optional endpoint reconnection. Tool-specific right-click behavior SHALL NOT disable ordinary context menus outside that tool: outside such a tool a right-click raises the context-menu event (INT-11), or the browser's own menu when the host registered no listener. A release on a target for which the policy offers several alternatives SHALL be resolved through the connection-choice hook (INT-12).
 
 #### Scenario: Drag to connect
 - **WHEN** the user drags from a port and releases on a compatible port
