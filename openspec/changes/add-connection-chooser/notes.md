@@ -67,3 +67,41 @@ the installed Chrome (`channel: "chrome"`, script kept out of the repo):
 - the context menu still worked (right-click, Shift+F10); no console errors.
 - The demo policy offers the choice only for sensor-to-controller signal links; a
   `delayed` kind gets a dashed painter so the chosen kind is visible.
+
+## Gate results (task 6.1)
+
+- `npm run lint`: 446 files, no findings.
+- `npm run typecheck`: all four passes clean (including the core-only pass).
+- `npm test`: 114 files, 673 tests passed (`src/architecture.test.ts` included).
+- `npm run test:browser` (installed Google Chrome): 36 files, 174 tests passed.
+- `npm run build`: ok.
+- `npm run bench:size` (gzip): core 30.9 KiB (budget 75), view 41.8 KiB (budget 150),
+  advanced 26.5 KiB, react 41.8 KiB. All budgets met.
+- Files over 300 lines among those changed: only `src/view/mount-view.ts` (338, the
+  accepted exception). `view-editing.ts` is at 298 after the `removedIds` refactor;
+  `examples/plain-js/main.ts` at 294.
+
+## Size
+
+Measured with `git diff --numstat` from `ac4dc5b` (end of `add-context-menu-hook`) to the
+end of this change, gzip from `scripts/bundle-size.mjs` (exact bytes) at both commits.
+
+| Part | Library code | Test code | Example |
+| --- | --- | --- | --- |
+| Context menu (`add-context-menu-hook`, for comparison) | +820 / -50 | +749 / -1 | +120 |
+| Chooser, total | +474 / -34 | +745 / -2 | +96 / -1 |
+| of which core policy keys | +37 / -3 | +167 / -2 | |
+| of which view (choice state, glyph, release rule, controller, wiring, exports) | +437 / -31 | +578 / 0 | |
+
+The view figure includes the `removedIds` refactor (+10 / -9, a move). Bundle (gzip):
+view 41,829 -> 42,768 bytes (+939, about +0.9 KiB), core 31,582 -> 31,650 (+68),
+advanced 26,578 -> 27,164 (+586).
+
+Removing the chooser again means deleting `src/view/interact/choice/`,
+`src/view/view-connection-choice.ts`, `connect-choice-tool.test.ts`,
+`connection-choice.browser.test.ts` and `examples/plain-js/choice-picker.ts`, and
+reverting a few lines in `connect-tool.ts`, `connect-candidates.ts`, `tool-types.ts`,
+`tool-context.ts`, `effect-runner.ts`, `view-editing.ts`, `view-types.ts`,
+`mount-view.ts`, the two entry files and `main.ts`. The core keys and the
+choice glyph could stay on their own: they make a policy `choice` addressable and
+visible even without a chooser.
