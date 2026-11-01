@@ -64,6 +64,10 @@ import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import {
+  attachViewConnectionChoice,
+  type ViewConnectionChoice,
+} from "./view-connection-choice.js";
+import {
   createViewContextMenu,
   type ViewContextMenu,
 } from "./view-context-menu.js";
@@ -94,6 +98,8 @@ export interface Editing {
   readonly commands: CommandRegistry;
   readonly clipboard: ViewClipboard;
   readonly on: ViewContextMenu["on"];
+  /** Replace or remove the connection chooser; cancels a pending choice. */
+  readonly setConnectionChooser: ViewConnectionChoice["setChooser"];
   toolOptions(): ToolOptions;
   setToolOptions(patch: Partial<ToolOptions>): void;
   /** True while something on the interaction layer is drawn in world space. */
@@ -142,6 +148,7 @@ export function attachEditing(deps: EditingDeps): Editing {
   const offs: Array<() => void> = [];
   const menu = createViewContextMenu(deps.root);
   let input: DomInput | undefined;
+  let choices: ViewConnectionChoice | undefined;
   let bridge: ClipboardEvents | undefined;
   let handles: ReturnType<typeof createResizeHandles> | undefined;
   const clipOptions = deps.input === false ? undefined : deps.input?.clipboard;
@@ -188,6 +195,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       ...(editable ? { plan: editable.plan } : {}),
       options: () => toolOptions,
       hidePortsBelow: deps.hidePortsBelow,
+      chooserInstalled: () => choices?.installed() === true,
     });
     handles = editable
       ? createResizeHandles({
@@ -209,6 +217,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       host: {
         preview: deps.setPreview,
         commit: (command) => void editable?.execute(command),
+        choose: (release) => choices?.open(release),
         selection,
         viewport(op) {
           if (op.kind === "panBy") viewport.panBy(op.dx, op.dy);
@@ -240,6 +249,14 @@ export function attachEditing(deps: EditingDeps): Editing {
       });
     }
     const dom = input;
+    choices = attachViewConnectionChoice(deps.root, {
+      model,
+      overlay: deps.overlay,
+      viewport,
+      commit: (command) => void editable?.execute(command),
+      clearPreview: () => deps.setPreview(null),
+      chooser: options.chooseConnection,
+    });
     menu.attach({
       overlay: deps.overlay,
       platform,
@@ -259,6 +276,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     commands,
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     on: menu.on,
+    setConnectionChooser: (chooser) => choices?.setChooser(chooser),
     toolOptions: () => resolveToolOptions(toolOptions),
     setToolOptions(patch) {
       toolOptions = { ...toolOptions, ...patch };
@@ -267,6 +285,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     dispose() {
       for (const off of offs.splice(0)) off();
       menu.dispose();
+      choices?.dispose();
       bridge?.dispose();
       bridge = undefined;
       input?.dispose();

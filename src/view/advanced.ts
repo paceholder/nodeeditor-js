@@ -3,6 +3,13 @@
 // Mounting and customizing an editor needs only `nodeeditor-js/view`.
 // Importing this module has no side effects.
 
+export { choiceOptions } from "./interact/choice/choice-request.js";
+export type {
+  ChoiceState,
+  ConnectionChoice,
+  ConnectionChoiceHost,
+} from "./interact/choice/connection-choice.js";
+export { createConnectionChoice } from "./interact/choice/connection-choice.js";
 export {
   CLIPBOARD_COMMAND_IDS,
   registerClipboardCommands,

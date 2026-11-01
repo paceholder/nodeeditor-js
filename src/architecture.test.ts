@@ -30,6 +30,7 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "view/mount", rank: 8, path: "src/view/view-types.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/view-editing.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/view-context-menu.ts" },
+  { layer: "view/mount", rank: 8, path: "src/view/view-connection-choice.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/mount-view.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/index.ts" },
   { layer: "view/mount", rank: 8, path: "src/view/advanced.ts" },

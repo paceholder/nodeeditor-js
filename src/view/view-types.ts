@@ -10,6 +10,7 @@ import type {
   SceneStats,
   Viewport,
 } from "../core/index.js";
+import type { ConnectionChooser } from "./interact/choice/choice-types.js";
 import type { ClipboardOptions } from "./interact/clipboard/clipboard-types.js";
 import type { ViewClipboard } from "./interact/clipboard/view-clipboard.js";
 import type { CommandRegistry } from "./interact/commands/command-registry.js";
@@ -50,6 +51,11 @@ export interface InputOptions {
    * handling, and `system: false` to keep the clipboard in-app only.
    */
   readonly clipboard?: ClipboardOptions;
+  /**
+   * Picks among a policy's alternatives when a connection is released on a target that
+   * needs a choice. Without one such a release commits nothing.
+   */
+  readonly chooseConnection?: ConnectionChooser;
 }
 
 export interface ViewOptions {
@@ -147,6 +153,8 @@ export interface ViewHandle {
     type: K,
     handler: (event: ViewEventMap[K]) => void,
   ): () => void;
+  /** Install, replace or remove (`undefined`) the connection chooser; cancels a pending choice. */
+  setConnectionChooser(chooser: ConnectionChooser | undefined): void;
   /** The tool options in effect (defaults merged with the mount and runtime overrides). */
   toolOptions(): ToolOptions;
   /**

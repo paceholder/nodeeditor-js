@@ -279,6 +279,7 @@ export function mountView(
       on: editing.clipboard.on,
     },
     on: editing.on,
+    setConnectionChooser: editing.setConnectionChooser,
     toolOptions: editing.toolOptions,
     setToolOptions: editing.setToolOptions,
     setPresence(entries) {
