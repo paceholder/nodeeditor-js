@@ -46,6 +46,41 @@ only and stay unit length.
 Bounds of a transformed rectangle are the axis-aligned box of its four corners
 (`transformRect`).
 
+`node-frame.ts` in `core/data` holds the same linear part, `L = R(rotation) . M(mirrored)`
+(`frameVector`, `frameVectorInverse`), for planners and the capability validator, which
+may not import `core/space`; a test asserts that both agree in all eight states.
+
+### Mirrors in screen axes [NOD-04]
+
+A mirror command flips the node about its centre along a **screen** axis. With
+`world = R(r) . M(m)`, the horizontal screen flip `H` (left and right swap) satisfies
+`H . R(r) = R(-r) . H`, and the vertical flip is `V = R(2) . H`:
+
+| Command | New `mirrored` | New `rotation` |
+| --- | --- | --- |
+| mirror horizontal | `!m` | `(4 - r) mod 4` |
+| mirror vertical | `!m` | `(6 - r) mod 4` |
+| rotate +-1 | `m` | `(r +- 1) mod 4` |
+
+A vertical mirror is therefore stored as a horizontal mirror plus a half turn: one update
+op, no data-format change.
+
+### Anchored resize [NOD-04a]
+
+Resizing from `size (w, h)` to `(w', h')` with the local point `fixed` (each coordinate
+`-1`, `0` or `1`) kept in place moves the centre by
+
+```
+position' = position + L . ( -fixed.x * (w' - w) / 2 , -fixed.y * (h' - h) / 2 )
+```
+
+(`anchoredPosition`). The resize handle sits on the corner of the size box that is
+bottom-right on screen: the four corners `(+-w/2, +-h/2)` go through `toWorld` and the
+one with the largest `x + y` wins, unique for quarter turns. The tool resizes with the
+diagonally opposite corner fixed. `GeometryScene.project(id, change)` builds the entry for
+a hypothetical size and placement through the registered geometry, without touching the
+index, so previews and commits use the same geometry.
+
 ## Supported ranges [GEO-06]
 
 | Quantity           | Range                          | Out of range                       |
@@ -79,6 +114,12 @@ Presets:
   nearest body edge.
 - **Card**: title bar, then port rows below it (horizontal) or ports along the top and
   bottom edges (vertical); painted bounds add a label margin, the hit shape does not.
+
+Anchors under resize: every preset computes anchors from the stored size, so a resize
+moves them. Image-symbol placements are fractions of the body box, so edge ports stay on
+their edge. Card rows in horizontal layout are a fixed distance below the top and clamp
+to the bottom edge, so a card shorter than `titleHeight + rowPitch * rows` stacks its
+lower ports on the bottom corner; declare that as the type's minimum height.
 
 ## Paths [ROU-01, ROU-02]
 

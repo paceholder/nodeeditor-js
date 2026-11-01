@@ -152,12 +152,14 @@ What dirties what:
 | Event                                   | Dirty layers |
 | --------------------------------------- | ------------ |
 | Committed model change, `reset`, geometry registration change | scene |
-| Pan, zoom (`viewport.set/panBy/zoomAt`) | background, scene (interaction too while presence is shown) |
+| Pan, zoom (`viewport.set/panBy/zoomAt`) | background, scene (interaction too while presence or a resize handle is shown) |
 | `setTheme`                              | background, scene |
 | Painter registry change                 | scene (background slot: background) |
 | Asset became ready or failed            | scene |
 | Container resized or pixel ratio changed | all three |
 | `interaction.add/invalidate`, `setPresence` | interaction |
+| Selection change; a committed change while a resize handle may show | interaction (the handle) |
+| Auto-pan frame during a drag | background, scene (the pan), interaction (the preview) |
 
 You can force a repaint with `view.invalidate("scene")` (any of `"background"`, `"scene"`,
 `"interaction"`).
@@ -686,6 +688,31 @@ view.setPresence([]); // clear
 
 Cursor glyphs keep their size on screen; selection outlines are dashed boxes around the
 nodes' bodies. (`point` comes from `nodeeditor-js`.)
+
+**The resize handle** is a built-in interaction painter at order 20: above gesture
+previews (10), below presence (100). It draws an 8 x 8 CSS-pixel grip inside the screen
+bottom-right corner of the single selected node whose type opted in to resizing
+(`capabilities: { resize: true }`), follows the preview frame while that node is being
+resized, and hides during a move. Its geometry (`resizeHandleOf` in
+`nodeeditor-js/view/advanced`) is the same function the resize tool picks with, so the
+`nwse-resize` hover cursor, the drawing and the press always agree. A host assembling its
+own view from building blocks adds it with `createResizeHandlePainter(source)` or wires
+selection, probe and preview in one call with `createResizeHandles(deps)`.
+
+**Auto-pan** during node, connection, marquee and resize drags is on by default. Tune or
+turn it off through the tool options, at mount or later:
+
+```ts
+mountView(container, {
+  model,
+  input: { toolOptions: { autoPan: { edgePx: 48, maxSpeedPxPerSecond: 900 } } },
+});
+view.setToolOptions({ autoPan: false });
+```
+
+It requests animation frames through the view's frame clock (`frameClock`) only while a
+drag sits in an edge band, and none once the drag ends; see
+[interaction.md](interaction.md#5a-auto-pan-int-09).
 
 ### Clipboard: copy, cut, paste, duplicate
 
