@@ -8,9 +8,9 @@ under the pointer, touch has no long-press, and the keyboard menu key does nothi
 though the keyboard editing shortcuts rule asks for keyboard access to context actions. Connection choices are also
 stuck. When the policy answers "choice required" (the structured policy outcomes rule, for example two connection kinds
 for one port pair), releasing the connection drag does nothing: `connect-evaluation.ts`
-maps the outcome to `pending` and the tool commits nothing. When several compatible ports
-sit at the same spot, the tool quietly takes the first one in pick order. Both cases need a
-person to decide, and the library has no way to ask.
+maps the outcome to `pending` and the tool commits nothing. Picking between alternatives
+needs a person to decide, and the library has no way to ask. Which *port* a drop lands on
+is not such a case: as in QtNodes, the existing deterministic pick order decides.
 
 The library will not ship menu or picker UI. Hosts have their own design systems, and
 the usual JavaScript-library answer is a hook: React Flow's `onNodeContextMenu` /
@@ -51,17 +51,17 @@ needs: paste at a given position and an overlay anchor fixed to the screen.
   A native `contextmenu` that the browser sends for the same touch is swallowed, so the
   host never gets two events.
 - **Connection-choice hook (view).** `InputOptions.chooseConnection` (and
-  `view.setConnectionChooser`) takes one async function. When a connection drag is
-  released over several valid options, the function receives a request: the source, the
-  options (each with a key, target endpoint, connection kind, policy label and plan), the
-  release position, and an `AbortSignal`. It returns an option key, or `undefined` to
-  cancel. The options are the ports tied for nearest, plus every alternative a policy
-  returned for one port pair. The gesture stays pending, with its preview frozen, until
+  `view.setConnectionChooser`) takes one async function. The release target is picked as
+  today, by the existing deterministic candidate order, and is never asked about. Only
+  when the policy returns a `choice` with several alternatives for that target does the
+  function receive a request: the source, the target, its alternatives as options (each
+  with a key, connection kind, policy label and plan, in policy order), the release
+  position, and an `AbortSignal`. It returns an option key, or `undefined` to cancel. The
+  gesture stays pending, with its preview frozen, until
   the function returns. Choosing an option commits one `connect` and one history entry;
   cancelling commits nothing. Escape, a new press on the canvas, dispose, a document reset
-  and removal of the source or an option's port cancel it and abort the signal. With no
-  chooser, a policy choice is never picked automatically (nothing is committed), and tied
-  ports keep today's deterministic pick order.
+  and removal of the source or target port cancel it and abort the signal. With no
+  chooser, a policy choice is never picked automatically (nothing is committed).
 - **Choosing a policy alternative (core).** Each alternative in a policy `choice`
   outcome carries a stable `key`. The `connect` command and the `ConnectionProposal`
   accept `choice: key`, and the policy must then accept exactly that alternative. The
@@ -86,7 +86,7 @@ chooser), the connection gestures rule (right-click outside a tool raises the ho
 library ships no menu; Escape leaves a pending choice), the structured policy outcomes rule (alternative keys and
 choosing one), the DOM overlay slot rule (viewport anchor; menus are host DOM), the duplicate and paste fragments rule (paste at a given
 position). Evidence also touches the gesture lifecycle and cancellation rule (cancel paths), the input scoping rule (scoping), the one committed edit per gesture rule (one
-entry or none), the commit-time revalidation rule (revalidation at commit), the hit result identity and order rule (deterministic ties), the server rendering safety rule /
+entry or none), the commit-time revalidation rule (revalidation at commit), the hit result identity and order rule (deterministic target order), the server rendering safety rule /
 the no global side effects rule (no timers or listeners before mount) and the per-instance disposal rule (dispose).
 
 ### Out of scope
@@ -131,10 +131,10 @@ None.
   The core tests that build `choice` outcomes need keys.
 - View, interact: new `src/view/interact/context-menu/` (`context-menu-types.ts`,
   `context-target.ts`, `long-press.ts`, `context-menu-input.ts`), new
-  `src/view/interact/choice/` (`choice-types.ts`, `choice-options.ts`,
+  `src/view/interact/choice/` (`choice-types.ts`, `choice-request.ts`,
   `connection-choice.ts`), new `src/view/interact/input/view-events.ts`. Changed:
   `connect-tool.ts`, `connect-evaluation.ts`, `tool-types.ts` (`choose` effect,
-  `context-menu` cancel reason), `thresholds.ts` (`longPressMs`, `choiceTiePx`),
+  `context-menu` cancel reason), `thresholds.ts` (`longPressMs`),
   `effect-runner.ts`, `dom-input.ts` (its key handling moves to a new
   `input/key-input.ts` first; then a `cancelGesture` method), `overlay-host.ts`
   (`viewport` anchor), `clipboard-commands.ts` and `clipboard-service.ts` (`at`).
