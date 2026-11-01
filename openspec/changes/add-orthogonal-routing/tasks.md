@@ -36,7 +36,7 @@
 
 ## 6. Demo
 
-- [ ] 6.1 Add `examples/plain-js/routes.ts`: a route registry where `delayed` is orthogonal with `cornerRadius: 6`, and a checkbox "Orthogonal wires" that switches the `default` kind between Bezier and orthogonal with `view.routes.replace`; wire it from `main.ts` (pass `routes` to `mountView`) and `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds, `wc -l examples/plain-js/main.ts` stays at or under 300, and a headless Chrome run of the demo shows the delayed wire orthogonal, toggles the default wires both ways, drags a node with orthogonal wires attached, and logs no console errors
+- [x] 6.1 Add `examples/plain-js/routes.ts`: a route registry where `delayed` is orthogonal with `cornerRadius: 6`, and a checkbox "Orthogonal wires" that switches the `default` kind between Bezier and orthogonal with `view.routes.replace`; wire it from `main.ts` (pass `routes` to `mountView`) and `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds, `wc -l examples/plain-js/main.ts` stays at or under 300, and a headless Chrome run of the demo shows the delayed wire orthogonal, toggles the default wires both ways, drags a node with orthogonal wires attached, and logs no console errors
 
 ## 7. Gates
 

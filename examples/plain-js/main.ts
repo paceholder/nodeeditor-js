@@ -18,6 +18,7 @@ import {
 import { choicePicker, demoPolicy } from "./choice-picker.js";
 import { installContextMenu } from "./context-menu.js";
 import pumpUrl from "./pump.svg?url";
+import { demoRoutes, installRouteToggle } from "./routes.js";
 import tankUrl from "./tank.svg?url";
 import valveUrl from "./valve.svg?url";
 
@@ -180,6 +181,7 @@ const view = mountView(container, {
   model, // the view builds its own scene and repaints on committed edits
   geometry,
   painters,
+  routes: demoRoutes(), // delayed links are orthogonal (routes.ts)
   assets: { resolve: resolveAsset },
   // Signal ports are square and amber, so the two port types read apart.
   theme: {
@@ -202,6 +204,7 @@ const removeMenu = installContextMenu(view);
 // Dropping a sensor's "level" on the controller's "setpoint" asks which link kind to make.
 view.setConnectionChooser(choicePicker(view));
 
+installRouteToggle(view, "#orthogonal input"); // switches "default" wires live
 // Grid snapping is a runtime tool option: a 20-unit step when on, none when off.
 const snapBox = document.querySelector<HTMLInputElement>("#snap input");
 const setSnap = (on: boolean) => {

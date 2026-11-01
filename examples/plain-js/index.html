@@ -14,10 +14,11 @@
         max-width: 560px;
       }
       #hint kbd { color: #e6e9ef; }
-      #snap, #tools, #status {
+      #snap, #orthogonal, #tools, #status {
         position: fixed; right: 12px; top: 10px;
         font: 12px/1.5 system-ui, sans-serif; color: #aeb6c4;
       }
+      #orthogonal { right: 120px; }
       #tools { top: 34px; display: flex; gap: 6px; }
       #status { top: auto; bottom: 10px; left: 12px; right: auto; margin: 0; }
       #fragment textarea { width: min(80vw, 640px); height: 40vh; font: 11px monospace; }
@@ -52,10 +53,12 @@
       alone and drag its corner handle to resize it (<kbd>Shift</kbd> keeps the aspect
       ratio). Drags near the edge of the view scroll it.
       Right-click (or long-press, or <kbd>Shift+F10</kbd>) opens a context menu.
-      Connect the sensor's "level" to the controller's "setpoint" to pick a link kind.
+      Connect the sensor's "level" to the controller's "setpoint" to pick a link kind;
+      delayed links are drawn orthogonally. "Orthogonal wires" switches the others.
       Outside edits: <kbd>P</kbd> move pump, <kbd>E</kbd> toggle valve error.
     </p>
     <label id="snap"><input type="checkbox" /> Snap to grid</label>
+    <label id="orthogonal"><input type="checkbox" /> Orthogonal wires</label>
     <div id="tools">
       <button type="button" id="export">Export fragment</button>
       <button type="button" id="import">Import fragment</button>
