@@ -194,3 +194,16 @@ scene's registry and routers), advanced 27,164 -> 27,300 (+136).
   the layer diagram, and the import order inside `space/`. The Mermaid blocks were not
   rendered in a browser this time (mermaid is not installed in the repo); the syntax
   follows the existing blocks.
+
+## Status (2026-11-02)
+
+Applied: all tasks ticked, gates green, not archived, nothing pushed. Before archiving:
+
+1. The user tries the demo (`npm run demo`, the "Orthogonal wires" checkbox).
+2. The user answers the two open questions above (recommended: do both, as a small
+   follow-up inside this change, then re-run the perf gates).
+3. Fold the ghost-preview fix `588caa0` into the view commit `07c86db` (fixes are folded
+   into their original commit; tag the current head first).
+4. Re-measure the browser perf on mains power at 120 Hz, as the baseline was; the
+   numbers above were taken on battery at 60 Hz.
+5. Archive with the spec sync (`/opsx:archive add-orthogonal-routing`).
