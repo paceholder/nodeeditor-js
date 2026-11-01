@@ -722,6 +722,38 @@ without a label; `examples/plain-js/context-menu.ts` is a complete one with arro
 Escape and click-away. Touch long-press waits `toolOptions.longPressMs` (default 500;
 `false` turns it off).
 
+### Connection choices: a chooser, not a picker
+
+When a connection is released on a port for which the policy offers several
+alternatives (see guide-using-the-model.md, "When the policy offers a choice"), the view
+asks one host function and waits. Without one it commits nothing and the port shows a
+fork glyph. Which port was hit is never asked: the usual nearest-first order decides
+([interaction.md](interaction.md#4b-choosing-between-policy-alternatives-int-12)).
+
+```ts
+view.setConnectionChooser(async ({ options, world, signal }) => {
+  // options: [{ key, connectionKind, label, plan }], in policy order
+  const picker = buildPickerList(options);           // host DOM
+  const handle = view.overlay.attach(picker, { kind: "world", point: world });
+  try {
+    return await new Promise<string | undefined>((resolve) => {
+      picker.onpick = (key) => resolve(key);         // a key commits one connect
+      signal.addEventListener("abort", () => resolve(undefined)); // Escape, a press elsewhere, dispose
+    });
+  } finally {
+    handle.dispose();
+    view.element.focus();
+  }
+});
+view.setConnectionChooser(undefined); // remove it again (cancels a pending choice)
+```
+
+The same function can go in `input.chooseConnection` at mount. While it is pending, the
+preview stays, graph shortcuts do nothing, and the chosen connection is validated again
+when it is committed. A thrown error, a rejected promise, an unknown key or `undefined`
+commit nothing. `examples/plain-js/choice-picker.ts` is a complete picker with a demo
+policy.
+
 **Presence** shows other users' cursors and selections. The host supplies the data in world
 coordinates; the view draws it on the interaction layer and never touches the model or its
 history.

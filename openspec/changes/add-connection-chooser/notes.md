@@ -105,3 +105,17 @@ reverting a few lines in `connect-tool.ts`, `connect-candidates.ts`, `tool-types
 `mount-view.ts`, the two entry files and `main.ts`. The core keys and the
 choice glyph could stay on their own: they make a policy `choice` addressable and
 visible even without a chooser.
+
+## Documentation (group 7)
+
+- `docs/interaction.md`: the candidate table gains the fork glyph (pending no longer
+  covers choices), the release sequence gains the chooser branch, and a new section 4b
+  covers target order, pending state, cancellation and the default without a chooser.
+  `choiceTiePx` appears nowhere.
+- `docs/guide-view.md`: `setConnectionChooser` with an async example and `AbortSignal`.
+- `docs/guide-using-the-model.md`: alternative keys, `connect` with `choice`, and the
+  policy contract (unique stable keys, accept exactly the named one, the stored record
+  must validate on its own).
+- `docs/architecture.md`: the choice controller beside the router, why it is not a
+  router gesture, and the code map. All Mermaid blocks render (mermaid 11, headless
+  Chrome).
