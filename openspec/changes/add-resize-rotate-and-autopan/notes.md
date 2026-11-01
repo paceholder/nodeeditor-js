@@ -93,3 +93,20 @@ Deviations from design.md, clarifications made while implementing, and observati
   spread of the model, so host models with prototype methods keep working.
 - **The LIFE-01 resize browser check counts model subscriptions** (all released on
   dispose); the painter goes with the interaction layer, which dispose destroys.
+
+## Browser observations (Chrome, headless, built demo under `vite preview`)
+
+A Playwright script (Chrome channel, not committed) drove the built demo and read
+results back through the demo's "Export fragment" dialog. All 13 checks passed:
+
+- hovering the tank's screen bottom-right corner shows `nwse-resize`; dragging the
+  handle by (40, 30) made the tank 110 x 140 with its top-left corner fixed;
+- the pump (no opt-in) shows no handle cursor, and a drag from its corner moves it;
+- R and Shift+R rotate the selected pump and back; M mirrors it (and no longer moves it);
+  Shift+M from that state gives `mirrored: false, rotation: 2`; P moves the pump;
+- holding a valve drag at the right edge for 0.6 s carried it 890 world units for a
+  566 px pointer move (the view auto-panned);
+- no console errors or page errors.
+
+The handle draws as an 8 px square in the selection colour on the theme background,
+inside the selection outline at the body corner.
