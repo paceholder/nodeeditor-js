@@ -14,7 +14,7 @@
 
 ## 3. Pending choice (view/interact, headless)
 
-- [ ] 3.1 Implement `src/view/interact/choice/connection-choice.ts` (D4: states idle and pending, token and `AbortController`, resolve commits one `connect` with `connectionKind` and `choice`, decline, chooser error, unknown key, `cancel(reason)`, `entitiesRemoved`, chooser replacement and dispose abort and clear the preview, late answers ignored, synchronous answers handled); verify `connection-choice.test.ts` titled INT-12a, INT-08, INT-05 with deferred promises and a fake host: "Host picks an option" (one commit), "Host declines", "Escape while choosing" (signal aborted, later resolve ignored), "Target removed while choosing", "Dispose while choosing", a thrown chooser, an unknown key, and a synchronous answer committing within the same call
+- [x] 3.1 Implement `src/view/interact/choice/connection-choice.ts` (D4: states idle and pending, token and `AbortController`, resolve commits one `connect` with `connectionKind` and `choice`, decline, chooser error, unknown key, `cancel(reason)`, `entitiesRemoved`, chooser replacement and dispose abort and clear the preview, late answers ignored, synchronous answers handled); verify `connection-choice.test.ts` titled INT-12a, INT-08, INT-05 with deferred promises and a fake host: "Host picks an option" (one commit), "Host declines", "Escape while choosing" (signal aborted, later resolve ignored), "Target removed while choosing", "Dispose while choosing", a thrown chooser, an unknown key, and a synchronous answer committing within the same call
 
 ## 4. DOM wiring and handle API (browser)
 

@@ -27,3 +27,11 @@ results and size. The size baseline is `ac4dc5b` (the end of `add-context-menu-h
 - **The choice-tool cases live in a new `connect-choice-tool.test.ts`**:
   `connect-tool.test.ts` was already 319 lines. Every existing connect test passes
   unchanged.
+- **The controller has no separate pure transition function**: its union has two states
+  and every exit is the same `finish(aborted)`, so the class of bugs a transition table
+  guards against (an unhandled input in some state) does not arise. `open`, `cancel`,
+  `entitiesRemoved`, `setChooser` and `dispose` are the inputs.
+- **A successful choice does not abort the signal**; every other exit does. A second
+  release while one is pending cancels the first (its signal aborts, its late answer is
+  ignored).
+- **`cancel()` takes no reason**: nothing downstream distinguishes them.
