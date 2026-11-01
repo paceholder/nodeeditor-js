@@ -60,7 +60,7 @@ import {
 import { createToolRouter } from "./interact/tools/tool-router.js";
 import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock } from "./platform/frame-scheduler.js";
-import type { ViewModel } from "./platform/model-binding.js";
+import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import {
@@ -116,14 +116,6 @@ const UNBOUND_VIEW: ViewCommands = {
 function hoverId(hit: HitCandidate | undefined): string | undefined {
   if (!hit) return undefined;
   return hit.kind === "connection" ? hit.connectionId : hit.nodeId;
-}
-
-function removedIds(
-  ops: ReadonlyArray<{ op: string; record?: { id: string } }>,
-): string[] {
-  return ops.flatMap((o) =>
-    o.op === "remove" && o.record ? [o.record.id] : [],
-  );
 }
 
 export function attachEditing(deps: EditingDeps): Editing {
