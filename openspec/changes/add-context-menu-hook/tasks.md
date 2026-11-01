@@ -1,0 +1,43 @@
+# Tasks
+
+## 1. Input refactor and overlay scoping (view/interact)
+
+- [ ] 1.1 Move the `keydown`/`keyup` handling out of `src/view/interact/input/dom-input.ts` into a new `input/key-input.ts` as a pure refactor (own commit); verify every `dom-input`, `input-scope` and `basic-editing` browser test passes unchanged and `dom-input.ts` drops well under 300 lines (`wc -l`)
+- [ ] 1.2 Add `DomInput.cancelGesture(reason)` and the `"context-menu"` `CancelReason` in `tool-types.ts`; verify a `tool-router.test.ts` case named for the gesture lifecycle and cancellation rule and the context-menu scoping and gestures rule that cancelling a `pressed` select-move or connect gesture with that reason emits no select and no commit, and releases capture
+- [ ] 1.3 Keep graph shortcuts and tool keys away from overlay content: `key-input.ts` ignores a `keydown` whose target is overlay content, and `owns` in `clipboard/clipboard-events.ts` ignores it too (D7); verify `src/view/interact/input/input-scope.browser.test.ts` cases named for the input scoping rule, the usable shipped controls rule and the DOM overlay slot rule in Chrome: Escape and Delete on a button placed in the overlay leave the selection and the graph unchanged ("Escape leaves a menu"), and copy with focus on that button runs no graph copy
+
+## 2. Context-menu logic (view/interact, headless)
+
+- [ ] 2.1 Implement `src/view/interact/input/view-events.ts` (typed `on(type, handler)` returning an unsubscribe function, `count(type)`, insertion order, a throwing handler does not stop the others and is rethrown asynchronously, `clear()`) (D1); verify `view-events.test.ts` named for the context-menu event rule for subscribe, unsubscribe, order, isolation and count
+- [ ] 2.2 Implement `src/view/interact/context-menu/context-menu-types.ts` (`ContextMenuTarget`, `ContextMenuEvent`, D2) and `context-target.ts` (target from the ordered hits, D3 selection change for pointer invocations, keyboard target and placement from the primary selection and scene bounds clamped to the visible world rectangle, D6); verify `context-target.test.ts` named for the context-menu event rule, the context-menu selection and browser menu rule and the hit result identity and order rule: port, node, connection with member, and canvas targets; "Right-click an unselected node" (replace), "Right-click inside a multi-selection" (unchanged), a port selects its node, canvas leaves the selection, modifiers are ignored; keyboard targets the primary node or connection and the view centre for an empty selection, with an off-screen entity clamped into view
+- [ ] 2.3 Implement `src/view/interact/context-menu/long-press.ts` (states idle, armed, fired; inputs down, move, up, cancel, second-down, timeout, native-contextmenu; touch only; disarm beyond the touch drag threshold) and add `longPressMs: number | false` (default 500) to `ToolOptions` in `thresholds.ts` (D5); verify `long-press.test.ts` named for the touch long-press rule and the context-menu scoping and gestures rule: "Touch long-press" fires once at the timeout, "Touch drag before the long-press" disarms at 7 px but not at 5 px, a second touch disarms, mouse and pen never arm, `false` never arms ("Long-press turned off"), a native context-menu before the timeout fires instead of the timer, and one after the fire is swallowed
+
+## 3. Host-menu gaps (view/interact)
+
+- [ ] 3.1 Add `at?: Point<"world">` to `PasteArgs` in `clipboard/clipboard-commands.ts`, and use it before the pointer in `clipboard-service.ts` (D7); verify `clipboard-service.test.ts` named for the duplicate and paste fragments rule and the unified commands rule with "Paste at a given position" (centre at `at` while the pointer is elsewhere) and the existing paste scenarios unchanged
+- [ ] 3.2 Add the `viewport` `OverlayAnchor` to `overlay/overlay-host.ts` (D7); verify `overlay.browser.test.ts` named for the DOM overlay slot rule and the shared viewport and input ownership rule in Chrome: "Menu fixed on screen" (same viewport position after a wheel zoom and a pan, and a click on it starts no gesture), "Menu following the graph" with a world anchor, and a hidden viewport-anchored element does not block input
+
+## 4. DOM wiring and handle API (browser)
+
+- [ ] 4.1 Implement `src/view/interact/context-menu/context-menu-input.ts` (D4 to D6: `contextmenu`, the press tracking, the long-press timer from the root window read at mount, the keyboard trigger and native-event dedupe, scoping, `cancelGesture`, the D3 change, `preventDefault` only with a listener); add `-webkit-touch-callout:none; user-select:none; -webkit-user-select:none` to the root in `src/view/platform/dom/layer-stack.ts`; verify `src/view/context-menu.browser.test.ts` named for the context-menu event rule, the context-menu selection and browser menu rule, the context-menu scoping and gestures rule, the touch long-press rule, the keyboard editing shortcuts rule and the connection gestures rule in Chrome: "Right-click an unselected node", "Right-click a port", "Right-click empty canvas", "No listener keeps the browser menu" (the dispatched `contextmenu` is not default-prevented and the selection is unchanged), "Right press starts no gesture", "Ctrl+click on macOS" (synthesized with `platform: "mac"`), "Keyboard menu key" and "Context actions from the keyboard" for both keys with a following native `contextmenu` raising no second event, "Menu key in a text field", "Context menu on overlay content", "No event during a drag", and a synthesized touch long-press ("Touch long-press", "Touch drag before the long-press")
+- [ ] 4.2 Create `src/view/view-context-menu.ts` (event emitter and context-menu input, attached at mount, cleared on dispose) and add it to the mount rows of `src/architecture.test.ts`; wire it from `view-editing.ts`; add `on` in `view-types.ts` and a delegating member in `mount-view.ts`; verify `npx vitest run src/architecture.test.ts` and a `context-menu.browser.test.ts` case named for the unified commands rule and the per-instance disposal rule: a menu item runs `edit.delete` as one history entry undone by the undo shortcut ("Menu item runs a command"), and dispose leaves no listener or timer
+- [ ] 4.3 Export `ContextMenuEvent`, `ContextMenuTarget` and the `viewport` anchor type from `src/view/index.ts`, and the building blocks (`createViewEvents`, `long-press` machine, `attachContextMenuInput`) from `src/view/advanced.ts`; verify `src/view/entry-points.test.ts` and `src/view/import-ssr.test.ts` (no `window`, `setTimeout` or listener at import)
+
+## 5. Example
+
+- [ ] 5.1 Add `examples/plain-js/context-menu.ts` (a menu in the overlay at `event.viewport` with a `viewport` anchor; items from `view.commands.list()` with `availability` shown as disabled with the reason as a tooltip; "Paste here" with `at: event.world` on the canvas; Escape and click-away close it and refocus `view.element`); wire it from `main.ts` with a hint in `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds and a headless Chrome run of the demo opens the menu by right-click and Shift+F10, deletes and then undoes a node from it, pastes at the clicked point, and logs no console errors
+
+## 6. Gates
+
+- [ ] 6.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser` (installed Google Chrome only), `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new or changed file stays under 300 lines (`wc -l`), except `src/view/mount-view.ts` (about 338, the exception accepted earlier)
+
+## 7. Documentation (separate commit)
+
+- [ ] 7.1 Update `docs/interaction.md` with a context-menu section (triggers, the selection rule, browser-menu suppression only with listeners, scoping, gesture interplay, touch long-press and pan-first, keyboard placement, one event per invocation), with the Mermaid flow of design.md; verify by grepping for `context-menu` and `longPressMs`
+- [ ] 7.2 Update `docs/guide-view.md` (`view.on("context-menu")` and its payload, building a menu from `commands.list()` and `availability`, `edit.paste` with `at`, the `viewport` overlay anchor, overlay content not running graph shortcuts); verify by grepping for `view.on("context-menu"` and `kind: "viewport"`
+- [ ] 7.3 Update `docs/architecture.md` with the context-menu input beside the DOM input; verify the diagram renders in a Markdown preview and names no upward import
+
+## Workflow follow-up
+
+- Commit each self-contained group with its tests (requirement IDs in messages); 1.1 is its own refactor commit; commit group 7 separately.
+- Archive the change after review with `/opsx:archive add-context-menu-hook`.
