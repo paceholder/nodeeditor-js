@@ -44,9 +44,9 @@
 
 ## 8. Documentation (separate commit)
 
-- [ ] 8.1 Update `docs/geometry.md`: the polyline member, fitted corner radii, polyline pieces (one corner per piece), and replace "Orthogonal routing is a later change" with a routing section (routers, registry per kind, default Bezier, the candidate set and scoring, outcome and its `clearOf` scope, what is not avoided yet); verify by grepping for `polyline`, `createOrthogonalRouter` and `endpoint-nodes`
-- [ ] 8.2 Update `docs/guide-view.md`: `routes` on `mountView` and the handle, registering a kind as orthogonal, `cornerRadius` and `clearance`, switching a kind live, the connect preview using the default route, `route` in `ConnectionPaintInput`; verify by grepping for `routes.replace` and `defaultRouter`
-- [ ] 8.3 Update `docs/architecture.md`: the `core/space/routing` folder in the layer description, and a QtNodes comparison (QtNodes draws one cubic per connection in its connection painter, with no routing registry); verify by grepping for `routing/` and that no diagram names an upward import
+- [x] 8.1 Update `docs/geometry.md`: the polyline member, fitted corner radii, polyline pieces (one corner per piece), and replace "Orthogonal routing is a later change" with a routing section (routers, registry per kind, default Bezier, the candidate set and scoring, outcome and its `clearOf` scope, what is not avoided yet); verify by grepping for `polyline`, `createOrthogonalRouter` and `endpoint-nodes`
+- [x] 8.2 Update `docs/guide-view.md`: `routes` on `mountView` and the handle, registering a kind as orthogonal, `cornerRadius` and `clearance`, switching a kind live, the connect preview using the default route, `route` in `ConnectionPaintInput`; verify by grepping for `routes.replace` and `defaultRouter`
+- [x] 8.3 Update `docs/architecture.md`: the `core/space/routing` folder in the layer description, and a QtNodes comparison (QtNodes draws one cubic per connection in its connection painter, with no routing registry); verify by grepping for `routing/` and that no diagram names an upward import
 
 ## Workflow follow-up
 

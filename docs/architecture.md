@@ -43,6 +43,7 @@ gates, not style preferences:
 | `QUndoStack`                              | Local history, or the host's history behind an external adapter   | A server can own undo without a second stack in the browser. |
 | `QGraphicsScene` + BSP index              | Geometry scene + in-house spatial index (core)                    | Picking and culling are testable without a browser. |
 | `QGraphicsView`                           | `mountView()`: stacked `<canvas>` layers                          | Drawing thousands of DOM elements is too slow. |
+| Cubic built in `ConnectionPainter` / `ConnectionGraphicsObject` | Route registry per connection kind: straight, Bezier or orthogonal routers (core) | The path is a registration of its own, computed headlessly and shared by painting, picking and culling. |
 | `NodeGeometry` / `AbstractNodePainter`    | Separate geometry and painter registrations per node type         | Change the look without touching hit-testing, and vice versa. |
 | `NodeDelegateModelRegistry`               | Node type registry (`createNodeTypeRegistry`)                     | Model-level only: label, size, ports. Looks are registered separately. |
 | `QGraphicsItem::DeviceCoordinateCache`    | Zoom-bucketed `ImageBitmap` cache for SVG/raster symbols (`createAssetService`) | Same idea: rasterize once, copy every frame. |
@@ -68,7 +69,8 @@ does not:
 
 The rest is what QtNodes does not do at all: patches with operation IDs and base revisions
 so that a server can be the authority, validated snapshot loading with versioned
-documents, and connection policy outcomes beyond yes/no (reason, choice, pending).
+documents, connection policy outcomes beyond yes/no (reason, choice, pending), and
+routing per connection kind, including orthogonal routes.
 
 The concepts a host actually uses are few:
 
@@ -224,6 +226,19 @@ For each node type, two independent registrations:
 
 Two presets ship: an **image-symbol node** (an SVG or raster picture with ports anywhere
 on its outline; the primary preset) and a **card node** (title bar, rows of ports).
+
+### Routing is its own registration
+
+QtNodes has no routing step: its connection painter computes one cubic from the two
+port positions each time it paints, and the connection's shape and bounding rectangle
+come from the same code. Here the path is computed once, in core, by a **router** chosen
+per connection kind from a route registry (straight, Bezier, or orthogonal with optional
+rounded corners), and stored in the geometry scene. Painting, picking and culling all
+read that one `PathGeometry`, so a rounded orthogonal corner is hit exactly where it is
+drawn. Changing a kind's router recomputes only that kind's paths and is not an edit.
+The orthogonal router checks a fixed set of about fifteen candidate shapes against the
+two endpoint nodes, so it stays a constant-time function of the two ends; avoiding other
+nodes is a later change ([geometry.md](geometry.md)).
 
 ### Finding what is under the mouse
 
@@ -407,7 +422,10 @@ src/core/                                                            (nodeeditor
               commands/          command planners                    implemented
               adapter/ events/   adapter contract, local adapter,    implemented
               history/           change events, undo/redo
-  space/      geometry/          transforms, shapes, node geometry   implemented
+  space/      geometry/          transforms, shapes, node geometry,  implemented
+                                 paths (line, cubic, polyline)
+              routing/           routers, route registry,            implemented
+                                 orthogonal candidates
               spatial-index/     AABB tree                           implemented
               scene/             geometry scene and picking          implemented
   io/         snapshot/          JSON snapshot shape, validator,     implemented
@@ -462,7 +480,7 @@ flowchart BT
   subgraph core["src/core (nodeeditor-js)"]
     base["base/<br/>result, ids"] --> data["data/<br/>model, node-types, patch"]
     data --> edit["edit/<br/>policy, capabilities, commands,<br/>history, adapter, events"]
-    edit --> space["space/<br/>geometry, spatial-index, scene"]
+    edit --> space["space/<br/>geometry, routing,<br/>spatial-index, scene"]
     edit --> io["io/<br/>snapshot, fragment"]
     space & io --> facade["graph-model.ts, index.ts"]
   end
@@ -482,6 +500,8 @@ Three things worth knowing about the layers, none of them a cycle between files:
   event hub and the local history, and `events/` and `history/` import back from
   `adapter/types.ts`, but only types (`Revision`, `OperationId`, `HistoryState`).
   `space/scene` listens to model changes, which is why `space/` sits above `edit/`.
+  Inside `space/`, `routing/` imports `geometry/` (the polyline and Bezier builders) and
+  `scene/` imports both; `geometry/` imports neither, so there is no cycle.
 - Inside `render/`, `primitives/` holds the drawing helpers that registries, presets and
   paint layers share (`paintGrid`, `tracePath`, the placeholder painter, and the paint
   frame with `setMatrix`), so those three do not import each other at runtime. The

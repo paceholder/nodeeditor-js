@@ -228,6 +228,73 @@ Painters are *pure*: they write pixels and nothing else, keep no state between c
 never write to the model. Any cache (such as text measurement) belongs to the painter
 instance, not to a module.
 
+### Routes: how a connection's path is shaped
+
+The path itself comes from a third registration, separate from geometry and painters: a
+**route registry** keyed by connection kind (core, so the headless scene uses it too).
+Without one, every connection is a cubic Bezier as before.
+
+```ts
+import {
+  createOrthogonalRouter,
+  createRouteRegistry,
+} from "nodeeditor-js";
+
+const routes = createRouteRegistry(); // unregistered kinds: Bezier
+routes.register("signal", createOrthogonalRouter({ cornerRadius: 6 }));
+routes.register("bus", createOrthogonalRouter({ clearance: 40 }));
+
+const view = mountView(container, { model, geometry, painters, routes });
+```
+
+- `createOrthogonalRouter({ clearance, cornerRadius })` draws horizontal and vertical
+  segments with the fewest bends. `clearance` (default 20 world units) is how far a wire
+  leaves and enters each port along its facing direction before turning; ports facing
+  each other closer than twice that meet halfway. `cornerRadius` (default 0, sharp)
+  rounds the corners; a radius too large for a short segment is reduced to fit. The
+  rounded path is the one that is picked and culled, not only the one that is drawn.
+- `createStraightRouter()` and `createBezierRouter()` are the other built-ins. A host
+  that wants every unregistered kind orthogonal passes
+  `createRouteRegistry({ default: createOrthogonalRouter() })`.
+- `view.routes` is the registry (the one you passed, or a fresh one). Switching a kind
+  live recomputes only that kind's paths and repaints the scene layer; it is not an
+  edit, so nothing goes into the undo history:
+
+  ```ts
+  checkbox.addEventListener("change", () => {
+    view.routes.replace(
+      "default",
+      checkbox.checked ? createOrthogonalRouter() : createBezierRouter(),
+    );
+  });
+  ```
+
+- Drag previews follow the same routes: a moved or resized node's wires keep their
+  kind's shape on every frame. The provisional wire of a connection drag uses
+  `routes.defaultRouter`, because the kind is decided only when the connection is
+  committed (sometimes by a chooser); set the default to orthogonal if all your wires
+  are.
+- An orthogonal wire keeps clear of its own two nodes (around them, or between them when
+  they are far enough apart) but not of other nodes yet. Each path carries an outcome,
+  passed to connection painters as `route` in `ConnectionPaintInput`:
+  `{ status: "complete" | "provisional" | "unroutable", clearOf: "nothing" |
+  "endpoint-nodes" }`. When no shape avoids both endpoint nodes (for example when they
+  overlap) the best one is drawn anyway with status `unroutable`; the library draws no
+  mark for it, so a custom painter can, for instance with a dash:
+
+  ```ts
+  painters.connections.replace("signal", {
+    paint(ctx, input) {
+      if (input.route.status === "unroutable") ctx.setLineDash([2, 2]);
+      base.paint(ctx, input); // e.g. createConnectionPainter()
+    },
+  });
+  ```
+
+The connection painter needs no change for orthogonal wires: `tracePath` draws a
+polyline with `lineTo` and `arcTo`, endpoint dots sit on the ports, the arrowhead points
+along the last segment and a dash runs continuously around the corners.
+
 ### The image-symbol preset
 
 An image-symbol node is a picture (SVG or raster) with ports placed anywhere on it. This is
