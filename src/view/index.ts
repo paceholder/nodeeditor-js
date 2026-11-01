@@ -42,6 +42,12 @@ export type {
 } from "./interact/commands/transform-commands.js";
 export { VIEW_COMMAND_IDS } from "./interact/commands/view-commands.js";
 export type {
+  ContextMenuEvent,
+  ContextMenuInvocation,
+  ContextMenuTarget,
+  ViewEventMap,
+} from "./interact/context-menu/context-menu-types.js";
+export type {
   OverlayAnchor,
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";

@@ -25,7 +25,7 @@ export function clientOf(
   };
 }
 
-function pointer(
+export function pointer(
   target: EventTarget,
   type: string,
   at: { x: number; y: number },

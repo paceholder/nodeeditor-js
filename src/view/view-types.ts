@@ -14,6 +14,7 @@ import type { ClipboardOptions } from "./interact/clipboard/clipboard-types.js";
 import type { ViewClipboard } from "./interact/clipboard/view-clipboard.js";
 import type { CommandRegistry } from "./interact/commands/command-registry.js";
 import type { KeyBinding, Platform } from "./interact/commands/keymap.js";
+import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
 import type {
   OverlayAnchor,
   OverlayHandle,
@@ -137,6 +138,15 @@ export interface ViewHandle {
    * connections; `on("clipboard-error")` reports a refused system clipboard.
    */
   readonly clipboard: ViewClipboard;
+  /**
+   * Subscribe to view events; returns the unsubscribe function. `"context-menu"` fires on
+   * a right-click, a touch long-press, or the menu key / Shift+F10. While any
+   * listener is registered the browser's own context menu is suppressed.
+   */
+  on<K extends keyof ViewEventMap>(
+    type: K,
+    handler: (event: ViewEventMap[K]) => void,
+  ): () => void;
   /** The tool options in effect (defaults merged with the mount and runtime overrides). */
   toolOptions(): ToolOptions;
   /**

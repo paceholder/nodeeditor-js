@@ -63,6 +63,10 @@ import type { FrameClock } from "./platform/frame-scheduler.js";
 import type { ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
+import {
+  createViewContextMenu,
+  type ViewContextMenu,
+} from "./view-context-menu.js";
 import type { InputOptions } from "./view-types.js";
 
 export interface EditingDeps {
@@ -89,6 +93,7 @@ export interface EditingDeps {
 export interface Editing {
   readonly commands: CommandRegistry;
   readonly clipboard: ViewClipboard;
+  readonly on: ViewContextMenu["on"];
   toolOptions(): ToolOptions;
   setToolOptions(patch: Partial<ToolOptions>): void;
   /** True while something on the interaction layer is drawn in world space. */
@@ -143,6 +148,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     view,
   }));
   const offs: Array<() => void> = [];
+  const menu = createViewContextMenu(deps.root);
   let input: DomInput | undefined;
   let bridge: ClipboardEvents | undefined;
   let handles: ReturnType<typeof createResizeHandles> | undefined;
@@ -242,6 +248,15 @@ export function attachEditing(deps: EditingDeps): Editing {
       });
     }
     const dom = input;
+    menu.attach({
+      overlay: deps.overlay,
+      platform,
+      context,
+      selection,
+      size: deps.size,
+      activePointer: () => router.activePointer,
+      cancelGesture: dom.cancelGesture,
+    });
     offs.push(
       model.on("change", (e) => dom.entitiesRemoved(removedIds(e.patch.ops))),
       model.on("reset", () => dom.modelReset()),
@@ -251,6 +266,7 @@ export function attachEditing(deps: EditingDeps): Editing {
   return {
     commands,
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
+    on: menu.on,
     toolOptions: () => resolveToolOptions(toolOptions),
     setToolOptions(patch) {
       toolOptions = { ...toolOptions, ...patch };
@@ -258,6 +274,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     interactionFollowsViewport: () => handles?.visible() === true,
     dispose() {
       for (const off of offs.splice(0)) off();
+      menu.dispose();
       bridge?.dispose();
       bridge = undefined;
       input?.dispose();

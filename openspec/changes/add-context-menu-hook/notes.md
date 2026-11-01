@@ -27,3 +27,24 @@ results.
   `{ kind: "center", at }` and the service keeps preferring it over the pointer. The
   repeated-paste counter still advances as for a pointer paste.
 - **A `viewport` anchor has no `scale` option**, so the type cannot ask for one.
+- **`view-context-menu.ts` is thin**: it owns the emitter and attaches
+  `context-menu-input.ts` once `view-editing.ts` has the DOM input; `view.on` works
+  without input (the event then never fires).
+- **A native `contextmenu` from a touch never raises an event by itself**: touch menus
+  come only from the long-press machine, so `longPressMs: false` also silences Chrome
+  Android's own long-touch `contextmenu` (it is default-prevented while a listener
+  exists, like every other native menu).
+- **During a drag past its threshold the native menu is suppressed too** (with a
+  listener), as D4 says; only the event is skipped.
+- **Keyboard placement uses the view's CSS size** for the visible world rectangle, and
+  the client position is the root's bounding rect plus the viewport point.
+- **The test helper `pointer` in `input-test-support.ts` is now exported** for the touch
+  sequences.
+
+## Browser observations (Chrome, synthesized events)
+
+- Chrome's `contextmenu` is a `PointerEvent` with `pointerId` and `pointerType`, so the
+  touch dedupe can match the armed pointer; synthesized `MouseEvent`s fall back to
+  `mouse`.
+- A touch drag test maps each move through the already panned view, so the pan it sees
+  is larger than the finger travel; the test checks a lower bound.

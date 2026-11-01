@@ -75,7 +75,7 @@ export function selectOnOpen(
  */
 export function keyboardTarget(
   selection: ReadonlySelection,
-  scene: GeometryScene,
+  scene: Pick<GeometryScene, "node" | "connection">,
   visible: Rect<"world">,
 ): { readonly target: ContextMenuTarget; readonly world: Point<"world"> } {
   const primary = selection.primary();
