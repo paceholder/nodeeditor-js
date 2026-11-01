@@ -1,10 +1,17 @@
 /**
  * Renderer-neutral connection path geometry in world space (ROU-02, GEO-04, GEO-06).
  *
- * The union is open for later members (for example a polyline for orthogonal routes);
- * every consumer switches exhaustively on `kind`. All functions return finite numbers for
- * finite input, including zero-length lines and cubics with coincident points.
+ * Every consumer switches exhaustively on `kind`. All functions return finite numbers for
+ * finite input, including zero-length lines, cubics with coincident points and fully
+ * coincident polylines. The polyline math lives in `polyline.ts`.
  */
+import {
+  isFinitePolyline,
+  nearestOnPolyline,
+  polylineBounds,
+  polylinePointAt,
+  polylineTangents,
+} from "./polyline.js";
 import { type Point, type Rect, rect } from "./spaces.js";
 import { distance, distanceToSegment, normalize, sub, type V2 } from "./vec.js";
 
@@ -18,11 +25,20 @@ export type PathGeometry =
       readonly c1: Point<W>;
       readonly c2: Point<W>;
       readonly p1: Point<W>;
+    }
+  | {
+      readonly kind: "polyline";
+      readonly p0: Point<W>;
+      /** Interior vertices (bends), in order from p0 to p1. */
+      readonly via: readonly Point<W>[];
+      readonly p1: Point<W>;
+      /** Arc radius at each interior vertex, already fitted; omitted means all sharp. */
+      readonly radii?: readonly number[];
     };
 
 export interface NearestPoint {
   readonly point: Point<W>;
-  /** Curve parameter in [0, 1]. */
+  /** Curve parameter in [0, 1]; the arc-length fraction on a polyline. */
   readonly t: number;
   readonly distance: number;
 }
@@ -99,6 +115,8 @@ export function pathPointAt(path: PathGeometry, t: number): Point<W> {
       };
     case "cubic":
       return cubicAt(path, c);
+    case "polyline":
+      return polylinePointAt(path, c);
   }
 }
 
@@ -158,6 +176,8 @@ export function pathBounds(path: PathGeometry): Rect<W> {
       }
       return rect(minX, minY, maxX - minX, maxY - minY);
     }
+    case "polyline":
+      return polylineBounds(path);
   }
 }
 
@@ -225,12 +245,14 @@ export function nearestPoint(path: PathGeometry, p: Point<W>): NearestPoint {
     }
     case "cubic":
       return nearestOnCubic(path, p);
+    case "polyline":
+      return nearestOnPolyline(path, p);
   }
 }
 
 export function pathDistance(path: PathGeometry, p: Point<W>): number {
   if (path.kind === "line") return distanceToSegment(p, path.p0, path.p1);
-  return nearestOnCubic(path, p).distance;
+  return nearestPoint(path, p).distance;
 }
 
 /**
@@ -260,10 +282,13 @@ export function endTangents(path: PathGeometry): EndTangents {
       );
       return { start, end };
     }
+    case "polyline":
+      return polylineTangents(path);
   }
 }
 
 export function isFinitePath(path: PathGeometry): boolean {
+  if (path.kind === "polyline") return isFinitePolyline(path);
   const pts =
     path.kind === "line"
       ? [path.p0, path.p1]

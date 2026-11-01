@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type PathGeometry, pathBounds, pathPointAt } from "./path-geometry.js";
+import {
+  type PathGeometry,
+  pathBounds,
+  pathDistance,
+  pathPointAt,
+} from "./path-geometry.js";
 import {
   controlBounds,
   controlPolygonLength,
@@ -8,6 +13,7 @@ import {
   pieceCount,
   splitPath,
 } from "./path-pieces.js";
+import { polylinePath } from "./polyline.js";
 import { rectContainsPoint, unionRects } from "./rect.js";
 import { between, seededRandom } from "./test-utils.js";
 
@@ -96,5 +102,97 @@ describe("PERF-04 path pieces for the spatial index", () => {
           expect(pieces[i]?.p0).toEqual(pieces[i - 1]?.p1);
       }
     }
+  });
+});
+
+type Poly = Extract<PathGeometry, { kind: "polyline" }>;
+
+const POLYLINES: Poly[] = [
+  // An S with rounded corners, a U with corners rounded to fit, and a sharp staircase.
+  polylinePath([w(0, 0), w(400, 0), w(400, 300), w(900, 300)], 12),
+  polylinePath([w(0, 0), w(120, 0), w(120, 40), w(100, 40)], 30),
+  polylinePath(
+    Array.from({ length: 8 }, (_, i) =>
+      w(Math.ceil(i / 2) * 60, Math.floor(i / 2) * 40),
+    ),
+    6,
+  ),
+];
+
+function joinsExactly(path: PathGeometry, pieces: PathGeometry[]) {
+  expect(pieces[0]?.p0).toEqual(path.p0);
+  expect(pieces[pieces.length - 1]?.p1).toEqual(path.p1);
+  for (let i = 1; i < pieces.length; i++)
+    expect(pieces[i]?.p0).toEqual(pieces[i - 1]?.p1);
+}
+
+describe("PERF-04 polyline pieces", () => {
+  it("PERF-04 each corner and its arc lies in exactly one piece", () => {
+    for (const path of POLYLINES) {
+      const pieces = splitPath(path) as Poly[];
+      expect(pieces.length).toBe(Math.max(1, path.via.length));
+      pieces.forEach((piece, i) => {
+        expect(piece.kind).toBe("polyline");
+        expect(piece.via).toEqual([path.via[i]]);
+        expect(piece.radii).toEqual(path.radii ? [path.radii[i]] : undefined);
+      });
+      expect(pieceCount(path)).toBe(pieces.length);
+    }
+  });
+
+  it("PERF-04 the pieces' vertices join exactly and keep the endpoints", () => {
+    for (const path of POLYLINES) joinsExactly(path, splitPath(path));
+  });
+
+  it("PERF-04 pathDistance over the pieces equals pathDistance of the whole path", () => {
+    const rnd = seededRandom(9);
+    for (const path of POLYLINES) {
+      const pieces = splitPath(path);
+      const box = pathBounds(path);
+      for (let i = 0; i < 200; i++) {
+        const p = w(
+          between(rnd, box.x - 50, box.x + box.w + 50),
+          between(rnd, box.y - 50, box.y + box.h + 50),
+        );
+        const min = Math.min(...pieces.map((s) => pathDistance(s, p)));
+        expect(min).toBeCloseTo(pathDistance(path, p), 9);
+      }
+      for (const piece of pieces) {
+        const b = controlBounds(piece);
+        for (let s = 0; s <= 100; s++) {
+          const q = pathPointAt(piece, s / 100);
+          expect(rectContainsPoint(b, q)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("PERF-04 a 5000-unit segment is split outside the arcs", () => {
+    const straight = polylinePath([w(0, 0), w(5000, 0)]);
+    const pieces = splitPath(straight);
+    expect(pieces.length).toBe(Math.ceil(5000 / PIECE_LENGTH));
+    joinsExactly(straight, pieces);
+    const bent = polylinePath([w(0, 0), w(5000, 0), w(5000, 100)], 40);
+    const bentPieces = splitPath(bent);
+    expect(bentPieces.length).toBe(Math.ceil(5000 / PIECE_LENGTH));
+    joinsExactly(bent, bentPieces);
+    // The last piece holds the whole corner arc, which starts 40 units before it.
+    const lastPiece = bentPieces[bentPieces.length - 1] as Poly;
+    expect(lastPiece.via).toEqual([w(5000, 0)]);
+    expect(lastPiece.p0.x).toBeLessThanOrEqual(5000 - 40);
+  });
+
+  it("PERF-04 a 30-corner polyline yields 12 pieces", () => {
+    const stairs = Array.from({ length: 32 }, (_, i) =>
+      w(Math.ceil(i / 2) * 50, Math.floor(i / 2) * 50),
+    );
+    const path = polylinePath(stairs, 5) as Poly;
+    expect(path.via.length).toBe(30);
+    const pieces = splitPath(path);
+    expect(pieces.length).toBe(MAX_PIECES);
+    expect(pieceCount(path)).toBe(MAX_PIECES);
+    joinsExactly(path, pieces);
+    const corners = pieces.flatMap((p) => (p as Poly).via);
+    expect(corners).toEqual(path.via);
   });
 });
