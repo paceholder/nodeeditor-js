@@ -12,6 +12,12 @@ describe("REA-06 view import without browser globals", () => {
     expect(typeof view.mountView).toBe("function");
     const advanced = await import("./advanced.js");
     expect(typeof advanced.createFrameScheduler).toBe("function");
+    // INT-09: the auto-pan driver gets its frame clock at mount, never at import.
+    expect(typeof advanced.createAutoPanDriver).toBe("function");
+    expect(
+      typeof (globalThis as { requestAnimationFrame?: unknown })
+        .requestAnimationFrame,
+    ).toBe("undefined");
   });
 
   it("PKG-05 importing the view entries touches no navigator (clipboard is read at mount)", async () => {

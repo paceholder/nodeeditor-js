@@ -2,18 +2,24 @@
  * DOM input adapter (INT-05, INT-06, GEO-03, D3, D10): turns pointer, wheel and key events
  * on the view root into `ToolInput`, executes the resulting effects through the effect
  * runner, and maps every cancellation source (pointercancel, lost capture, window blur,
- * hidden document, dispose) to a tool `cancel`. Attached during mount, removed on dispose.
- * Tools themselves never see a DOM type.
+ * hidden document, dispose) to a tool `cancel`. Attached during mount, removed on
+ * dispose. Tools never see a DOM type.
  */
-import type { HitCandidate, Point } from "../../../core/index.js";
+import {
+  type HitCandidate,
+  type Point,
+  viewportToWorld,
+} from "../../../core/index.js";
 import type { ToolRouter } from "../tools/tool-router.js";
-import type {
-  CancelReason,
-  CursorKind,
-  Modifiers,
-  ToolContext,
-  ToolInput,
+import {
+  type CancelReason,
+  type CursorKind,
+  NO_MODIFIERS,
+  type PointerInput,
+  type ToolContext,
+  type ToolInput,
 } from "../tools/tool-types.js";
+import { type AutoPanHost, createAutoPanDriver } from "./auto-pan-driver.js";
 import { createEffectRunner, type EffectHost } from "./effect-runner.js";
 import {
   isOverlayContent,
@@ -22,6 +28,7 @@ import {
 } from "./input-scope.js";
 import {
   BUTTONS,
+  createPointerCapture,
   type ModifierKeys,
   modifiersOf,
   pointerInputOf,
@@ -47,6 +54,10 @@ export interface DomInputDeps {
   readonly onKey: (event: KeyboardEvent) => boolean | "native";
   /** The topmost hit under an idle pointer, undefined when none. */
   readonly onHover: (hit: HitCandidate | undefined) => void;
+  /** A cursor that wins over the hit-based one for an idle pointer (resize handle). */
+  readonly hoverCursor?: (world: Point<"world">) => CursorKind | undefined;
+  /** Auto-pan during drags (INT-09): the view's frame clock and CSS size. */
+  readonly autoPan?: AutoPanHost;
 }
 
 export interface DomInput {
@@ -66,8 +77,7 @@ export function attachDomInput(
   const { router } = deps;
   const doc = root.ownerDocument;
   const win = doc.defaultView;
-  // Pointers we released ourselves: their `lostpointercapture` is not a cancellation.
-  const released = new Set<number>();
+  const captures = createPointerCapture(root);
   let lastCursor: CursorKind = "default";
   // Last client position inside the root; converted on demand so pans and zooms count.
   let lastClient: { x: number; y: number } | undefined;
@@ -84,47 +94,44 @@ export function attachDomInput(
   };
   const run = createEffectRunner({
     ...deps.host,
-    capture(pointerId) {
-      try {
-        root.setPointerCapture(pointerId);
-        released.delete(pointerId);
-      } catch {
-        // A pointer that is no longer active cannot be captured; the gesture still runs.
-      }
-    },
-    release(pointerId) {
-      try {
-        if (root.hasPointerCapture(pointerId)) {
-          released.add(pointerId);
-          root.releasePointerCapture(pointerId);
-        }
-      } catch {
-        // Already gone.
-      }
-    },
+    capture: captures.capture,
+    release: captures.release,
     cursor: setCursor,
   });
 
-  const modifiers = (e: ModifierKeys): Modifiers =>
-    modifiersOf(e, deps.platform);
+  const modifiers = (e: ModifierKeys) => modifiersOf(e, deps.platform);
 
   const send = (input: ToolInput) => {
     const result = router.handle(input, deps.context());
     run(result.effects);
     return result;
   };
-
-  const cancel = (reason: CancelReason): void => {
-    if (router.activePointer !== undefined) send({ type: "cancel", reason });
+  const driver = deps.autoPan
+    ? createAutoPanDriver({
+        clock: deps.autoPan.clock,
+        router,
+        size: deps.autoPan.size,
+        options: () => deps.context().options.autoPan,
+        panBy: (dx, dy) => deps.host.viewport({ kind: "panBy", dx, dy }),
+        toWorld: (p) => viewportToWorld(deps.context().viewport, p),
+        send,
+      })
+    : undefined;
+  // Every routed input re-evaluates auto-pan; its replays use `send` only (D10).
+  const route = (input: ToolInput) => {
+    const result = send(input);
+    driver?.update(input);
+    return result;
   };
 
-  function pointer(
-    type: "pointer-down" | "pointer-move" | "pointer-up",
-    e: PointerEvent,
-  ) {
+  const cancel = (reason: CancelReason): void => {
+    if (router.activePointer !== undefined) route({ type: "cancel", reason });
+  };
+
+  function pointer(type: PointerInput["type"], e: PointerEvent) {
     const at = deps.coords(e.clientX, e.clientY);
     if (!at) return undefined;
-    return send(pointerInputOf(type, e, at, deps.platform));
+    return route(pointerInputOf(type, e, at, deps.platform));
   }
 
   const onPointerDown = (e: PointerEvent): void => {
@@ -152,7 +159,10 @@ export function attachDomInput(
     if (!at) return;
     const top = deps.context().pick(at.world)[0];
     deps.onHover(top);
-    setCursor(top?.kind === "port" ? "crosshair" : "default");
+    setCursor(
+      deps.hoverCursor?.(at.world) ??
+        (top?.kind === "port" ? "crosshair" : "default"),
+    );
   };
 
   const onPointerUp = (e: PointerEvent): void => {
@@ -164,7 +174,7 @@ export function attachDomInput(
   };
 
   const onLostCapture = (e: PointerEvent): void => {
-    if (released.delete(e.pointerId)) return;
+    if (captures.releasedByUs(e.pointerId)) return;
     if (e.pointerId === router.activePointer) cancel("lost-capture");
   };
 
@@ -183,7 +193,7 @@ export function attachDomInput(
     // Normalize line and page deltas to CSS pixels.
     const scale =
       e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.clientHeight : 1;
-    const result = send({
+    const result = route({
       type: "wheel",
       viewport: at.viewport,
       deltaY: e.deltaY * scale,
@@ -195,7 +205,7 @@ export function attachDomInput(
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!shouldHandleKey(e)) return;
-    const result = send({
+    const result = route({
       type: "key-down",
       key: e.key,
       modifiers: modifiers(e),
@@ -215,7 +225,7 @@ export function attachDomInput(
   };
 
   const onKeyUp = (e: KeyboardEvent): void => {
-    send({ type: "key-up", key: e.key, modifiers: modifiers(e) });
+    route({ type: "key-up", key: e.key, modifiers: modifiers(e) });
     if (e.key === " " && router.activePointer === undefined)
       setCursor("default");
   };
@@ -223,10 +233,10 @@ export function attachDomInput(
   const onBlur = (): void => {
     cancel("blur");
     // A key released while another window had focus never reaches us.
-    send({
+    route({
       type: "key-up",
       key: " ",
-      modifiers: { shift: false, alt: false, mod: false },
+      modifiers: NO_MODIFIERS,
     });
     if (router.activePointer === undefined) setCursor("default");
   };
@@ -260,7 +270,7 @@ export function attachDomInput(
   return {
     entitiesRemoved(ids) {
       if (router.activePointer !== undefined && ids.length > 0) {
-        send({ type: "entities-removed", ids });
+        route({ type: "entities-removed", ids });
       }
     },
     modelReset() {
@@ -274,13 +284,14 @@ export function attachDomInput(
       disposed = true;
       // A gesture in flight ends as a cancel: nothing is committed, previews clear.
       cancel("dispose");
+      driver?.dispose();
       for (const [target, type, fn, opts] of listeners) {
         target.removeEventListener(type, fn, opts);
       }
       if (!hadTabIndex) root.removeAttribute("tabindex");
       root.style.cursor = "";
       deps.onHover(undefined);
-      released.clear();
+      captures.clear();
       lastClient = undefined;
     },
   };

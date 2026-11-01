@@ -1,7 +1,7 @@
 /**
  * DOM event to `ToolInput` conversion (INT-05, GEO-03): modifier mapping with the
- * platform's primary key, pointer types, and the pointer-event builder. Pure apart from
- * reading event fields; the DOM input adapter owns listeners and effects.
+ * platform's primary key, pointer types, the pointer-event builder, and pointer capture
+ * on the root. The DOM input adapter owns listeners and effects.
  */
 import type { Point } from "../../../core/index.js";
 import type {
@@ -63,4 +63,42 @@ export function pointerInputOf(
     : type === "pointer-move"
       ? { type, ...base }
       : { type, ...base };
+}
+
+export interface PointerCapture {
+  capture(pointerId: number): void;
+  release(pointerId: number): void;
+  /**
+   * True once for a pointer we released ourselves: its `lostpointercapture` is then
+   * not a cancellation.
+   */
+  releasedByUs(pointerId: number): boolean;
+  clear(): void;
+}
+
+/** Pointer capture on `root`, tolerant of pointers that are no longer active. */
+export function createPointerCapture(root: Element): PointerCapture {
+  const released = new Set<number>();
+  return {
+    capture(pointerId) {
+      try {
+        root.setPointerCapture(pointerId);
+        released.delete(pointerId);
+      } catch {
+        // A pointer that is no longer active cannot be captured; the gesture still runs.
+      }
+    },
+    release(pointerId) {
+      try {
+        if (root.hasPointerCapture(pointerId)) {
+          released.add(pointerId);
+          root.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // Already gone.
+      }
+    },
+    releasedByUs: (pointerId) => released.delete(pointerId),
+    clear: () => released.clear(),
+  };
 }

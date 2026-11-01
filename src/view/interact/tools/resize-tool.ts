@@ -60,7 +60,7 @@ const DEFAULT_CURSOR: ToolEffect = { type: "cursor", cursor: "default" };
 
 /** The node that may carry a handle: the only selected entity, when it is a node. */
 export function resizeTargetOf(
-  selection: ReadonlySelection,
+  selection: Pick<ReadonlySelection, "size" | "nodeIds">,
 ): NodeId | undefined {
   if (selection.size !== 1) return undefined;
   return selection.nodeIds()[0];

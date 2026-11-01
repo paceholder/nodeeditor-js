@@ -36,6 +36,10 @@ export type {
   ResolvedKey,
 } from "./interact/commands/keymap.js";
 export { DEFAULT_KEYMAP } from "./interact/commands/keymap.js";
+export type {
+  MirrorArgs,
+  RotateArgs,
+} from "./interact/commands/transform-commands.js";
 export { VIEW_COMMAND_IDS } from "./interact/commands/view-commands.js";
 export type {
   OverlayAnchor,
@@ -53,6 +57,8 @@ export {
   connectionKey,
   nodeKey,
 } from "./interact/selection/selection-model.js";
+export type { AutoPanOptions } from "./interact/tools/auto-pan.js";
+export { DEFAULT_AUTO_PAN } from "./interact/tools/auto-pan.js";
 export { connectTool } from "./interact/tools/connect-tool.js";
 export { defaultToolSlots } from "./interact/tools/default-tools.js";
 export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";

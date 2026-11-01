@@ -199,8 +199,9 @@ export function mountView(
       // The only viewport-only scene reason: the next frame may reuse the bitmap.
       bitmap?.viewportChanged();
       scheduler.markDirty("background", "scene");
-      // Presence is positioned in world space, so it follows the viewport (OVL-02).
-      if (presence.active) scheduler.markDirty("interaction");
+      // Presence and the resize handle are in world space: they follow the viewport.
+      if (presence.active || editing.interactionFollowsViewport())
+        scheduler.markDirty("interaction");
     },
     options.initialViewport ?? DEFAULT_VIEWPORT,
   );
@@ -214,6 +215,9 @@ export function mountView(
     viewport,
     size: () => metrics.size(),
     setPreview: previews.set,
+    preview: previews.current,
+    interaction,
+    clock,
     setHovered(id) {
       if (id === hovered) return;
       hovered = id;
