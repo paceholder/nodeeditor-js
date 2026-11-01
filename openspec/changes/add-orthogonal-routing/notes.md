@@ -179,3 +179,18 @@ scene's registry and routers), advanced 27,164 -> 27,300 (+136).
   labelled target on battery. Drawing a polyline whose box is small on screen (for
   example under 12 CSS px) as a straight line, as cubics under 3 px already are, would
   cut most of the extra segments; it is a LAY-04 simplification choice for the user.
+
+## Documentation (group 8)
+
+- `docs/geometry.md`: the polyline member and fitted radii, per-corner index pieces, and
+  a routing section (router contract, registry per kind with a Bezier default, the
+  orthogonal candidate set, validity, scoring, fallback, outcome scope and what is not
+  avoided yet), with a Mermaid flowchart of the router.
+- `docs/guide-view.md`: `routes` on `mountView` and the handle, `clearance` and
+  `cornerRadius`, switching a kind live with `view.routes.replace`, the connect preview
+  using `routes.defaultRouter`, and `route` in `ConnectionPaintInput`.
+- `docs/architecture.md`: a QtNodes comparison row and section (QtNodes computes one
+  cubic in its connection painter, with no routing step), `routing/` in the code map and
+  the layer diagram, and the import order inside `space/`. The Mermaid blocks were not
+  rendered in a browser this time (mermaid is not installed in the repo); the syntax
+  follows the existing blocks.

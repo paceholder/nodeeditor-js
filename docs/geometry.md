@@ -123,10 +123,119 @@ lower ports on the bottom corner; declare that as the type's minimum height.
 
 ## Paths [ROU-01, ROU-02]
 
-`PathGeometry` is a `line` or a `cubic`, in world space, with exact bounds, nearest point
-(16-way subdivision plus Newton refinement), distance, and end tangents. The Bezier
-builder puts control points at `anchor + normal * k`, `k = clamp(distance / 2, 20, 200)`.
-Orthogonal routing is a later change.
+`PathGeometry` is a `line`, a `cubic` or a `polyline`, in world space, with bounds,
+nearest point, distance, end tangents and a finiteness check. Every member has `p0` and
+`p1`, so endpoint readers (dots, arrowheads) need no switch.
+
+- **Cubic**: exact bounds from the derivative roots; nearest point by 16-way subdivision
+  plus Newton refinement. The Bezier builder puts control points at
+  `anchor + normal * k`, `k = clamp(distance / 2, 20, 200)`.
+- **Polyline** `{ p0, via, p1, radii? }`: interior vertices in order, and optionally an
+  arc radius per interior vertex. `polylinePath(points, cornerRadius)` builds one and
+  **fits** each radius so the arc's tangent length is at most half of each adjacent
+  segment: neighbouring arcs never overlap, and a split at a segment midpoint never cuts
+  an arc. The fitted radii are stored, not the requested one, so a piece of the path
+  draws and picks exactly the arcs of the whole path. Arcs follow canvas `arcTo`
+  semantics (tangent to both segments). Bounds are the vertex box (exact for sharp
+  corners, and it contains rounded ones because arcs cut inside the corner). Nearest
+  point and distance walk the straight parts and the arcs; `t` is the arc-length
+  fraction. End tangents are the first and last non-zero segments; a fully coincident
+  polyline reports +x. A polyline with no `via` behaves like a line.
+
+The painted wire, the picked wire and the culled wire are the same geometry, rounded
+corners included (ROU-01d): a pointer 3 units inside a sharp corner of a radius-10 route
+measures its distance to the arc, not to the corner point.
+
+## Routing [ROU-01, ROU-01a to ROU-01e, ROU-04, ROU-06]
+
+A **router** turns the two ends of a connection into a path and an outcome:
+
+```ts
+interface RouteEnd { position; normal; body: Rect<"world"> | undefined } // body: the node's body box
+interface ConnectionRouter { route(input: { from: RouteEnd; to: RouteEnd }): ConnectionRoute }
+interface ConnectionRoute { path: PathGeometry; outcome: RouteOutcome }
+interface RouteOutcome {
+  status: "complete" | "provisional" | "unroutable";
+  clearOf: "nothing" | "endpoint-nodes";
+}
+```
+
+Routing is a pure, synchronous function of the two ends. The input is a struct so later
+changes can add stored route constraints or an obstacle query without reshaping it.
+
+Three built-in routers, each made by a factory so an unused one is not bundled (PKG-08):
+`createStraightRouter()`, `createBezierRouter()` and
+`createOrthogonalRouter({ clearance = 20, cornerRadius = 0 })`.
+
+A **route registry** maps a connection kind to a router, like the painter registries:
+`createRouteRegistry({ default? })` with `get(kind)`, `defaultRouter`, `has`,
+`register` (rejects `duplicate-type`), `replace` and `onChange(kind)`. A kind without a
+registration uses the default router, which is Bezier unless the host passes another, so
+a host that registers nothing sees no change. The geometry scene takes the registry as
+`routes` and routes each connection with `routes.get(record.kind)` and both endpoint
+nodes' body boxes. A registration change recomputes only the connections of that kind:
+no patch, no model event, no history entry (ROU-12). A node move, rotation, mirror or
+resize already rebuilds its incident connections, which is all an endpoint-only router
+depends on (ROU-08).
+
+### The orthogonal router
+
+No search grid and no state: a fixed list of about fifteen candidates is built from the
+two ends, checked, and scored.
+
+1. **Escape directions** (ROU-01c). Each anchor normal is snapped to the nearer axis,
+   horizontal on a tie (so a normal 30 degrees below +x leaves to the right). A zero or
+   non-finite normal uses the outward side of the body box nearest the anchor (ties
+   right, bottom, left, top); without a body, or with the anchor at the body centre, the
+   dominant axis toward the other end, and +x when the ends coincide. Port direction is
+   never read.
+2. **Escape points** `E = anchor + direction * clearance`.
+3. **Candidates**, in this family order:
+   - *straight*: facing ports aligned within 1e-6 units, target ahead;
+   - *L*: perpendicular escapes whose corner lies at least the clearance ahead of both;
+   - *midpoint S*: facing ports, middle segment halfway between them (this is also how
+     close facing ports work, ROU-04: 16 units apart with clearance 20, the middle
+     segment is 8 from each port);
+   - *escape connectors*: `p0, E0, ..., E1, p1` with one corner, or a middle segment at a
+     coordinate from a fixed set: either escape point's coordinate (the U shapes), their
+     midpoint, the middle of the gap between the two bodies when it is wider than twice
+     the clearance, and just outside the union of both bodies on each side (around
+     above, below, left or right).
+   Each candidate is simplified: repeated points dropped, straight-through vertices
+   merged.
+4. **Validity** (ROU-01b). A candidate leaves along the source's escape direction,
+   enters along the reverse of the target's, never turns back on itself, and no segment
+   crosses the open interior of either endpoint body, except that the first segment is
+   exempt from the source body and the last from the target body (a port may sit inside
+   its own body box). For a connection to the same node both exemptions apply to it.
+5. **Choice**: fewest bends, then shortest, then family order, then the corners ordered
+   by `(y, x)` compared in turn, which puts a route above before one below and left
+   before right. Candidates are ranked first and checked in that order, so usually only
+   one or two are checked.
+6. **Fallback** (ROU-06): with no valid candidate (for example overlapping endpoint
+   nodes) the best candidate by the same keys is drawn anyway, reported `unroutable` and
+   clear of `nothing`. The model is untouched.
+7. **Corners**: the vertex list goes through `polylinePath(points, cornerRadius)`.
+
+```mermaid
+flowchart LR
+  ends["two ends<br/>anchor, normal, body"] --> esc["escape directions<br/>(snap, fallback)"]
+  esc --> cand["~15 candidates<br/>straight, L, S, connectors"]
+  cand --> rank["rank: bends, length,<br/>family, corners"]
+  rank --> check{"first valid?"}
+  check -- yes --> ok["polylinePath<br/>complete, endpoint-nodes"]
+  check -- "none" --> fb["best candidate<br/>unroutable, nothing"]
+```
+
+The two ends are put in a canonical order before routing and the result is reversed back,
+so swapping `from` and `to` gives exactly the same vertices in reverse (ROU-01c, ROU-07):
+an undirected connection does not change shape with the stored end order.
+
+**What is not avoided yet.** Only the two endpoint nodes are obstacles. A wire may cross
+an unrelated node, and its outcome says so: an orthogonal route is clear of
+`endpoint-nodes`, never of all nodes (ROU-05). Avoiding other nodes, editing a route and
+jumps at crossings are later changes. Hosts that need avoidance now keep Bezier for those
+kinds.
 
 ### Segment-indexed paths [PERF-04, IDX-03]
 
@@ -139,6 +248,14 @@ wire. So a path is indexed as **pieces**:
 - `pieceCount(path)`: a line is one piece; a cubic gets `ceil(L / 800)` pieces, clamped to
   1..12, where `L` is the control-polygon length in world units (an upper bound of the
   arc length). Short wires stay one entry; the index grows by about 1.5x on F-LARGE.
+- A polyline is split at the midpoints of its interior segments, so **each piece holds
+  one corner** with its arc and the half segments on either side; a segment longer than
+  800 units is also split at equal steps, moved outside any arc. Above 12 pieces,
+  consecutive pieces merge into evenly sized groups. Pieces are polylines carrying the
+  fitted radii of their corners, so distances on a piece are exact; the box of a piece
+  is its vertex box. An L-shaped wire's overall box is mostly empty, and per-corner
+  boxes stay tight around the stroke. With every F-LARGE wire orthogonal the index holds
+  about 60k pieces instead of 35k.
 - `splitPath(path)` splits at equal parameter steps with de Casteljau subdivision, so each
   piece is an exact cubic with its own control points. By the convex hull property the box
   around a piece's four control points contains that piece, and the union of the piece
