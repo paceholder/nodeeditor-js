@@ -58,3 +58,20 @@ the end of `add-connection-chooser`).
   `bench/browser/`, which `npm run test:browser` does not include); it was run with
   `BENCH_DPR=1` against the build. The fixture route option it needs
   (`createFixtureRoutes`, `mountFixture(..., routes)`) therefore landed with group 4.
+
+## Demo check (task 6.1)
+
+`npm run demo:build`, then `vite preview` on a spare port and a headless Playwright run in
+the installed Chrome (`channel: "chrome"`, script kept out of the repo):
+
+- dragging the sensor's "level" onto the controller's "setpoint" opened the picker;
+  "Delayed link" created a dashed wire drawn orthogonally with rounded corners, leaving
+  the sensor to the right and entering the controller from the left between the nodes;
+- "Orthogonal wires" switched every default wire to orthogonal at once and back to
+  Bezier when cleared, with no undo entry;
+- dragging the pump with orthogonal wires attached drew both wires orthogonally on every
+  frame of the preview and after the drop;
+- no console errors. `examples/plain-js/main.ts` is 297 lines.
+- The run found a bug from group 4: the move preview drew the dragged node at twice the
+  offset (the shifted body box went through the unshifted inverse transform). Fixed in
+  its own commit with a browser test.
