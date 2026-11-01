@@ -38,8 +38,10 @@ results.
   listener), as D4 says; only the event is skipped.
 - **Keyboard placement uses the view's CSS size** for the visible world rectangle, and
   the client position is the root's bounding rect plus the viewport point.
-- **The test helper `pointer` in `input-test-support.ts` is now exported** for the touch
-  sequences.
+- **`contextMenu` and `touch` test helpers live in `input-test-support.ts`**, so the
+  browser tests split into `context-menu.browser.test.ts` (pointer, scoping, commands,
+  dispose) and `context-menu-keys.browser.test.ts` (keyboard, touch), each under 300
+  lines.
 
 ## Browser observations (Chrome, synthesized events)
 
@@ -65,3 +67,28 @@ the installed Chrome (`channel: "chrome"`, script kept out of the repo):
 - no console errors.
 - The demo's global `P`/`G`/`E` keys now ignore key presses inside the overlay (the
   menu), so they do not fire while a menu item has focus.
+
+## Gate results (task 6.1)
+
+- `npm run lint`: 436 files, no findings.
+- `npm run typecheck`: all four passes clean (including the core-only pass).
+- `npm test`: 110 files, 650 tests passed (`src/architecture.test.ts` included).
+- `npm run test:browser` (installed Google Chrome): 35 files, 166 tests passed.
+- `npm run build`: ok.
+- `npm run bench:size` (gzip): core 30.8 KiB (budget 75), view 40.8 KiB (budget 150),
+  advanced 26.0 KiB, react 40.8 KiB. All budgets met.
+- Files over 300 lines among those changed: only `src/view/mount-view.ts` (337, the
+  accepted exception). `context-menu-input.ts` is the largest new file at 290.
+
+## Size
+
+Measured with `git diff --numstat` from the split commit `cd780b5` to the end of this
+change, and gzip sizes from `scripts/bundle-size.mjs` (exact bytes) at both commits.
+
+| Part | Library code | Test code | Example |
+| --- | --- | --- | --- |
+| Context menu (this change) | +820 / -50 lines | +749 / -1 lines | +120 lines |
+
+The library figure includes the `key-input.ts` refactor (33 lines moved out of
+`dom-input.ts`). Bundle (gzip): view 39,915 -> 41,829 bytes (+1,914, about +1.9 KiB),
+advanced 24,871 -> 26,578 bytes (+1,707), core unchanged (31,582).

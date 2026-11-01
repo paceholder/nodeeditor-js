@@ -25,7 +25,7 @@ export function clientOf(
   };
 }
 
-export function pointer(
+function pointer(
   target: EventTarget,
   type: string,
   at: { x: number; y: number },
@@ -129,4 +129,42 @@ export function wheel(
   });
   view.element.dispatchEvent(event);
   return event;
+}
+
+/** A native `contextmenu` at a world point, as a right-click or Ctrl+click sends. */
+export function contextMenu(
+  view: ViewHandle,
+  wx: number,
+  wy: number,
+  init: PointerEventInit = {},
+  target: EventTarget = view.element,
+): PointerEvent {
+  const at = clientOf(view, wx, wy);
+  const event = new PointerEvent("contextmenu", {
+    clientX: at.x,
+    clientY: at.y,
+    button: 2,
+    pointerType: "mouse",
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+/** A finger at world points (pointer 7). */
+export function touch(view: ViewHandle) {
+  const init = { pointerId: 7, pointerType: "touch", isPrimary: true };
+  const at = (x: number, y: number) => clientOf(view, x, y);
+  return {
+    down: (x: number, y: number) =>
+      pointer(view.element, "pointerdown", at(x, y), { ...init, button: 0 }),
+    move: (x: number, y: number) =>
+      pointer(view.element, "pointermove", at(x, y), init),
+    up: (x: number, y: number) =>
+      pointer(view.element, "pointerup", at(x, y), init),
+    native: (x: number, y: number) => contextMenu(view, x, y, init),
+  };
 }
