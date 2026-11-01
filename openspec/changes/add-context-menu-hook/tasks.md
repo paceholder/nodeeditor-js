@@ -14,8 +14,8 @@
 
 ## 3. Host-menu gaps (view/interact)
 
-- [ ] 3.1 Add `at?: Point<"world">` to `PasteArgs` in `clipboard/clipboard-commands.ts`, and use it before the pointer in `clipboard-service.ts` (D7); verify `clipboard-service.test.ts` titled EDT-03, INT-07 with "Paste at a given position" (centre at `at` while the pointer is elsewhere) and the existing paste scenarios unchanged
-- [ ] 3.2 Add the `viewport` `OverlayAnchor` to `overlay/overlay-host.ts` (D7); verify `overlay.browser.test.ts` titled OVL-01, REN-03 in Chrome: "Menu fixed on screen" (same viewport position after a wheel zoom and a pan, and a click on it starts no gesture), "Menu following the graph" with a world anchor, and a hidden viewport-anchored element does not block input
+- [x] 3.1 Add `at?: Point<"world">` to `PasteArgs` in `clipboard/clipboard-commands.ts`, and use it before the pointer in `clipboard-service.ts` (D7); verify `clipboard-service.test.ts` titled EDT-03, INT-07 with "Paste at a given position" (centre at `at` while the pointer is elsewhere) and the existing paste scenarios unchanged
+- [x] 3.2 Add the `viewport` `OverlayAnchor` to `overlay/overlay-host.ts` (D7); verify `overlay.browser.test.ts` titled OVL-01, REN-03 in Chrome: "Menu fixed on screen" (same viewport position after a wheel zoom and a pan, and a click on it starts no gesture), "Menu following the graph" with a world anchor, and a hidden viewport-anchored element does not block input
 
 ## 4. DOM wiring and handle API (browser)
 

@@ -22,3 +22,8 @@ results.
   takes no modifiers.
 - **The long-press "second-down" input is a `down` with another pointer ID** while
   armed or fired; `cancel` covers pointercancel, blur, hidden and dispose.
+- **`clipboard-service.ts` needed no change for `at`**: `service.paste(text, placement)`
+  already took an explicit placement, so `edit.paste` turns `at` into
+  `{ kind: "center", at }` and the service keeps preferring it over the pointer. The
+  repeated-paste counter still advances as for a pointer paste.
+- **A `viewport` anchor has no `scale` option**, so the type cannot ask for one.
