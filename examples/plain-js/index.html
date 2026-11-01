@@ -22,6 +22,19 @@
       #status { top: auto; bottom: 10px; left: 12px; right: auto; margin: 0; }
       #fragment textarea { width: min(80vw, 640px); height: 40vh; font: 11px monospace; }
       #fragment p { margin: 6px 0 0; display: flex; gap: 6px; }
+      .context-menu {
+        display: flex; flex-direction: column; min-width: 160px; padding: 4px;
+        background: #2b2f36; border: 1px solid #4a505c; border-radius: 6px;
+        box-shadow: 0 6px 20px #0008; font: 12px/1.4 system-ui, sans-serif;
+      }
+      .context-menu:empty { display: none; }
+      .context-menu button {
+        all: unset; padding: 4px 10px; border-radius: 4px; color: #e6e9ef; cursor: default;
+      }
+      .context-menu button:hover:not(:disabled), .context-menu button:focus-visible {
+        background: #3d6fb4;
+      }
+      .context-menu button:disabled { color: #6f7685; }
     </style>
   </head>
   <body>
@@ -38,6 +51,7 @@
       <kbd>M</kbd> / <kbd>Shift+M</kbd> mirror left-right / top-bottom. Select the tank
       alone and drag its corner handle to resize it (<kbd>Shift</kbd> keeps the aspect
       ratio). Drags near the edge of the view scroll it.
+      Right-click (or long-press, or <kbd>Shift+F10</kbd>) opens a context menu.
       Outside edits: <kbd>P</kbd> move pump, <kbd>E</kbd> toggle valve error.
     </p>
     <label id="snap"><input type="checkbox" /> Snap to grid</label>

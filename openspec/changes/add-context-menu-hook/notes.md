@@ -48,3 +48,20 @@ results.
   `mouse`.
 - A touch drag test maps each move through the already panned view, so the pan it sees
   is larger than the finger travel; the test checks a lower bound.
+
+## Demo check (task 5.1)
+
+`npm run demo:build`, then `vite preview` on a spare port and a headless Playwright run in
+the installed Chrome (`channel: "chrome"`, script kept out of the repo):
+
+- right-click on the pump: Cut, Copy, Paste here (disabled, empty buffer), Duplicate,
+  Delete, Rotate, Mirror, Select all, Fit all, Undo, Redo (disabled);
+- Delete from the menu removed the pump (a right-click there then shows the canvas
+  items), Escape closed the menu, Ctrl/Cmd+Z brought the pump back;
+- Copy from the menu, then "Paste here" on empty canvas: a right-click at that point hits
+  the pasted node;
+- Shift+F10 with the pump selected opened the menu at the pump's centre; Escape closed it
+  and focus returned to the editor root;
+- no console errors.
+- The demo's global `P`/`G`/`E` keys now ignore key presses inside the overlay (the
+  menu), so they do not fire while a menu item has focus.
