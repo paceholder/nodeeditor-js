@@ -92,3 +92,15 @@ change, and gzip sizes from `scripts/bundle-size.mjs` (exact bytes) at both comm
 The library figure includes the `key-input.ts` refactor (33 lines moved out of
 `dom-input.ts`). Bundle (gzip): view 39,915 -> 41,829 bytes (+1,914, about +1.9 KiB),
 advanced 24,871 -> 26,578 bytes (+1,707), core unchanged (31,582).
+
+## Documentation (group 7)
+
+- `docs/interaction.md` gains section 7a (context menu) with the flow diagram, the
+  scoping bullet for overlay keys, the `"context-menu"` cancel source and `longPressMs`.
+- `docs/guide-view.md` covers `view.on("context-menu")`, building a menu from
+  `commands.list()` and `availability`, `edit.paste` with `at`, the `viewport` anchor and
+  overlay keys.
+- `docs/architecture.md` places the context-menu input beside the DOM input adapter with
+  a diagram, and updates the code map and layer diagram.
+- Every Mermaid block in `interaction.md` and `architecture.md` renders (mermaid 11 in
+  headless Chrome).

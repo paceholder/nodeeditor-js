@@ -664,15 +664,63 @@ attached element accepts it.
 ```ts
 const input = document.createElement("input");
 const handle = view.overlay.attach(input, { kind: "node", node: pump.id });
-// Anchors: { kind: "world", point, scale? } or { kind: "node", node, scale? }.
+// Anchors: { kind: "world", point, scale? }, { kind: "node", node, scale? }, or
+// { kind: "viewport", point } for a fixed spot on screen (a context menu).
 // A node anchor is the top-left of the node's body bounds and hides while the node is absent.
 handle.setVisible(false); // display: none, so it cannot block input
 handle.setAnchor({ kind: "world", point: point<"world">(100, 40), scale: true });
 handle.dispose();
 ```
 
-By default an element keeps its size on screen; `scale: true` scales it with zoom. The
-view repositions overlay elements once per painted frame, only if any are attached.
+By default an element keeps its size on screen; `scale: true` scales it with zoom. A
+`viewport` anchor ignores pan and zoom entirely, which is what a menu wants. The view
+repositions overlay elements once per painted frame, only if any are attached.
+
+Overlay content handles its own input: presses on it start no gesture, and keys pressed
+in it (a button in a host menu, a text field) run no graph shortcut or clipboard command.
+So Escape or Delete in a host menu reaches only the menu; close it and call
+`view.element.focus()` to give the keyboard back to the editor.
+
+### Context menus: a hook, not a component
+
+The library ships no menu. `view.on("context-menu", handler)` fires on a right-click, a
+touch long-press and the menu key or Shift+F10, and returns an unsubscribe function. While
+any listener is registered the browser's own menu is suppressed; without one nothing
+changes. An unselected entity under the pointer becomes the selection first, so a menu
+item is just a command run on the selection
+([interaction.md](interaction.md#7a-context-menu-int-11) has the full rules).
+
+```ts
+view.on("context-menu", (e) => {
+  // e.target: node | port | connection | canvas, by stable IDs; e.hits: every hit, topmost first
+  // e.selection: { nodes, connections } after the select-on-open rule
+  // e.invocation: "mouse" | "pen" | "touch" | "keyboard"; e.modifiers
+  // e.client, e.viewport, e.world: where to put the menu
+  const menu = document.createElement("div");
+  for (const { id, labelKey } of view.commands.list()) {
+    const args = id === "edit.paste" ? { at: e.world } : undefined; // "Paste here"
+    const state = view.commands.availability(id, args);
+    const item = document.createElement("button");
+    item.textContent = myLabels[labelKey] ?? id;
+    item.disabled = !state.available;
+    if (!state.available) item.title = state.reason.message; // why it is unavailable
+    item.onclick = () => {
+      view.commands.run(id, args); // same patch and undo step as the shortcut
+      handle.dispose();
+      view.element.focus();
+    };
+    menu.append(item);
+  }
+  const handle = view.overlay.attach(menu, { kind: "viewport", point: e.viewport });
+});
+```
+
+`edit.paste` with `{ at }` centres the pasted fragment at that world point instead of at
+the pointer, which also covers touch, where there is no hover pointer. A real menu skips
+commands that need arguments it cannot supply (`nodes.nudge`, `view.reveal`) and those
+without a label; `examples/plain-js/context-menu.ts` is a complete one with arrow keys,
+Escape and click-away. Touch long-press waits `toolOptions.longPressMs` (default 500;
+`false` turns it off).
 
 **Presence** shows other users' cursors and selections. The host supplies the data in world
 coordinates; the view draws it on the interaction layer and never touches the model or its

@@ -33,9 +33,9 @@
 
 ## 7. Documentation (separate commit)
 
-- [ ] 7.1 Update `docs/interaction.md` with a context-menu section (triggers, the selection rule, browser-menu suppression only with listeners, scoping, gesture interplay, touch long-press and pan-first, keyboard placement, one event per invocation), with the Mermaid flow of design.md; verify by grepping for `context-menu` and `longPressMs`
-- [ ] 7.2 Update `docs/guide-view.md` (`view.on("context-menu")` and its payload, building a menu from `commands.list()` and `availability`, `edit.paste` with `at`, the `viewport` overlay anchor, overlay content not running graph shortcuts); verify by grepping for `view.on("context-menu"` and `kind: "viewport"`
-- [ ] 7.3 Update `docs/architecture.md` with the context-menu input beside the DOM input; verify the diagram renders in a Markdown preview and names no upward import
+- [x] 7.1 Update `docs/interaction.md` with a context-menu section (triggers, the selection rule, browser-menu suppression only with listeners, scoping, gesture interplay, touch long-press and pan-first, keyboard placement, one event per invocation), with the Mermaid flow of design.md; verify by grepping for `context-menu` and `longPressMs`
+- [x] 7.2 Update `docs/guide-view.md` (`view.on("context-menu")` and its payload, building a menu from `commands.list()` and `availability`, `edit.paste` with `at`, the `viewport` overlay anchor, overlay content not running graph shortcuts); verify by grepping for `view.on("context-menu"` and `kind: "viewport"`
+- [x] 7.3 Update `docs/architecture.md` with the context-menu input beside the DOM input; verify the diagram renders in a Markdown preview and names no upward import
 
 ## Workflow follow-up
 

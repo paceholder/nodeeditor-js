@@ -22,7 +22,8 @@ step), like a `QUndoCommand` pushed once per mouse release instead of once per m
 | Auto-pan driver (`createAutoPanDriver`) | Pans the view by animation frames while a drag is near an edge, and replays the last pointer-move so the preview follows (section 5a). |
 | Effect runner (`createEffectRunner`) | Executes `capture`/`release`, `preview`, `commit`, `select`, `viewport` and `cursor` effects in order. |
 | Selection model | View-local, ordered, with a primary entry. Dropped entities leave it when the model commits their removal. |
-| Command registry | Stable command IDs shared by shortcuts, the API and (later) menus. |
+| Command registry | Stable command IDs shared by shortcuts, the API and host menus. |
+| Context-menu input (`attachContextMenuInput`) | Beside the DOM input adapter: turns right-click, touch long-press and the menu key into the `context-menu` event (section 7a). |
 
 How one input travels through them. On a press the router asks the tools in precedence
 order (`defaultToolSlots()`, section 8) and the first one that accepts owns the gesture
@@ -43,7 +44,8 @@ flowchart TB
 ```
 
 A press nobody accepts (the right button, by default) returns `handled: false`, and the
-adapter leaves the browser's default alone.
+adapter leaves the browser's default alone. The right button belongs to the context menu
+(section 7a): either the host's, through `view.on("context-menu")`, or the browser's.
 
 ## 2. Gestures
 
@@ -318,10 +320,14 @@ the mouse adds the growing step, so copies cascade instead of stacking.
   shortcuts: only the focused one reacts.
 - Key events from `input`, `textarea`, `select` and `contentEditable` elements (overlay
   editors included) are left alone, and so are keys during IME composition.
-- Pointer presses on host DOM placed in the overlay start no gesture.
+- Pointer presses on host DOM placed in the overlay start no gesture, and key presses
+  there (a button in a host menu) run no tool key, no shortcut and no clipboard command.
+  Escape or Delete in a host menu therefore never clears or deletes the selection; the
+  host closes its menu and returns focus with `view.element.focus()`.
 - Cancellation sources: `pointercancel`, `lostpointercapture`, Escape, window `blur`, the
   document becoming hidden, a model `reset` (the whole document replaced, for example by
-  `loadSnapshot`), and `dispose()`. Each ends the gesture with nothing committed.
+  `loadSnapshot`), a context menu opened on a press that has not started dragging
+  (`"context-menu"`, section 7a), and `dispose()`. Each ends the gesture with nothing committed.
   A committed removal is different: the tool is told which IDs left the model and cancels
   only if its gesture uses one of them.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
@@ -346,6 +352,93 @@ flowchart LR
   tool -- "removed IDs not in use" --> goes["gesture continues"]
 ```
 
+## 7a. Context menu
+
+The library ships no menu. It raises an event with everything a host needs to build and
+place its own, the way React Flow offers `onNodeContextMenu` and Cytoscape a separate menu
+plugin. A menu item is then just a command: `view.commands.run(id, args)`, with the same
+availability text, patch and undo step as the shortcut.
+
+```ts
+const off = view.on("context-menu", (e) => {
+  // e.target: { kind: "node", node } | { kind: "port", node, port }
+  //         | { kind: "connection", connection, member? } | { kind: "canvas" }
+  // e.hits (ordered, topmost first), e.selection, e.invocation, e.modifiers,
+  // e.client / e.viewport / e.world
+});
+```
+
+**Triggers.** The browser's `contextmenu` event (a right-click, Ctrl+click on macOS, a
+pen's barrel button), a touch held still for `longPressMs` (default 500 ms), and the menu
+key or Shift+F10 while the editor has focus. Each invocation raises exactly one event,
+even where the browser also reports it (Windows sends a native `contextmenu` after the
+menu key, Chrome on Android after a long touch).
+
+**Target.** The first hit of the normal pick at the point, the same pick and order a
+click uses (ports hidden at low zoom are not hit), so a menu and a click always
+agree. `hits` holds the whole ordered list for a host that wants to offer "which one?"
+on coincident wires.
+
+**Selection rule.** A right-click or long-press on an entity that is not selected makes
+it the only selection first (on a port, its node); modifiers do not change this. On a
+selected entity the selection stays, so a menu can act on a multi-selection. On empty
+canvas it stays too, so "Paste here" or "Select all" keep what was selected. Built-in
+commands act on the selection, which is why no target-based command API is needed.
+
+**Only with a listener.** While no listener is registered, the view does nothing extra:
+the browser's own menu opens, the selection is untouched and no long-press timer runs.
+With one or more listeners the browser's menu is suppressed; there is no per-event
+pass-through.
+
+**Gestures.** A right press starts no tool. A press that has not passed its drag
+threshold when the menu opens (a macOS Ctrl+click, a long-press) is cancelled with the
+`"context-menu"` reason, so it neither selects on release nor drags. During a drag past
+the threshold no event is raised and the drag continues. Events from text fields, IME
+composition and host overlay content raise nothing (section 7).
+
+**Touch and pan-first.** The long-press is armed only for touch (pens report their
+barrel button through `contextmenu`). Moving beyond the touch drag threshold (6 px)
+disarms it, so the two outcomes exclude each other: before the threshold nothing has
+moved, after it the view pans or the node moves and the long-press is gone. A second
+finger disarms it too. The root turns off the iOS touch callout and text selection, so a
+hold shows nothing of the browser's own. `toolOptions: { longPressMs: false }` turns
+long-press off.
+
+**Keyboard placement.** The menu key and Shift+F10 target the primary selected node or
+connection (never a port, ports are not selectable), or the canvas when nothing is
+selected. The position is the centre of the entity's bounds clamped into the visible
+area, or the view centre; the selection does not change.
+
+**Placing the menu.** `client` is for page DOM outside the view, `viewport` for an overlay
+element anchored `{ kind: "viewport", point }` (it stays put while the view pans and
+zooms), and `world` for a world anchor or for "paste here":
+`view.commands.run("edit.paste", { at: e.world })`.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant C as context-menu input
+  participant R as router
+  participant S as selection
+  participant H as host listener
+  participant M as model
+  U->>C: contextmenu (right-click on node B)
+  C->>C: listener? not overlay or text? not dragging?
+  C->>R: cancelGesture("context-menu") if a press is below threshold
+  C->>S: replace with B (B was not selected)
+  C->>H: emit context-menu {target node B, selection [B], positions}
+  C-->>U: preventDefault (no browser menu)
+  H->>H: build items from commands.list() + availability(id)
+  U->>H: click "Delete"
+  H->>M: view.commands.run("edit.delete")
+  M-->>U: one history entry (undo as for the shortcut)
+```
+
+The plain demo (`examples/plain-js/context-menu.ts`) is a complete host menu in about a
+hundred lines: items from `view.commands.list()` with disabled entries showing the
+availability reason, arrow keys, Escape and click-away.
+
 ## 8. Options
 
 ```ts
@@ -360,8 +453,9 @@ mountView(container, {
 });
 ```
 
-`toolOptions` also holds `dragThresholdPx`, `pickTolerancePx`, `wheelSensitivity` and
-`autoPan` (section 5a; `false` turns it off).
+`toolOptions` also holds `dragThresholdPx`, `pickTolerancePx`, `wheelSensitivity`,
+`autoPan` (section 5a; `false` turns it off) and `longPressMs` (section 7a; `false` turns
+the touch long-press off).
 Snapping is off unless `gridStep` is set. Options can change while the view runs:
 `view.setToolOptions({ gridStep: undefined })` turns snapping off from the next input
 event, patches merge key by key, and `view.toolOptions()` returns what is in effect (the
