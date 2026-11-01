@@ -54,6 +54,19 @@ describe("core entry", () => {
     expect(typeof core.resolveCapability).toBe("function");
     expect(core.findUnknownTypes(model.reader, registry)).toEqual([]);
   });
+
+  it("CON-04 exports the keyed policy alternative", () => {
+    const alt: core.ConnectionAlternative = {
+      key: "fast",
+      label: "Fast",
+      from: { node: core.nodeId("n1"), port: core.portId("p1") },
+      to: { node: core.nodeId("n2"), port: core.portId("p2") },
+      connectionKind: "fast",
+      auxiliary: [],
+    };
+    const proposal: core.ConnectionProposal = { ...alt, choice: alt.key };
+    expect(proposal.choice).toBe("fast");
+  });
 });
 
 describe("SNP-01 / SER-01 snapshot API on the core entry", () => {

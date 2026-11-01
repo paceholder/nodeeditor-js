@@ -157,7 +157,10 @@ describe("CON-04 structured policy outcomes", () => {
     const model = makeModel({
       connectionPolicy: fixed({
         kind: "choice",
-        alternatives: [plan(1), plan(2)],
+        alternatives: [
+          { ...plan(1), key: "one" },
+          { ...plan(2), key: "two", label: "Second" },
+        ],
       }),
     });
     const a = make(model, "source");
@@ -165,7 +168,12 @@ describe("CON-04 structured policy outcomes", () => {
     const result = model.connect(end(a), end(b));
     expect(result.status).toBe("choice-required");
     if (result.status === "choice-required")
-      expect(result.alternatives).toHaveLength(2);
+      expect(result.alternatives.map(({ key, label }) => [key, label])).toEqual(
+        [
+          ["one", "n1.p1 to n9.p9"],
+          ["two", "Second"],
+        ],
+      );
     expect(model.reader.connections()).toEqual([]);
   });
 

@@ -58,6 +58,8 @@ export type Command =
       readonly from: Endpoint;
       readonly to: Endpoint;
       readonly connectionKind?: string;
+      /** The key of the policy alternative to create (CON-04). */
+      readonly choice?: string;
     }
   | {
       readonly kind: "reconnect";
@@ -166,6 +168,9 @@ export interface PlanEffects {
 }
 
 export interface ChoiceAlternative {
+  /** The policy's alternative key; pass it back as `connect.choice` (CON-04). */
+  readonly key: string;
+  /** The policy's label, else a short endpoint description. */
   readonly label: string;
   readonly plan: ConnectionPlan;
 }

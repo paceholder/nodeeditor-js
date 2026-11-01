@@ -148,6 +148,7 @@ export type { DefaultPolicyOptions } from "./edit/policy/default-policy.js";
  */
 export { createDefaultConnectionPolicy } from "./edit/policy/default-policy.js";
 export type {
+  ConnectionAlternative,
   ConnectionPlan,
   ConnectionPolicy,
   ConnectionProposal,
