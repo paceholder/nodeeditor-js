@@ -279,7 +279,7 @@ resolver, and a failed asset shows a placeholder while the node keeps its geomet
 
 ## 7. Interaction tools
 
-Each tool (select/move, marquee, connect, pan, empty-canvas pan, plus wheel zoom) is an explicit state
+Each tool (select/move, marquee, connect, resize, pan, empty-canvas pan, plus wheel zoom) is an explicit state
 machine; [interaction.md](interaction.md) lists the gestures, commands and keymap. The move
 tool, for example:
 
@@ -308,6 +308,32 @@ transition(state, input, context) → { state, effects }   // no DOM inside
 Only `src/view/interact/input/` touches DOM events and translates them into tool inputs. Tools can
 therefore be tested in Node. Escape, lost pointer capture, blur, or the dragged node being
 deleted by someone else all lead to a well-defined cancel that leaves the graph untouched.
+
+Tools are timeless, so **auto-pan** is not inside them. A tool only says which of
+its states want it (`autoPans(state)`: the dragging states of move, connect, resize and
+marquee). A DOM-free auto-pan driver in `interact/input/` runs beside the frame
+scheduler, not inside it: after every routed input it asks the router, and while a drag
+sits in an edge band it requests one animation frame at a time from the same frame clock,
+pans the viewport and replays the last pointer-move so the tool's preview follows. When
+the gesture ends the next routed input cancels the pending frame. The scheduler keeps its
+simple guarantee (one frame per batch of dirty layers, never a loop), and the driver's
+own guarantee (no frame once nothing pans) is tested on its own.
+
+```mermaid
+flowchart LR
+  dom["dom-input<br/>(interact/input)"] -- "ToolInput" --> router["tool router<br/>(interact/tools)"]
+  router -- "autoPanning()" --> driver["auto-pan driver<br/>(interact/input)"]
+  dom -- "update(input) after each route" --> driver
+  driver -- "request / cancel one frame" --> clock["FrameClock<br/>(platform)"]
+  clock -- "tick" --> driver
+  driver -- "panBy(-v·dt)" --> viewport["viewport state<br/>(platform)"]
+  driver -- "replayed pointer-move" --> router
+  viewport -- "markDirty" --> scheduler["frame scheduler<br/>(platform)"]
+  scheduler -- "request a frame when dirty" --> clock
+```
+
+Every arrow points from a module to one in its own layer or below (`interact` uses
+`platform`), or is a callback the mount wiring passes down.
 
 ## 8. Code map
 
@@ -407,6 +433,15 @@ Three things worth knowing about the layers, none of them a cycle between files:
 - `interact/commands/` imports `capabilityProbe` from `interact/tools/`, and
   `interact/overlay/` paints presence through `render/paint/`. Both follow the layer
   order.
+
+- `core/data/model/node-frame.ts` holds the quarter-turn and mirror map of the node
+  frame (`frameVector`, `frameVectorInverse`, `anchoredPosition`, `mirroredRotation`).
+  The `resizeNode` and `mirrorNodes` planners and the capability validator's compound
+  rule (`edit/capabilities/compound-fields.ts`) need it, and `edit/` may not import
+  `space/`, where `node-transform.ts` builds the full affine matrix. So the linear part
+  lives one layer lower, and a test in `space/geometry/` asserts that both agree for all
+  eight rotation and mirror states. The view's resize tool uses the exported
+  `anchoredPosition`, so preview and commit run the same arithmetic.
 
 - `paste` and `duplicate` are `Command` kinds declared in `edit/commands/`, but their
   planners need the snapshot validator, records mapping and codecs from `io/`. Rather

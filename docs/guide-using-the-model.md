@@ -174,8 +174,109 @@ model.reader.connections();                // []
 ```
 
 `payload` is your own JSON-compatible data attached to a node; the library stores it and
-never interprets it. There are also `rotateNodes`, `mirrorNodes`, `reorderNodes`,
-`reconnect`, `disconnect` and `setPorts`; see `ConvenienceMethods`.
+never interprets it. There are also `rotateNodes`, `mirrorNodes`, `resizeNode`,
+`reorderNodes`, `reconnect`, `disconnect` and `setPorts`; see `ConvenienceMethods`.
+
+### Rotating and mirroring
+
+```ts
+model.rotateNodes([a.id], 1);               // a quarter turn clockwise on screen
+model.mirrorNodes([a.id]);                  // axis "horizontal": left and right swap
+model.mirrorNodes([a.id], "vertical");      // top and bottom swap
+```
+
+Each node turns or flips about its own centre, and each call is one patch and one history
+entry. Both mirror axes are **screen** axes, whatever the node's rotation: a node stores
+one `mirrored` flag and a quarter-turn `rotation`, so `mirrorNodes` toggles the flag and
+sets the rotation that gives the requested screen flip (horizontal: `rotation` becomes
+`-r`; vertical: `2 - r`, both mod 4). At `rotation` 0 or 2 a horizontal mirror only
+toggles the flag; at 1 or 3 it also changes `rotation`. (Before this behaviour the
+horizontal mirror flipped the node's own x axis, which is a vertical flip on screen for a
+node at an odd quarter turn.) One undo restores both fields.
+
+### Resizing
+
+Resizing is **opt-in per node type**. Without an opinion anywhere, the `resize`
+capability is denied, so a type declares it, and a record override can turn one instance
+off again:
+
+```ts
+registry.register({
+  type: "tank",
+  label: "Tank",
+  defaultSize: { width: 70, height: 110 },
+  capabilities: { resize: true },
+  sizeLimits: { min: { width: 40, height: 60 }, max: { width: 240, height: 360 } },
+});
+
+// One instance that must keep its size:
+model.submit({
+  ops: [{ op: "update", entity: "node", id: t.id,
+          fields: { capabilities: { new: { resize: false } } } }],
+});
+```
+
+Every other action (`move`, `rotate`, `mirror`, ...) stays allowed by default. A
+`resizeNode` (or a local patch that changes `size`) on a node whose type did not opt in
+is rejected with `capability-denied`, exactly like a locked node. External changes (an
+external adapter, a host snapshot) are not checked: their authority already decided.
+
+```ts
+model.resizeNode(t.id, { width: 120, height: 80 });                  // about the centre
+model.resizeNode(t.id, { width: 120, height: 80 }, { x: -1, y: -1 }); // top-left fixed
+```
+
+`fixed` names a point of the node's **local** body box, before rotation and mirroring:
+`x` is `-1` (left edge), `0` (centre line) or `1` (right edge), `y` likewise for top and
+bottom. The planner moves the centre so that point keeps its world position for any
+rotation and mirroring, and emits one node update with `size` and, when it moved,
+`position`. `anchoredPosition(record, size, fixed)` is the same arithmetic, exported for
+hosts that want to preview a resize. An unchanged size plans nothing.
+
+**Size limits.** A type's `sizeLimits` gives an optional `min` and `max` (full sizes);
+each replaces the library default for its own bound only. The default minimum is
+1 x 1 (a zero-width node can be neither seen nor picked; declare `min: { width: 0,
+height: 0 }` to allow it) and the default maximum is unbounded. The registry rejects
+negative or non-finite bounds (only `max` may be `Infinity`) and a minimum above the
+maximum with `malformed-record`. A host hook refines the limits per node, for example
+from the payload:
+
+```ts
+const model = createGraphModel({
+  registry,
+  // `fromType` holds the resolved type limits; return undefined to keep them.
+  sizeLimits: (node, fromType) =>
+    node.status === "fixed" ? { min: node.size, max: node.size } : undefined,
+});
+model.sizeLimits(t.id);   // { min, max }: default, then type, then hook
+```
+
+A hook result whose `min` exceeds its `max` is a host bug; the resolver widens `max` to
+`min` instead of throwing during a gesture.
+
+**Clamp in the gesture, reject at the API.** The view's resize handle clamps every
+preview to the limits, so a drag never ends in a rejection. A `resizeNode` command
+outside the limits is rejected with `out-of-range`, naming the node and the violated
+bound; nothing is clamped silently, so the caller knows exactly what was stored. Read
+`model.sizeLimits(id)` first to clamp yourself.
+
+**Limits are not checked on patches, undo or load.** Only commands check them. A
+document saved before a type tightened its limits still loads with its stored sizes, and
+undo can always restore the previous size.
+
+**Which capability a compound change needs.** An anchored resize moves the centre; that
+position change is judged by `resize`, not `move`, as long as it is no larger (in the
+node's local frame) than half the size change on each axis. So a node that may resize
+but not move can still be resized from a corner. A larger position change also needs
+`move`. Likewise the rotation change a screen-axis mirror implies is judged by `mirror`;
+any other rotation change needs `rotate`. Raw patches and undo are judged the same way.
+
+**Ports follow the size.** Anchors are computed from the body box, so a resize moves
+them and incident connections follow. Image-symbol placements are fractions of the box,
+so a port on an edge stays on that edge. Card ports in horizontal layout sit at a fixed
+distance below the title (`titleHeight + rowPitch · (i + ½)`) and stack on the bottom
+edge when the body is shorter than its rows; give card types a minimum height of
+`titleHeight + rowPitch · rows`.
 
 ### Copy, paste and duplicate
 

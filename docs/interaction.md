@@ -18,7 +18,8 @@ step), like a `QUndoCommand` pushed once per mouse release instead of once per m
 | ----- | ---- |
 | DOM input adapter (`attachDomInput`) | The only code that sees DOM events. Converts them to `ToolInput`, executes the effects, maps every cancellation source to `cancel`. |
 | Tool router (`createToolRouter`) | Holds the single active gesture, picks the tool on press by fixed precedence, ignores other pointers while a gesture runs. |
-| Tools | `pan`, `connect`, `select-move`, `empty-pan`, `marquee`: `{ idle, accepts, transition, isIdle }` over a discriminated-union state. |
+| Tools | `pan`, `resize`, `connect`, `select-move`, `empty-pan`, `marquee`: `{ idle, accepts, transition, isIdle, autoPans? }` over a discriminated-union state. |
+| Auto-pan driver (`createAutoPanDriver`) | Pans the view by animation frames while a drag is near an edge, and replays the last pointer-move so the preview follows (section 5a). |
 | Effect runner (`createEffectRunner`) | Executes `capture`/`release`, `preview`, `commit`, `select`, `viewport` and `cursor` effects in order. |
 | Selection model | View-local, ordered, with a primary entry. Dropped entities leave it when the model commits their removal. |
 | Command registry | Stable command IDs shared by shortcuts, the API and (later) menus. |
@@ -32,7 +33,7 @@ bypasses the tools, so zooming also works in the middle of a drag.
 flowchart TB
   dom["DOM events<br/>pointer, wheel, key, blur, visibilitychange"] --> adapter["DOM input adapter (attachDomInput)<br/>the only DOM code: client to world, modifiers"]
   adapter -- "ToolInput" --> router["tool router<br/>one active gesture, one pointer"]
-  router -- "pointer-down" --> order["first tool that accepts:<br/>1 pan, 2 connect, 3 select-move,<br/>4 empty-pan, 5 marquee"]
+  router -- "pointer-down" --> order["first tool that accepts:<br/>1 pan, 2 resize, 3 connect,<br/>4 select-move, 5 empty-pan, 6 marquee"]
   order --> tool["active tool<br/>transition(state, input, ctx), pure"]
   router -- "move, up, cancel" --> tool
   router -- "wheel" --> wheel["wheelZoom"]
@@ -54,6 +55,7 @@ adapter leaves the browser's default alone.
 | Click empty canvas | Clear the selection (Shift or Ctrl/Cmd keeps it). |
 | Drag a node | Move it, or the whole selection if it was selected. Moves snap to `gridStep` when set; hold Alt to suppress snapping. Locked nodes in the selection stay put and are marked with a padlock. |
 | Drag from a port | Connect (section 4). |
+| Drag the resize handle | Resize the single selected node with the opposite screen corner fixed (section 4a). Shift keeps the aspect ratio. |
 | Drag empty canvas | Pan. |
 | Shift or Ctrl/Cmd + drag empty canvas | Marquee selection (section 3). |
 | Middle-button drag, or Space + drag | Pan, also over nodes. |
@@ -72,7 +74,8 @@ Escape during a gesture cancels it; nothing is committed and previews clear. Pre
 Escape with no gesture clears the selection.
 
 One completed gesture is one history entry: dragging three nodes over 200 pointer moves
-submits one `moveNodes` command; a connection drag submits one `connect`.
+submits one `moveNodes` command; a connection drag submits one `connect`; a resize drag
+submits one `resizeNode`.
 
 ## 3. Marquee convention
 
@@ -156,6 +159,31 @@ Choice-required (the policy offers several alternative plans, for example with o
 a converter node) currently commits nothing on release: picking between alternatives
 needs a chooser UI that a later change adds. Until then it is drawn like pending.
 
+## 4a. Resizing a node
+
+Resizing is opt-in per node type (`capabilities: { resize: true }`, see
+[guide-using-the-model.md](guide-using-the-model.md#resizing)). When exactly one node is
+selected (and no connection), and the capability probe says it may resize, the view
+draws **one handle**: an 8 x 8 CSS-pixel square inside the body at the corner that is
+bottom-right on screen, whatever the rotation and mirroring. Hovering it shows the
+`nwse-resize` cursor. Two selected nodes, or a type that did not opt in, show no handle,
+and a press on the corner moves as usual.
+
+| Step | What happens |
+| --- | --- |
+| Press on the handle | The `resize` tool claims it (it comes before `connect`), cursor `nwse-resize`. |
+| Drag past the threshold | The pointer delta is mapped into the node's local frame; the opposite screen corner stays put. With `gridStep` set the moving corner snaps to the grid (Alt skips it); Shift keeps the start width-to-height ratio; the size is clamped to the node's limits, so the preview never leaves them. |
+| Preview | The node and its connections leave the scene layer and are drawn at the preview size on the interaction layer, with the handle on the new corner. |
+| Release | One `resizeNode` with the opposite corner fixed: one history entry. Below the threshold nothing is committed and the selection is unchanged. |
+| Escape, lost capture, blur, removal | The preview is discarded, nothing is committed. |
+
+**Why the handle never competes with ports.** There is a single handle, on one corner of
+one selected node whose type asked for it, and ports normally sit on edges. If a port
+does sit on that corner, the handle wins inside its 8 px square (the router asks the
+resize tool first) and the port still connects from the rest of its capture circle. A
+press never starts both. This follows the predecessor Qt editor, which also has one
+corner grip on resizable nodes only, instead of eight handles on every node.
+
 ## 5. Navigation
 
 - **Wheel** zooms around the cursor by `exp(-deltaY * wheelSensitivity)`, clamped to the
@@ -167,6 +195,29 @@ needs a chooser UI that a later change adds. Until then it is drawn like pending
 - **Pan** only changes the viewport, never the model.
 - `view.fitAll`, `view.fitSelection`, `view.resetView` and `view.reveal` are commands
   (section 6); an empty graph or an empty selection is a successful no-op.
+
+### 5a. Auto-pan
+
+While a node drag, connection drag, marquee or resize is active and the pointer is inside
+the 32 px band along an edge of the view (or outside the view, where capture keeps the
+gesture alive), the view pans toward that edge. The speed rises linearly across the band
+to 600 CSS px per second at the edge and stays there beyond it; in a corner both axes
+pan. Pan gestures (middle button, Space, plain drags on empty canvas) never auto-pan.
+
+- **Arming.** A gesture that starts inside a band does not pan until the pointer has left
+  every band once, or moved closer to an edge than where it was pressed. Grabbing a node
+  near the edge therefore does not scroll the view.
+- **The preview follows.** Each frame pans by `-v * dt` (`dt` capped at 50 ms) and
+  replays the last pointer-move with the same screen point and the world point recomputed,
+  so the dragged node, wire end or marquee corner stays under the pointer.
+- **Stops at once, leaves no frames.** Release, Escape, lost capture, blur and dispose all
+  reach the router synchronously; the driver then cancels its pending frame before the
+  browser can deliver it. With nothing to pan, no animation frame is requested, and the
+  viewport keeps the position it reached.
+- **History.** Auto-pan changes only the viewport and never commits: the gesture still
+  commits once on release.
+- **Options.** `toolOptions.autoPan: { edgePx, maxSpeedPxPerSecond }`, on by default;
+  `autoPan: false` turns it off.
 
 ## 6. Commands and the default keymap
 
@@ -184,6 +235,8 @@ an unavailable command returns the reason (for example a capability denial).
 | `selection.selectAll` | Select every node and connection. |
 | `selection.clear` | Clear the selection. |
 | `nodes.nudge` | Move the selected, movable nodes by `{ dx, dy }` world units: one move command. |
+| `nodes.rotate` | Turn the selected nodes a quarter turn, `{ turns: 1 }` clockwise or `{ turns: -1 }`, each about its own centre: one command. Nodes that may not rotate are left out; with none left it is unavailable with the capability reason. |
+| `nodes.mirror` | Mirror the selected nodes in screen axes, `{ axis: "horizontal" }` (left and right swap) or `{ axis: "vertical" }` (top and bottom), each about its own centre: one command. Locked nodes are left out as for rotate. |
 | `view.fitAll` | Fit the whole graph in view. |
 | `view.fitSelection` | Fit the selection in view. |
 | `view.resetView` | Zoom 1, origin at the top-left. |
@@ -205,12 +258,18 @@ is detected once at mount, or set with `input.platform`:
 | Escape | cancel the gesture, otherwise `selection.clear` |
 | Arrow keys | `nodes.nudge` by the grid step (1 world unit without a grid) |
 | Shift+Arrow keys | `nodes.nudge` by ten steps |
+| R | `nodes.rotate` `{ turns: 1 }` (clockwise) |
+| Shift+R | `nodes.rotate` `{ turns: -1 }` |
+| M | `nodes.mirror` `{ axis: "horizontal" }` |
+| Shift+M | `nodes.mirror` `{ axis: "vertical" }` |
 | Mod+C | `edit.copy` (native route, below) |
 | Mod+X | `edit.cut` (native route) |
 | Mod+V | `edit.paste` (native route) |
 | Mod+D | `edit.duplicate` (also stops the browser's bookmark shortcut) |
 
-Replace or extend the map with `input.keymap`, for example
+Single-letter keys are safe: text fields, contentEditable and IME composition never reach
+the keymap (section 7), and Mod+R stays the browser's reload. Replace or extend the map
+with `input.keymap`, for example
 `[...DEFAULT_KEYMAP, { chord: "F", command: "view.fitAll" }]`. Chords are `+`-joined
 modifiers (`Mod`, `Ctrl`, `Shift`, `Alt`) then a key. Keys are ignored while a gesture is
 running: one gesture is one history entry.
@@ -301,15 +360,17 @@ mountView(container, {
 });
 ```
 
-`toolOptions` also holds `dragThresholdPx`, `pickTolerancePx` and `wheelSensitivity`.
+`toolOptions` also holds `dragThresholdPx`, `pickTolerancePx`, `wheelSensitivity` and
+`autoPan` (section 5a; `false` turns it off).
 Snapping is off unless `gridStep` is set. Options can change while the view runs:
 `view.setToolOptions({ gridStep: undefined })` turns snapping off from the next input
 event, patches merge key by key, and `view.toolOptions()` returns what is in effect (the
 plain demo's "Snap to grid" checkbox and G key do exactly this).
 
 `input.tools` replaces the tool list (router precedence order); `defaultToolSlots()` gives
-the built-in order: pan, connect, select-move, empty-pan, marquee. Connect sits before
-select-move so a press on a port connects instead of moving the node; empty-pan only sees
+the built-in order: pan, resize, connect, select-move, empty-pan, marquee. Resize sits
+before connect so a press on the resize handle never connects (section 4a); connect sits
+before select-move so a press on a port connects instead of moving the node; empty-pan only sees
 presses nothing else claimed, and lets Shift or Ctrl/Cmd presses fall through to the
 marquee. Editing needs a model that offers
 the command API (a `GraphModel` does); a read-only model still allows selection, pan and
@@ -319,9 +380,10 @@ view uses to repaint outlines.
 ## 9. Writing a tool
 
 A tool is `Tool<S>`: `idle` state, `accepts(press, ctx)`, `transition(state, input, ctx)`
-returning `{ state, effects }`, and `isIdle(state)`. The tool context is read-only: `pick`,
-`reader`, `scene`, `selection`, `zoom`, `can(action, id)`, `evaluateConnection(from, to)`
-and `options`. Commit at most one command per gesture and always return to idle on
+returning `{ state, effects }`, `isIdle(state)`, and optionally `autoPans(state)` (true
+in the states that drag something the view should auto-pan for). The tool context is
+read-only: `pick`, `reader`, `scene`, `selection`, `zoom`, `can(action, id)`,
+`sizeLimits(id)`, `evaluateConnection(from, to)` and `options`. Commit at most one command per gesture and always return to idle on
 commit, cancel or removal of an entity the gesture uses. The tool contract is public but
 experimental until Slice B adds routing tools. The headless harness
 (`src/view/test-support/tool-harness.ts`) drives tools against a real model and scene.
