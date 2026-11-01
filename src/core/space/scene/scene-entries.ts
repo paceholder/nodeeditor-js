@@ -14,7 +14,6 @@ import {
   invert,
   isFiniteAffine,
 } from "../geometry/affine.js";
-import { buildPath, type RouteMode } from "../geometry/connection-paths.js";
 import type { NodeGeometry, NodeView } from "../geometry/node-geometry.js";
 import { nodeTransform } from "../geometry/node-transform.js";
 import {
@@ -26,6 +25,7 @@ import { controlBounds, splitPath } from "../geometry/path-pieces.js";
 import { inflateRect, transformRect, unionRects } from "../geometry/rect.js";
 import { type Shape, shapeBounds } from "../geometry/shapes.js";
 import type { Point, Rect } from "../geometry/spaces.js";
+import type { ConnectionRouter, RouteOutcome } from "../routing/route-types.js";
 
 type W = "world";
 
@@ -60,6 +60,8 @@ export interface ConnectionEntry {
   readonly seq: number;
   /** Undefined when an endpoint has no anchor (the connection is neither painted nor hit). */
   readonly path: PathGeometry | undefined;
+  /** How the route turned out; undefined when pathless. */
+  readonly route: RouteOutcome | undefined;
   /** Path bounds grown by stroke and arrowhead margins. */
   readonly paintedBounds: Rect<W> | undefined;
   /** The path split into pieces for the spatial index; empty without a path. */
@@ -111,19 +113,24 @@ export function buildConnectionEntry(
   record: ConnectionRecord,
   seq: number,
   nodes: (id: NodeId) => NodeEntry | undefined,
-  mode: RouteMode,
+  router: ConnectionRouter,
   margin: number,
 ): ConnectionEntry {
-  const from = anchorOf(nodes(record.from.node), record.from.port);
-  const to = anchorOf(nodes(record.to.node), record.to.port);
+  const fromNode = nodes(record.from.node);
+  const toNode = nodes(record.to.node);
+  const from = anchorOf(fromNode, record.from.port);
+  const to = anchorOf(toNode, record.to.port);
   if (!from || !to) {
     return pathless(record, seq);
   }
-  const path = buildPath(
-    mode,
-    { position: from.position, normal: from.normal },
-    { position: to.position, normal: to.normal },
-  );
+  const { path, outcome } = router.route({
+    from: {
+      position: from.position,
+      normal: from.normal,
+      body: fromNode?.bodyBounds,
+    },
+    to: { position: to.position, normal: to.normal, body: toNode?.bodyBounds },
+  });
   if (!isFinitePath(path)) {
     return pathless(record, seq);
   }
@@ -133,6 +140,7 @@ export function buildConnectionEntry(
     record,
     seq,
     path,
+    route: outcome,
     paintedBounds: inflateRect(pathBounds(path), margin),
     segments,
     segmentBounds: segments.map((s) => inflateRect(controlBounds(s), margin)),
@@ -145,6 +153,7 @@ function pathless(record: ConnectionRecord, seq: number): ConnectionEntry {
     record,
     seq,
     path: undefined,
+    route: undefined,
     paintedBounds: undefined,
     segments: [],
     segmentBounds: [],

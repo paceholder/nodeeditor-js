@@ -9,11 +9,16 @@ import { createCardGeometry } from "../geometry/presets/card-geometry.js";
 import { rectsIntersect } from "../geometry/rect.js";
 import { rect } from "../geometry/spaces.js";
 import { between, seededRandom } from "../geometry/test-utils.js";
+import { createStraightRouter } from "../routing/basic-routers.js";
+import { createRouteRegistry } from "../routing/route-registry.js";
 import { createBruteForceIndex } from "../spatial-index/brute-force-index.js";
 import type { SpatialIndex } from "../spatial-index/spatial-index.js";
 import { createGeometryScene } from "./geometry-scene.js";
 import { buildModel, graphOps, twoPortNode } from "./scene-fixtures.js";
 import { sceneReference } from "./scene-reference.js";
+
+const straightRoutes = () =>
+  createRouteRegistry({ default: createStraightRouter() });
 
 const n = nodeId;
 const c = connectionId;
@@ -185,7 +190,7 @@ describe("culling by painted bounds", () => {
       [twoPortNode("a", -2000, 0), twoPortNode("b", 2000, 0)],
       [["c1", "a", "aR", "b", "bL"]],
     );
-    const scene = createGeometryScene(model, { routeMode: () => "straight" });
+    const scene = createGeometryScene(model, { routes: straightRoutes() });
     const viewport = rect<"world">(-50, -50, 100, 100);
     expect(scene.queryRect(viewport)).toEqual([
       { kind: "connection", id: "c1" },

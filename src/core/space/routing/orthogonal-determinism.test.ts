@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Point, Rect } from "../geometry/spaces.js";
 import { between, seededRandom } from "../geometry/test-utils.js";
 import { createOrthogonalRouter } from "./orthogonal-router.js";
-import type { RouteEnd, RouteResult } from "./route-types.js";
+import type { ConnectionRoute, RouteEnd } from "./route-types.js";
 import { end, isAxisAligned, verticesOf, w } from "./test-kit.js";
 
 type W = "world";
@@ -70,7 +70,7 @@ const ROUTERS = [
   createOrthogonalRouter({ clearance: 35, cornerRadius: 10 }),
 ];
 
-function finite(r: RouteResult): boolean {
+function finite(r: ConnectionRoute): boolean {
   return verticesOf(r.path).every(
     (p) => Number.isFinite(p.x) && Number.isFinite(p.y),
   );

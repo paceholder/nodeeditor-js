@@ -2,22 +2,25 @@
  * Headless geometry scene.
  *
  * A derived cache over a graph model: per-node transform, world bounds and anchors,
- * per-connection path geometry, and one spatial index keyed `n:<id>` per node and
+ * per-connection path geometry routed per connection kind, and one spatial index keyed `n:<id>` per node and
  * `c:<id>#<i>` per connection piece. It is never authoritative. `change` events update only the touched nodes and their incident
  * connections; `reset` and `rebuild()` recompute everything.
  */
 
 import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import type { ConnectionRecord, NodeRecord } from "../../data/model/records.js";
+import type { NodeRecord } from "../../data/model/records.js";
 import type { EventHub } from "../../edit/events/event-hub.js";
 import type { ChangeEvent } from "../../edit/events/types.js";
-import type { RouteMode } from "../geometry/connection-paths.js";
 import {
   createGeometryRegistry,
   type GeometryRegistry,
 } from "../geometry/geometry-registry.js";
 import type { Point, Rect } from "../geometry/spaces.js";
+import {
+  createRouteRegistry,
+  type RouteRegistry,
+} from "../routing/route-registry.js";
 import { createAabbTree } from "../spatial-index/aabb-tree.js";
 import type { SpatialIndex } from "../spatial-index/spatial-index.js";
 import {
@@ -34,7 +37,11 @@ import {
 } from "./scene-entries.js";
 import { createSceneIndex } from "./scene-index.js";
 import { createSceneQuery, type SceneItem } from "./scene-query.js";
-import { applyChange, type SceneOps } from "./scene-update.js";
+import {
+  applyChange,
+  applyRouteChange,
+  type SceneOps,
+} from "./scene-update.js";
 
 export type SceneLayer = "connection" | "node" | "port";
 
@@ -83,7 +90,8 @@ export interface GeometrySceneOptions {
   readonly registry?: GeometryRegistry;
   /** Swappable spatial index. Defaults to an AABB tree. */
   readonly index?: SpatialIndex<string>;
-  readonly routeMode?: (connection: ConnectionRecord) => RouteMode;
+  /** Router per connection kind. Default: a registry with Bezier for all. */
+  readonly routes?: RouteRegistry;
   /** Stroke and arrowhead margin added to path bounds, world units. Default 8. */
   readonly connectionMargin?: number;
   /** Paint layers bottom to top. Default `connection, node, port`. */
@@ -106,7 +114,7 @@ export function createGeometryScene(
   const index = createSceneIndex(options.index ?? createAabbTree<string>());
   const layers = options.layerOrder ?? DEFAULT_LAYERS;
   const margin = options.connectionMargin ?? 8;
-  const modeOf = options.routeMode ?? (() => "bezier" as const);
+  const routes = options.routes ?? createRouteRegistry();
   const nodes = new Map<NodeId, NodeEntry>();
   const connections = new Map<ConnectionId, ConnectionEntry>();
   let maxCapture = 0;
@@ -152,7 +160,7 @@ export function createGeometryScene(
         record,
         reader.seqOf(id) ?? 0,
         (n) => nodes.get(n),
-        modeOf(record),
+        routes.get(record.kind),
         margin,
       );
       stats.connectionRebuilds++;
@@ -165,6 +173,12 @@ export function createGeometryScene(
       if (!entry) return;
       connections.delete(id);
       index.removeConnection(entry);
+    },
+    connectionsOfKind(kind) {
+      return reader
+        .connections()
+        .filter((c) => c.kind === kind && connections.has(c.id))
+        .map((c) => c.id);
     },
     nodesOfType(type) {
       return [...nodes.values()]
@@ -190,6 +204,7 @@ export function createGeometryScene(
       const affected = ops.nodesOfType(type);
       applyChange(ops, undefined, affected);
     }),
+    routes.onChange((kind) => applyRouteChange(ops, kind)),
   ];
 
   const layerRank = (kind: "node" | "connection"): number => {

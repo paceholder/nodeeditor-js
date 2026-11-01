@@ -10,10 +10,15 @@ import { rectContainsPoint, rectsIntersect } from "../geometry/rect.js";
 import { shapeContains } from "../geometry/shapes.js";
 import { rect } from "../geometry/spaces.js";
 import { between, seededRandom } from "../geometry/test-utils.js";
+import { createStraightRouter } from "../routing/basic-routers.js";
+import { createRouteRegistry } from "../routing/route-registry.js";
 import { createBruteForceIndex } from "../spatial-index/brute-force-index.js";
 import { createGeometryScene } from "./geometry-scene.js";
 import type { HitCandidate } from "./picking.js";
 import { buildModel, submitChunked, twoPortNode } from "./scene-fixtures.js";
+
+const straightRoutes = () =>
+  createRouteRegistry({ default: createStraightRouter() });
 
 // Pass-through spy on exact path distance, so a test can count precise-phase work.
 vi.mock("../geometry/path-geometry.js", async (importOriginal) => {
@@ -50,14 +55,14 @@ describe("hit result identity and order", () => {
       ["c2", "a", "a2", "b", "b2"],
     ] as const;
     const model = buildModel([spec("a", 0), spec("b", 400)], conns);
-    const scene = createGeometryScene(model, { routeMode: () => "straight" });
+    const scene = createGeometryScene(model, { routes: straightRoutes() });
     const hits = scene.pick({ x: 200, y: 0 }, { zoom: 1 });
     expect(hits).toEqual([
       { kind: "connection", connectionId: "c2" },
       { kind: "connection", connectionId: "c1" },
     ]);
     const again = createGeometryScene(model, {
-      routeMode: () => "straight",
+      routes: straightRoutes(),
       index: createBruteForceIndex<string>(),
     });
     expect(again.pick({ x: 200, y: 0 }, { zoom: 1 })).toEqual(hits);
@@ -72,7 +77,7 @@ describe("hit result identity and order", () => {
       [["c1", "a", "aR", "b", "bL"]],
     );
     const at = { x: 40, y: 0 }; // inside node a's body and on the connection
-    const normal = createGeometryScene(model, { routeMode: () => "straight" });
+    const normal = createGeometryScene(model, { routes: straightRoutes() });
     const kinds = (hits: HitCandidate[]) => hits.map((h) => h.kind);
     expect(kinds(normal.pick(at, { zoom: 1 }))).toEqual(["node"]);
     // Move the point onto the overlap: node a spans x -50..50, wire starts at 50.
@@ -83,7 +88,7 @@ describe("hit result identity and order", () => {
       "connection",
     ]);
     const connectionsOnTop = createGeometryScene(model, {
-      routeMode: () => "straight",
+      routes: straightRoutes(),
       layerOrder: ["node", "connection", "port"],
     });
     expect(kinds(connectionsOnTop.pick(overlap, { zoom: 1 }))).toEqual([
@@ -121,7 +126,7 @@ describe("screen-space tolerances", () => {
       [twoPortNode("a", 0, 0), twoPortNode("b", 1000, 0)],
       [["c1", "a", "aR", "b", "bL"]],
     );
-    const scene = createGeometryScene(model, { routeMode: () => "straight" });
+    const scene = createGeometryScene(model, { routes: straightRoutes() });
     const hit = (dy: number, zoom: number) =>
       scene.pick({ x: 500, y: dy }, { zoom, tolerancePx: 6 }).length > 0;
     expect(hit(11.9, 0.5)).toBe(true);
@@ -237,9 +242,9 @@ describe("large fixture", () => {
     submitChunked(model, nodes, conns);
     expect(model.reader.connections().length).toBe(20_000);
 
-    const tree = createGeometryScene(model, { routeMode: () => "straight" });
+    const tree = createGeometryScene(model, { routes: straightRoutes() });
     const brute = createGeometryScene(model, {
-      routeMode: () => "straight",
+      routes: straightRoutes(),
       index: createBruteForceIndex<string>(),
     });
 
