@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createGeometryScene, nodeId } from "../../../../core/index.js";
+import {
+  createGeometryScene,
+  createRouteRegistry,
+  nodeId,
+} from "../../../../core/index.js";
 import {
   buildModel,
   twoPortNode,
@@ -28,6 +32,7 @@ function setup() {
     bound: () => ({
       reader: model.reader,
       scene,
+      routes: createRouteRegistry(),
       painters: createPainterRegistries(),
       zOrder: DEFAULT_Z_ORDER,
       state: EMPTY_VIEW_STATE,

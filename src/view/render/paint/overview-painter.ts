@@ -17,6 +17,7 @@ import {
   compose,
   type NodeEntry,
   type PathGeometry,
+  pathBounds,
   transformRect,
 } from "../../../core/index.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
@@ -79,6 +80,16 @@ function traceSimplified(
 ): void {
   if (path.kind === "cubic" && polygonLength(path) * zoom < LINE_BELOW_PX) {
     ctx.moveTo(path.p0.x, path.p0.y);
+    ctx.lineTo(path.p1.x, path.p1.y);
+    return;
+  }
+  if (path.kind === "polyline") {
+    // Corners without arcs; a polyline whose vertex box is under the threshold is a
+    // line between its endpoints, which still meet the ports.
+    const box = pathBounds(path);
+    ctx.moveTo(path.p0.x, path.p0.y);
+    if (Math.max(box.w, box.h) * zoom >= LINE_BELOW_PX)
+      for (const v of path.via) ctx.lineTo(v.x, v.y);
     ctx.lineTo(path.p1.x, path.p1.y);
     return;
   }

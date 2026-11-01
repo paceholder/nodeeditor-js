@@ -5,7 +5,7 @@
  * same at every zoom and device pixel ratio. Context starts in world space.
  */
 import {
-  buildPath,
+  type ConnectionRouter,
   DEFAULT_CAPTURE_RADIUS_PX,
   type Endpoint,
   type GeometryScene,
@@ -28,20 +28,36 @@ function anchorOf(
   return scene.node(e.node)?.anchors.find((a) => a.portId === e.port);
 }
 
+/**
+ * The provisional path, routed with the default router: the connection's kind is
+ * decided only at commit. A free end has no body and a normal facing back
+ * toward the source, which gives a smooth curve or an L or S that follows the pointer.
+ */
 function pathTo(
+  router: ConnectionRouter,
+  scene: Pick<GeometryScene, "node">,
+  preview: ConnectPreview,
   source: WorldAnchor,
   end: WorldAnchor | undefined,
-  pointer: Point<"world">,
 ) {
-  if (end) return buildPath("bezier", source, end);
-  // Free end: its tangent faces back toward the source for a smooth curve.
+  const from = {
+    position: source.position,
+    normal: source.normal,
+    body: scene.node(preview.source.node)?.bodyBounds,
+  };
+  if (end && preview.target) {
+    const body = scene.node(preview.target.node)?.bodyBounds;
+    return router.route({ from, to: { ...end, body } }).path;
+  }
+  const pointer = preview.pointer;
   const dx = source.position.x - pointer.x;
   const dy = source.position.y - pointer.y;
   const len = Math.hypot(dx, dy) || 1;
-  return buildPath("bezier", source, {
-    position: pointer,
-    normal: { x: dx / len, y: dy / len },
-  });
+  const normal = { x: dx / len, y: dy / len };
+  return router.route({
+    from,
+    to: { position: pointer, normal, body: undefined },
+  }).path;
 }
 
 /** Text next to the glyph: on the side the port faces. */
@@ -73,6 +89,7 @@ function drawReason(
 export function paintConnectPreview(
   ctx: CanvasRenderingContext2D,
   scene: Pick<GeometryScene, "node">,
+  router: ConnectionRouter,
   frame: PaintFrame,
   preview: ConnectPreview,
 ): void {
@@ -82,7 +99,7 @@ export function paintConnectPreview(
   if (!source) return;
   const end = preview.target ? anchorOf(scene, preview.target) : undefined;
 
-  const path = pathTo(source, end, preview.pointer);
+  const path = pathTo(router, scene, preview, source, end);
   ctx.lineCap = "round";
   ctx.lineWidth = theme.connectionWidth * unit;
   ctx.strokeStyle = theme.connectionColor;

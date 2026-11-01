@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createGeometryRegistry,
   createImageSymbolGeometry,
+  createRouteRegistry,
   nodeId,
 } from "../../core/index.js";
 import {
@@ -20,6 +21,7 @@ function setup() {
   const geometry = createGeometryRegistry();
   const binding = bindModel(model, {
     geometry,
+    routes: createRouteRegistry(),
     zOrder: ["connection", "node", "port"],
     markDirty,
   });

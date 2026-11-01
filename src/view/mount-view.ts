@@ -6,7 +6,11 @@
  * whose `dispose()` releases every observer, listener, frame request, subscription,
  * bitmap and DOM node.
  */
-import { createGeometryRegistry, DEFAULT_VIEWPORT } from "../core/index.js";
+import {
+  createGeometryRegistry,
+  createRouteRegistry,
+  DEFAULT_VIEWPORT,
+} from "../core/index.js";
 import { createOverlayHost } from "./interact/overlay/overlay-host.js";
 import { createPresence } from "./interact/overlay/presence.js";
 import { createSelectionModel } from "./interact/selection/selection-model.js";
@@ -61,6 +65,7 @@ export function mountView(
 
   const painters = options.painters ?? createPainterRegistries();
   const geometry = options.geometry ?? createGeometryRegistry();
+  const routes = options.routes ?? createRouteRegistry();
   const assets = createAssetService(options.assets);
   const stats = createStatsRecorder();
   let theme = mergeTheme(DEFAULT_THEME, options.theme ?? {});
@@ -84,6 +89,7 @@ export function mountView(
   const binding: ModelBinding | undefined = options.model
     ? bindModel(options.model, {
         geometry,
+        routes,
         zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
         markDirty: (...layers) => markDirty(...layers),
       })
@@ -170,6 +176,7 @@ export function mountView(
         ? {
             reader,
             scene,
+            routes,
             painters,
             zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
             state: viewState,
@@ -239,6 +246,7 @@ export function mountView(
   return {
     painters,
     geometry,
+    routes,
     assets: {
       status: assets.status,
       diagnostics: assets.diagnostics,

@@ -6,6 +6,7 @@ import type {
   Point,
   Rejection,
   Result,
+  RouteRegistry,
   SceneLayer,
   SceneStats,
   Viewport,
@@ -67,6 +68,11 @@ export interface ViewOptions {
   readonly model?: ViewModel;
   /** Node geometry registrations; a fresh registry is created when omitted. */
   readonly geometry?: GeometryRegistry;
+  /**
+   * Router per connection kind; a fresh registry (Bezier for every kind) is
+   * created when omitted. Its default router also draws the connection-drag preview.
+   */
+  readonly routes?: RouteRegistry;
   /** Paint layers bottom to top (also the scene's order). Default connections, nodes, ports. */
   readonly zOrder?: readonly SceneLayer[];
   /** Painter registries; a fresh set with fallbacks is created when omitted. */
@@ -116,6 +122,8 @@ export interface ViewHandle {
   readonly painters: PainterRegistries;
   /** Geometry registrations, shared with the options when given. Changes repaint. */
   readonly geometry: GeometryRegistry;
+  /** Route registrations, shared with the options when given. Changes repaint. */
+  readonly routes: RouteRegistry;
   /** Ordered painters for previews and tool drawing, with explicit invalidation. */
   readonly interaction: Pick<InteractionLayer, "add" | "invalidate">;
   /** Host DOM aligned to the viewport. */

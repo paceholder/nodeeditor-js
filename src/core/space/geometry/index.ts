@@ -9,12 +9,10 @@ export {
   invert,
   isFiniteAffine,
 } from "./affine.js";
-export type { RouteMode } from "./connection-paths.js";
 export {
   BEZIER_MAX_HANDLE,
   BEZIER_MIN_HANDLE,
   bezierPath,
-  buildPath,
   straightPath,
 } from "./connection-paths.js";
 export type { GeometryRegistry } from "./geometry-registry.js";

@@ -8,13 +8,16 @@
  * - geometry, content and status changes all dirty the `scene` layer only; whether the
  *   geometry scene recomputes is its own decision (it refreshes just the cached record
  *   for label/status edits, so those never recompute geometry);
- * - a `reset` (whole-document replacement) and geometry registrations dirty `scene` too;
+ * - a `reset` (whole-document replacement), geometry registrations and route
+ *   registrations dirty `scene` too (a route change recomputes only that kind's paths,
+ *   with no model change, the rule that route-only edits keep topology);
  * - theme and viewport changes never reach this module, so they cannot touch geometry.
  */
 import {
   createGeometryScene,
   type GeometryRegistry,
   type GeometryScene,
+  type RouteRegistry,
   type SceneLayer,
   type SceneSource,
 } from "../../core/index.js";
@@ -31,6 +34,7 @@ export interface ModelBinding {
 
 export interface BindOptions {
   readonly geometry: GeometryRegistry;
+  readonly routes: RouteRegistry;
   readonly zOrder: readonly SceneLayer[];
   readonly markDirty: (...layers: readonly LayerName[]) => void;
 }
@@ -42,6 +46,7 @@ export function bindModel(
   // The scene subscribes first, so it is current before any frame is painted.
   const scene = createGeometryScene(model, {
     registry: options.geometry,
+    routes: options.routes,
     layerOrder: options.zOrder,
   });
   const dirty = (): void => options.markDirty("scene");
@@ -49,6 +54,7 @@ export function bindModel(
     model.on("change", dirty),
     model.on("reset", dirty),
     options.geometry.onChange(dirty),
+    options.routes.onChange(dirty),
   ];
   let disposed = false;
   return {
