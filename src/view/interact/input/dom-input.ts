@@ -21,11 +21,8 @@ import {
 } from "../tools/tool-types.js";
 import { type AutoPanHost, createAutoPanDriver } from "./auto-pan-driver.js";
 import { createEffectRunner, type EffectHost } from "./effect-runner.js";
-import {
-  isOverlayContent,
-  isTextTarget,
-  shouldHandleKey,
-} from "./input-scope.js";
+import { isOverlayContent, isTextTarget } from "./input-scope.js";
+import { createKeyInput } from "./key-input.js";
 import {
   BUTTONS,
   createPointerCapture,
@@ -203,32 +200,13 @@ export function attachDomInput(
     if (result.handled) e.preventDefault();
   };
 
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (!shouldHandleKey(e)) return;
-    const result = route({
-      type: "key-down",
-      key: e.key,
-      modifiers: modifiers(e),
-    });
-    if (result.handled) {
-      e.preventDefault();
-      return;
-    }
-    if (e.key === " ") {
-      e.preventDefault();
-      if (router.activePointer === undefined) setCursor("grab");
-      return;
-    }
-    // No shortcuts in the middle of a gesture: one gesture is one history entry.
-    if (router.activePointer !== undefined) return;
-    if (deps.onKey(e) === true) e.preventDefault();
-  };
-
-  const onKeyUp = (e: KeyboardEvent): void => {
-    route({ type: "key-up", key: e.key, modifiers: modifiers(e) });
-    if (e.key === " " && router.activePointer === undefined)
-      setCursor("default");
-  };
+  const keys = createKeyInput({
+    router,
+    route,
+    modifiers,
+    setCursor,
+    onKey: deps.onKey,
+  });
 
   const onBlur = (): void => {
     cancel("blur");
@@ -256,8 +234,8 @@ export function attachDomInput(
     [root, "lostpointercapture", onLostCapture as EventListener],
     [root, "pointerleave", onPointerLeave as EventListener],
     [root, "wheel", onWheel as EventListener, { passive: false }],
-    [root, "keydown", onKeyDown as EventListener],
-    [root, "keyup", onKeyUp as EventListener],
+    [root, "keydown", keys.onKeyDown as EventListener],
+    [root, "keyup", keys.onKeyUp as EventListener],
     [root, "blur", onBlur],
     [doc, "visibilitychange", onVisibility],
   ];

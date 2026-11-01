@@ -2,7 +2,7 @@
 
 ## 1. Input refactor and overlay scoping (view/interact)
 
-- [ ] 1.1 Move the `keydown`/`keyup` handling out of `src/view/interact/input/dom-input.ts` into a new `input/key-input.ts` as a pure refactor (own commit); verify every `dom-input`, `input-scope` and `basic-editing` browser test passes unchanged and `dom-input.ts` drops well under 300 lines (`wc -l`)
+- [x] 1.1 Move the `keydown`/`keyup` handling out of `src/view/interact/input/dom-input.ts` into a new `input/key-input.ts` as a pure refactor (own commit); verify every `dom-input`, `input-scope` and `basic-editing` browser test passes unchanged and `dom-input.ts` drops well under 300 lines (`wc -l`)
 - [ ] 1.2 Add `DomInput.cancelGesture(reason)` and the `"context-menu"` `CancelReason` in `tool-types.ts`; verify a `tool-router.test.ts` case named for the gesture lifecycle and cancellation rule and the context-menu scoping and gestures rule that cancelling a `pressed` select-move or connect gesture with that reason emits no select and no commit, and releases capture
 - [ ] 1.3 Keep graph shortcuts and tool keys away from overlay content: `key-input.ts` ignores a `keydown` whose target is overlay content, and `owns` in `clipboard/clipboard-events.ts` ignores it too (D7); verify `src/view/interact/input/input-scope.browser.test.ts` cases named for the input scoping rule, the usable shipped controls rule and the DOM overlay slot rule in Chrome: Escape and Delete on a button placed in the overlay leave the selection and the graph unchanged ("Escape leaves a menu"), and copy with focus on that button runs no graph copy
 
