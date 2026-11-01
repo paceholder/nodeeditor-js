@@ -23,7 +23,7 @@
 
 ## 5. Example
 
-- [ ] 5.1 Add `examples/plain-js/choice-picker.ts` (a list of the target's alternatives at `request.world` with a world anchor, labelled from the policy label and connection kind, closing on `signal` abort) and a demo policy wrapper that returns a `choice` of two keyed connection kinds for a port pair between the two card types (other pairs keep the default policy, so the picker never appears for them); wire them from `main.ts` with a hint in `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds and a headless Chrome run of the demo offers the two kinds when connecting the card nodes and creates the chosen one, cancels the picker with Escape, and logs no console errors
+- [x] 5.1 Add `examples/plain-js/choice-picker.ts` (a list of the target's alternatives at `request.world` with a world anchor, labelled from the policy label and connection kind, closing on `signal` abort) and a demo policy wrapper that returns a `choice` of two keyed connection kinds for a port pair between the two card types (other pairs keep the default policy, so the picker never appears for them); wire them from `main.ts` with a hint in `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds and a headless Chrome run of the demo offers the two kinds when connecting the card nodes and creates the chosen one, cancels the picker with Escape, and logs no console errors
 
 ## 6. Gates
 
