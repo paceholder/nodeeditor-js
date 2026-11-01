@@ -51,3 +51,19 @@ results and size. The size baseline is `ac4dc5b` (the end of `add-context-menu-h
 - **`ChoiceRelease` is exported from `nodeeditor-js/view`** with the other tool types,
   since `ToolEffect` names it.
 - **`setConnectionChooser` without editing input is a no-op**, like `on` without input.
+
+## Demo check (task 5.1)
+
+`npm run demo:build`, then `vite preview` on a spare port and a headless Playwright run in
+the installed Chrome (`channel: "chrome"`, script kept out of the repo):
+
+- dragging the level sensor's "level" onto the controller's "setpoint" opened the picker
+  at the drop point with "Direct link (direct)" and "Delayed link (delayed)"; the target
+  showed the fork glyph and the reason "Several connections are possible; a choice is
+  required";
+- Escape closed it and created nothing; dropping again and clicking "Delayed link"
+  created one dashed link; Ctrl/Cmd+Z removed it in one step;
+- a drop between two pipe ports (default policy) connected without a picker;
+- the context menu still worked (right-click, Shift+F10); no console errors.
+- The demo policy offers the choice only for sensor-to-controller signal links; a
+  `delayed` kind gets a dashed painter so the chosen kind is visible.

@@ -15,6 +15,7 @@ import {
   DEFAULT_KEYMAP,
   mountView,
 } from "nodeeditor-js/view";
+import { choicePicker, demoPolicy } from "./choice-picker.js";
 import { installContextMenu } from "./context-menu.js";
 import pumpUrl from "./pump.svg?url";
 import tankUrl from "./tank.svg?url";
@@ -38,7 +39,8 @@ async function resolveAsset(ref: string) {
 
 // Model: image-symbol types carry an asset reference in their payload; ports sit on the
 // picture's outline through durable placements, so they follow rotation and mirroring.
-const model = createGraphModel();
+// The demo policy asks which kind a sensor-to-controller link should be (choice-picker.ts).
+const model = createGraphModel({ connectionPolicy: demoPolicy() });
 const left = { x: 0, y: 0.5 };
 const right = { x: 1, y: 0.5 };
 const symbols = [
@@ -162,6 +164,15 @@ painters.connections.replace(
   "default",
   createConnectionPainter({ arrowhead: true }),
 );
+// The two kinds the demo policy offers look different: delayed links are dashed.
+painters.connections.replace(
+  "direct",
+  createConnectionPainter({ arrowhead: true }),
+);
+painters.connections.replace(
+  "delayed",
+  createConnectionPainter({ arrowhead: true, dash: [3, 2] }),
+);
 
 const container = document.getElementById("editor");
 if (!container) throw new Error("#editor is missing");
@@ -188,6 +199,8 @@ const view = mountView(container, {
 view.element.focus();
 // Right-click, a touch long-press, or the menu key / Shift+F10 open an example menu.
 const removeMenu = installContextMenu(view);
+// Dropping a sensor's "level" on the controller's "setpoint" asks which link kind to make.
+view.setConnectionChooser(choicePicker(view));
 
 // Grid snapping is a runtime tool option: a 20-unit step when on, none when off.
 const snapBox = document.querySelector<HTMLInputElement>("#snap input");
