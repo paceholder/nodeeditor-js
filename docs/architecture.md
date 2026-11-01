@@ -305,8 +305,8 @@ type MoveState =
 transition(state, input, context) → { state, effects }   // no DOM inside
 ```
 
-Only `src/view/interact/input/` touches DOM events and translates them into tool inputs. Tools can
-therefore be tested in Node. Escape, lost pointer capture, blur, or the dragged node being
+Only `src/view/interact/input/` (and the context-menu input beside it, below) touches DOM
+events and translates them into tool inputs. Tools can therefore be tested in Node. Escape, lost pointer capture, blur, or the dragged node being
 deleted by someone else all lead to a well-defined cancel that leaves the graph untouched
 (INT-05).
 
@@ -335,6 +335,32 @@ flowchart LR
 
 Every arrow points from a module to one in its own layer or below (`interact` uses
 `platform`), or is a callback the mount wiring passes down.
+
+**The context menu** (INT-11) sits beside the DOM input adapter, not inside it or the
+router. It is not a tool: a right press is a press no tool accepts, and the result is an
+event with a position, not a command. `interact/context-menu/context-menu-input.ts`
+listens on the same root for `contextmenu`, the press (to know whether it is still below
+its drag threshold), the touch long-press timer and the menu key. The decisions are pure
+functions next to it (`context-target.ts`: target from the ordered hits, the
+select-on-open rule and keyboard placement; `long-press.ts`: the touch state machine), so
+they run in Node like the tools. The only thing it asks of the DOM input adapter is
+`cancelGesture("context-menu")` for a press that has not started dragging. The mount file
+`view-context-menu.ts` owns the typed emitter behind `view.on` and attaches the input
+once `view-editing.ts` has built the router; with no listener registered the input does
+nothing at all, so the browser's own menu keeps working. In QtNodes this is a
+`contextMenuEvent` override on the scene or the item, and the menu is a `QMenu`; here the
+host builds the menu in the overlay and runs registered commands.
+
+```mermaid
+flowchart LR
+  dom["contextmenu, pointer,<br/>keydown (root)"] --> cmi["context-menu input<br/>(interact/context-menu)"]
+  cmi -- "pure: target, select-on-open,<br/>long-press step, keyboard placement" --> logic["context-target.ts,<br/>long-press.ts"]
+  cmi -- "cancelGesture(reason)" --> input["DOM input adapter<br/>(interact/input)"]
+  input --> router["tool router<br/>(interact/tools)"]
+  cmi -- "apply(change)" --> sel["selection model<br/>(interact/selection)"]
+  cmi -- "emit callback" --> hook["view-context-menu.ts<br/>(mount): view.on"]
+  hook --> host["host listener: menu in the overlay,<br/>view.commands.run(id)"]
+```
 
 ## 8. Code map
 
@@ -383,13 +409,17 @@ src/view/                                                     (nodeeditor-js/vie
                                  bitmap, previews
   interact/   selection/         selection model                     implemented
               tools/             tool contract, router, tools        implemented
-              input/             DOM input adapter, effect runner    implemented
+              input/             DOM input adapter, key input,       implemented
+                                 effect runner, view events
+              context-menu/      context-menu input, target and      implemented
+                                 selection rule, touch long-press
               commands/          command registry, keymap, view      implemented
                                  commands
               clipboard/         clipboard service, native-event     implemented
                                  bridge, paste placement
               overlay/           DOM overlay host, presence          implemented
-  view-types.ts, view-editing.ts, mount-view.ts                      implemented
+  view-types.ts, view-editing.ts, view-context-menu.ts,              implemented
+  mount-view.ts
   index.ts                       host API (nodeeditor-js/view)
   advanced.ts                    building blocks (nodeeditor-js/view/advanced)
 src/react/                       provider and hooks                  planned (Slice B)
@@ -411,8 +441,8 @@ flowchart BT
   end
   subgraph view["src/view"]
     platform["platform/<br/>dom, frame scheduler, viewport,<br/>model binding, render stats"] --> render["render/<br/>primitives, theme, assets,<br/>registries, presets, paint"]
-    render --> interact["interact/<br/>selection, tools, input,<br/>commands, clipboard, overlay"]
-    interact --> mount["view-types.ts, view-editing.ts,<br/>mount-view.ts"]
+    render --> interact["interact/<br/>selection, tools, input, context-menu,<br/>commands, clipboard, overlay"]
+    interact --> mount["view-types.ts, view-editing.ts,<br/>view-context-menu.ts, mount-view.ts"]
     mount --> entries["index.ts (view)<br/>advanced.ts (view/advanced)"]
   end
   facade -- "only through src/core/index.ts" --> platform
