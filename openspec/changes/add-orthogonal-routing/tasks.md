@@ -40,7 +40,7 @@
 
 ## 7. Gates
 
-- [ ] 7.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser` (installed Google Chrome only), `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new or changed file stays under 300 lines (`wc -l`), except `src/view/mount-view.ts` (the exception accepted earlier); record gate results, sizes against the `add-connection-chooser` end and the bench rows in notes.md
+- [x] 7.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser` (installed Google Chrome only), `npm run build` and `npm run bench:size` (core ≤ 75 KiB, view ≤ 150 KiB gzip); all pass, `src/architecture.test.ts` included, and every new or changed file stays under 300 lines (`wc -l`), except `src/view/mount-view.ts` (the exception accepted earlier); record gate results, sizes against the `add-connection-chooser` end and the bench rows in notes.md
 
 ## 8. Documentation (separate commit)
 
