@@ -15,6 +15,7 @@ import {
   DEFAULT_KEYMAP,
   mountView,
 } from "nodeeditor-js/view";
+import { installContextMenu } from "./context-menu.js";
 import pumpUrl from "./pump.svg?url";
 import tankUrl from "./tank.svg?url";
 import valveUrl from "./valve.svg?url";
@@ -185,6 +186,8 @@ const view = mountView(container, {
   },
 });
 view.element.focus();
+// Right-click, a touch long-press, or the menu key / Shift+F10 open an example menu.
+const removeMenu = installContextMenu(view);
 
 // Grid snapping is a runtime tool option: a 20-unit step when on, none when off.
 const snapBox = document.querySelector<HTMLInputElement>("#snap input");
@@ -204,6 +207,7 @@ const here = (n: NodeRecord) => model.reader.getNode(n.id)?.position;
 window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target instanceof HTMLTextAreaElement) return;
+  if (view.overlayElement.contains(e.target as Node)) return; // the menu's keys
   switch (e.key.toLowerCase()) {
     case "p": {
       const at = here(pump);
@@ -272,5 +276,6 @@ dialog?.addEventListener("close", () => view.element.focus());
 
 // Hot reload: release the old view before the module is replaced.
 import.meta.hot?.dispose(() => {
+  removeMenu();
   view.dispose();
 });

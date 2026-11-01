@@ -25,7 +25,7 @@
 
 ## 5. Example
 
-- [ ] 5.1 Add `examples/plain-js/context-menu.ts` (a menu in the overlay at `event.viewport` with a `viewport` anchor; items from `view.commands.list()` with `availability` shown as disabled with the reason as a tooltip; "Paste here" with `at: event.world` on the canvas; Escape and click-away close it and refocus `view.element`); wire it from `main.ts` with a hint in `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds and a headless Chrome run of the demo opens the menu by right-click and Shift+F10, deletes and then undoes a node from it, pastes at the clicked point, and logs no console errors
+- [x] 5.1 Add `examples/plain-js/context-menu.ts` (a menu in the overlay at `event.viewport` with a `viewport` anchor; items from `view.commands.list()` with `availability` shown as disabled with the reason as a tooltip; "Paste here" with `at: event.world` on the canvas; Escape and click-away close it and refocus `view.element`); wire it from `main.ts` with a hint in `index.html`; all wording application-neutral; verify `npm run demo:build` succeeds and a headless Chrome run of the demo opens the menu by right-click and Shift+F10, deletes and then undoes a node from it, pastes at the clicked point, and logs no console errors
 
 ## 6. Gates
 
