@@ -61,3 +61,12 @@ export function bindModel(
     },
   };
 }
+
+/** IDs of the entities a committed patch removed; tools and choices cancel on them. */
+export function removedIds(
+  ops: ReadonlyArray<{ op: string; record?: { id: string } }>,
+): string[] {
+  return ops.flatMap((o) =>
+    o.op === "remove" && o.record ? [o.record.id] : [],
+  );
+}
