@@ -1,12 +1,19 @@
-/** Scene and index construction, culling queries and picking on F-LARGE (PERF-02a). */
+/**
+ * Scene and index construction, culling queries and picking on F-LARGE (PERF-02a), with
+ * Bezier routes and again with every connection orthogonal (radius 6, ROU-01a).
+ */
 import { rect } from "nodeeditor-js";
 import { test } from "vitest";
 import { F_LARGE, worldSize } from "../fixtures/fixture-specs.js";
-import { runCases, saveResults } from "./measure.js";
+import type { FixtureRoutes } from "../fixtures/fixture-types.js";
+import { type Case, runCases, saveResults } from "./measure.js";
 import { buildScene, loadFixture, randomPoints } from "./setup.js";
 
 const { model } = loadFixture(F_LARGE);
-const scene = buildScene(model);
+const scenes = {
+  bezier: buildScene(model),
+  orthogonal: buildScene(model, "orthogonal"),
+};
 const points = randomPoints(F_LARGE, 10_000);
 // Fit-all zoom at 1440x900 (5% margin): every node of F-LARGE is in view.
 const world = worldSize(F_LARGE);
@@ -25,21 +32,25 @@ const take = (): { x: number; y: number } => {
   return points[next] as { x: number; y: number };
 };
 
-test("F-LARGE scene (headless)", async ({ bench }) => {
+/** The scene rows for one route mode; orthogonal rows carry the route in their name. */
+function sceneCases(routes: FixtureRoutes): Case[] {
+  const scene = scenes[routes];
   const fixture = F_LARGE.name;
-  const rows = await runCases(bench, [
+  const label = (name: string) =>
+    routes === "bezier" ? name : `${name}, ${routes}`;
+  return [
     {
-      name: "scene + index build",
+      name: label("scene + index build"),
       metric: "projectionBuildMs",
       fixture,
       iterations: 10,
       fn: () => {
-        buildScene(model).dispose();
+        buildScene(model, routes).dispose();
       },
     },
     // A 1440x900 CSS px viewport in world units at zoom 1 and at zoom 0.5.
     {
-      name: "culling query 1440x900 at zoom 1",
+      name: label("culling query 1440x900 at zoom 1"),
       metric: "candidateQueryMs",
       fixture,
       fn: () => {
@@ -48,7 +59,7 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
-      name: "culling query 1440x900 at zoom 0.5",
+      name: label("culling query 1440x900 at zoom 0.5"),
       metric: "candidateQueryMs",
       fixture,
       fn: () => {
@@ -57,7 +68,7 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
-      name: "pick at random point (zoom 1)",
+      name: label("pick at random point (zoom 1)"),
       metric: "pickMs",
       fixture,
       fn: () => {
@@ -67,7 +78,7 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
     // PERF-02e: the overview, where the whole fixture is the query and the pick tolerance
     // in world units is large.
     {
-      name: "pick at random point (fit-all zoom)",
+      name: label("pick at random point (fit-all zoom)"),
       metric: "pickMs",
       fixture,
       fn: () => {
@@ -75,7 +86,7 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
-      name: "pick at random point (fit-all zoom, ports hidden)",
+      name: label("pick at random point (fit-all zoom, ports hidden)"),
       metric: "pickMs",
       fixture,
       fn: () => {
@@ -83,7 +94,7 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
-      name: "culling query at fit-all",
+      name: label("culling query at fit-all"),
       metric: "candidateQueryMs",
       fixture,
       fn: () => {
@@ -91,13 +102,20 @@ test("F-LARGE scene (headless)", async ({ bench }) => {
       },
     },
     {
-      name: "culling query at fit-all viewport",
+      name: label("culling query at fit-all viewport"),
       metric: "candidateQueryMs",
       fixture,
       fn: () => {
         scene.queryRect(fitView);
       },
     },
+  ];
+}
+
+test("F-LARGE scene (headless)", async ({ bench }) => {
+  const rows = await runCases(bench, [
+    ...sceneCases("bezier"),
+    ...sceneCases("orthogonal"),
   ]);
   saveResults("scene", rows);
 }, 120_000);

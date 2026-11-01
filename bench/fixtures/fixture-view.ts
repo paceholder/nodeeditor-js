@@ -5,12 +5,9 @@
  */
 import {
   createGraphModel,
-  createOrthogonalRouter,
-  createRouteRegistry,
   type GraphModel,
   type GraphSnapshot,
   loadSnapshot,
-  type RouteRegistry,
 } from "nodeeditor-js";
 import {
   createCardPainter,
@@ -41,18 +38,6 @@ export function createFixturePainters() {
   painters.nodes.register(SYMBOL_TYPE, createImageSymbolPainter());
   painters.nodes.register(CARD_TYPE, createCardPainter());
   return painters;
-}
-
-/** How fixture connections are routed: the library default, or all orthogonal. */
-export type FixtureRoutes = "bezier" | "orthogonal";
-
-/** Bezier for every kind, or orthogonal for every kind with rounded corners (D9). */
-export function createFixtureRoutes(mode: FixtureRoutes): RouteRegistry {
-  return mode === "orthogonal"
-    ? createRouteRegistry({
-        default: createOrthogonalRouter({ cornerRadius: 6 }),
-      })
-    : createRouteRegistry();
 }
 
 /** Mount `model` in `container`; `extra` may override any view option. */

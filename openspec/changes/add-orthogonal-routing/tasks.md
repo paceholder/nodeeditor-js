@@ -29,10 +29,10 @@
 
 ## 5. Performance evidence (bench, scripts)
 
-- [ ] 5.1 Add a routes option to `bench/headless/setup.ts` `buildScene` and orthogonal variants of the F-LARGE rows in `bench/headless/scene.bench.ts` (build, culling at zoom 1 and 0.5, pick at zoom 1 and fit-all; default router orthogonal, radius 6) (D9); verify `npm run bench` lists them with build p95 ≤ 1000 ms and query and pick p95 ≤ 2 ms (PERF-02a), and `npm run test:bench` passes
-- [ ] 5.2 Add an orthogonal case to `bench/headless/incremental.test.ts` titled PERF-04, IDX-02, ROU-08: moving one node writes only its own and its incident connections' piece keys; and an orthogonal variant of the "patch apply + scene/index update" row in `bench/headless/patch.bench.ts` with p95 ≤ 4 ms (PERF-02a); verify `npm run test:bench` and `npm run bench`
-- [ ] 5.3 Add the route option to `bench/fixtures/fixture-view.ts` and `BENCH_ROUTES=orthogonal` to the browser workloads (rows labelled with the route); verify `BENCH_QUICK=1 BENCH_ROUTES=orthogonal npm run bench:browser` meets the F-LARGE pan and drag targets (PERF-02) and reports the overview rows (PERF-02e, labelled), and record the rows next to the 2026-10-30 baseline in notes.md
-- [ ] 5.4 Add `scripts/tree-shake.test.ts` titled PKG-08 (esbuild, as `bundle-size.mjs` does): a consumer importing only `createGeometryScene` and `createRouteRegistry` is at least 1 KiB smaller than one that also imports `createOrthogonalRouter` ("Unused router not bundled"); verify `npm test` runs it
+- [x] 5.1 Add a routes option to `bench/headless/setup.ts` `buildScene` and orthogonal variants of the F-LARGE rows in `bench/headless/scene.bench.ts` (build, culling at zoom 1 and 0.5, pick at zoom 1 and fit-all; default router orthogonal, radius 6) (D9); verify `npm run bench` lists them with build p95 ≤ 1000 ms and query and pick p95 ≤ 2 ms (PERF-02a), and `npm run test:bench` passes
+- [x] 5.2 Add an orthogonal case to `bench/headless/incremental.test.ts` titled PERF-04, IDX-02, ROU-08: moving one node writes only its own and its incident connections' piece keys; and an orthogonal variant of the "patch apply + scene/index update" row in `bench/headless/patch.bench.ts` with p95 ≤ 4 ms (PERF-02a); verify `npm run test:bench` and `npm run bench`
+- [x] 5.3 Add the route option to `bench/fixtures/fixture-view.ts` and `BENCH_ROUTES=orthogonal` to the browser workloads (rows labelled with the route); verify `BENCH_QUICK=1 BENCH_ROUTES=orthogonal npm run bench:browser` meets the F-LARGE pan and drag targets (PERF-02) and reports the overview rows (PERF-02e, labelled), and record the rows next to the 2026-10-30 baseline in notes.md
+- [x] 5.4 Add `scripts/tree-shake.test.ts` titled PKG-08 (esbuild, as `bundle-size.mjs` does): a consumer importing only `createGeometryScene` and `createRouteRegistry` is at least 1 KiB smaller than one that also imports `createOrthogonalRouter` ("Unused router not bundled"); verify `npm test` runs it
 
 ## 6. Demo
 
