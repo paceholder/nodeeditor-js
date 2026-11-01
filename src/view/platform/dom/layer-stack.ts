@@ -29,8 +29,10 @@ export function createLayerStack(container: HTMLElement): LayerStack {
   const doc = container.ownerDocument;
   const root = doc.createElement("div");
   root.dataset.nodeeditorRoot = "";
+  // No iOS callout or text selection while a touch is held (context-menu long-press).
   root.style.cssText =
-    "position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;";
+    "position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;" +
+    "-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;";
   const canvases = {
     background: makeCanvas(doc, "background"),
     scene: makeCanvas(doc, "scene"),

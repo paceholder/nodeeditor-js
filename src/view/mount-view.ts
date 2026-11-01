@@ -278,6 +278,7 @@ export function mountView(
       pasteFromSystem: editing.clipboard.pasteFromSystem,
       on: editing.clipboard.on,
     },
+    on: editing.on,
     toolOptions: editing.toolOptions,
     setToolOptions: editing.setToolOptions,
     setPresence(entries) {

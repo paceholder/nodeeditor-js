@@ -43,6 +43,21 @@ export { createViewCommands } from "./interact/commands/view-commands.js";
 export type { FitOptions } from "./interact/commands/view-fit.js";
 export { fitViewport, revealViewport } from "./interact/commands/view-fit.js";
 export type {
+  ContextMenuInput,
+  ContextMenuInputDeps,
+} from "./interact/context-menu/context-menu-input.js";
+export { attachContextMenuInput } from "./interact/context-menu/context-menu-input.js";
+export type {
+  LongPressAction,
+  LongPressInput,
+  LongPressState,
+  LongPressStep,
+} from "./interact/context-menu/long-press.js";
+export {
+  LONG_PRESS_IDLE,
+  longPressStep,
+} from "./interact/context-menu/long-press.js";
+export type {
   AutoPanDriver,
   AutoPanDriverDeps,
   AutoPanHost,
@@ -52,6 +67,8 @@ export type { DomInput, DomInputDeps } from "./interact/input/dom-input.js";
 export { attachDomInput } from "./interact/input/dom-input.js";
 export type { EffectHost } from "./interact/input/effect-runner.js";
 export { createEffectRunner } from "./interact/input/effect-runner.js";
+export type { ViewEvents } from "./interact/input/view-events.js";
+export { createViewEvents } from "./interact/input/view-events.js";
 export {
   applySelectionChange,
   createSelectionModel,
