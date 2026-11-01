@@ -28,6 +28,11 @@ export interface ToolOptions {
    * (INT-09); `false` turns it off.
    */
   readonly autoPan: AutoPanOptions | false;
+  /**
+   * How long a still touch is held before it raises the context-menu event, in ms
+   * (INT-11c); `false` turns long-press off. Armed only while a listener exists.
+   */
+  readonly longPressMs: number | false;
 }
 
 export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
@@ -39,6 +44,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
   wheel: "zoom",
   wheelSensitivity: 0.0015,
   autoPan: DEFAULT_AUTO_PAN,
+  longPressMs: 500,
 };
 
 export function resolveToolOptions(
