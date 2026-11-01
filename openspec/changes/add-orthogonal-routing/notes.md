@@ -39,3 +39,11 @@ the end of `add-connection-chooser`).
   the tie-break takes the highest).
 - **`polylinePath` and the `Polyline` type are exported from core**, so a host router
   can build the same rounded geometry.
+- **`RouteResult` is named `ConnectionRoute`** in core: `nodeeditor-js/view/advanced`
+  already exports a `RouteResult` (the tool router's result), and PKG-01 allows one
+  import path per public name. `ConnectionRouter.route()` returns a `ConnectionRoute`.
+- **The scene recomputes a kind in model order**: `connectionsOfKind` scans
+  `reader.connections()`, not the scene's map, so the order of rebuilds is the model's
+  (MOD-08). It runs only on registration changes.
+- **Scene tests that need a resize register the node type with `resize: true`**: the
+  fixture types have no capabilities, and the capability policy denies a resize.

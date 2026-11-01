@@ -21,6 +21,8 @@ export interface SceneOps {
   setConnection(id: ConnectionId): boolean;
   removeConnection(id: ConnectionId): void;
   nodesOfType(type: string): readonly NodeId[];
+  /** Connections of `kind` that have an entry, in model order. */
+  connectionsOfKind(kind: string): readonly ConnectionId[];
 }
 
 const NODE_GEOMETRY_FIELDS = [
@@ -77,4 +79,13 @@ export function applyChange(
   }
   for (const id of records) if (!geometry.has(id)) ops.refreshNodeRecord(id);
   for (const id of links) if (!ops.setConnection(id)) ops.removeConnection(id);
+}
+
+/**
+ * A route registration changed for `kind`: recompute only that kind's paths (ROU-01,
+ * ROU-12). Nodes are untouched; nothing is written to the model.
+ */
+export function applyRouteChange(ops: SceneOps, kind: string): void {
+  for (const id of ops.connectionsOfKind(kind))
+    if (!ops.setConnection(id)) ops.removeConnection(id);
 }

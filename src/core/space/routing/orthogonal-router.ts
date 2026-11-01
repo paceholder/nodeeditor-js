@@ -20,10 +20,10 @@ import {
 } from "./orthogonal-candidates.js";
 import { chooseCandidate, score } from "./orthogonal-check.js";
 import type {
+  ConnectionRoute,
   ConnectionRouter,
   RouteInput,
   RouteOutcome,
-  RouteResult,
 } from "./route-types.js";
 
 export interface OrthogonalRouterOptions {
@@ -113,7 +113,7 @@ export function createOrthogonalRouter(
     body,
   });
   return {
-    route({ from, to }: RouteInput): RouteResult {
+    route({ from, to }: RouteInput): ConnectionRoute {
       const a = end(from.position, from.normal, from.body, to.position);
       const b = end(to.position, to.normal, to.body, from.position);
       if (compareEnds(a, b) <= 0) return routeOrdered(a, b, clearance, radius);

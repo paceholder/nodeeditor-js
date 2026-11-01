@@ -33,11 +33,11 @@ export interface RouteOutcome {
   readonly clearOf: "nothing" | "endpoint-nodes";
 }
 
-export interface RouteResult {
+export interface ConnectionRoute {
   readonly path: PathGeometry;
   readonly outcome: RouteOutcome;
 }
 
 export interface ConnectionRouter {
-  route(input: RouteInput): RouteResult;
+  route(input: RouteInput): ConnectionRoute;
 }

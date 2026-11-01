@@ -7,9 +7,9 @@ export type {
 } from "./route-registry.js";
 export { createRouteRegistry } from "./route-registry.js";
 export type {
+  ConnectionRoute,
   ConnectionRouter,
   RouteEnd,
   RouteInput,
   RouteOutcome,
-  RouteResult,
 } from "./route-types.js";
