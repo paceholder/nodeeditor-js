@@ -71,18 +71,16 @@ export function isValidCandidate(
 
 export interface Scored {
   readonly candidate: Candidate;
-  readonly valid: boolean;
   readonly bends: number;
   readonly length: number;
-  /** Corners ordered by (y, x): the order-independent final tie-break. */
-  readonly corners: readonly Point<W>[];
+  /** Index of the family in `FAMILIES`. */
+  readonly rank: number;
+  /** Corners ordered by (y, x): the order-independent final tie-break (computed on use). */
+  corners(): readonly Point<W>[];
 }
 
-export function score(
-  candidate: Candidate,
-  from: OrthogonalEnd,
-  to: OrthogonalEnd,
-): Scored {
+/** Bends, length and family rank; validity and corners are computed only when needed. */
+export function score(candidate: Candidate): Scored {
   const pts = candidate.points;
   let length = 0;
   for (let i = 1; i < pts.length; i++) {
@@ -90,15 +88,18 @@ export function score(
     const b = pts[i] as Point<W>;
     length += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
   }
-  const corners = pts
-    .slice(1, -1)
-    .sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
+  let corners: readonly Point<W>[] | undefined;
   return {
     candidate,
-    valid: isValidCandidate(pts, from, to),
     bends: pts.length - 2,
     length,
-    corners,
+    rank: FAMILIES.indexOf(candidate.family),
+    corners: () => {
+      corners ??= pts
+        .slice(1, -1)
+        .sort((p, q) => (p.y !== q.y ? p.y - q.y : p.x - q.x));
+      return corners;
+    },
   };
 }
 
@@ -113,13 +114,13 @@ const sameLength = (a: number, b: number): boolean =>
 export function compareScored(a: Scored, b: Scored): number {
   if (a.bends !== b.bends) return a.bends - b.bends;
   if (!sameLength(a.length, b.length)) return a.length - b.length;
-  const fa = FAMILIES.indexOf(a.candidate.family);
-  const fb = FAMILIES.indexOf(b.candidate.family);
-  if (fa !== fb) return fa - fb;
-  const n = Math.min(a.corners.length, b.corners.length);
+  if (a.rank !== b.rank) return a.rank - b.rank;
+  const ca = a.corners();
+  const cb = b.corners();
+  const n = Math.min(ca.length, cb.length);
   for (let i = 0; i < n; i++) {
-    const p = a.corners[i] as Point<W>;
-    const q = b.corners[i] as Point<W>;
+    const p = ca[i] as Point<W>;
+    const q = cb[i] as Point<W>;
     if (p.y !== q.y) return p.y - q.y;
     if (p.x !== q.x) return p.x - q.x;
   }
@@ -128,14 +129,18 @@ export function compareScored(a: Scored, b: Scored): number {
 
 /**
  * The best valid candidate, or (with `valid: false`) the best candidate ignoring
- * validity when none is valid. The first of equals in list order wins.
+ * validity when none is valid. Candidates are checked in order of preference, so
+ * usually only the first one or two are checked at all; equal keys keep list order.
  */
-export function chooseCandidate(scored: readonly Scored[]): Scored | undefined {
-  let best: Scored | undefined;
-  let fallback: Scored | undefined;
-  for (const s of scored) {
-    if (!fallback || compareScored(s, fallback) < 0) fallback = s;
-    if (s.valid && (!best || compareScored(s, best) < 0)) best = s;
-  }
-  return best ?? fallback;
+export function chooseCandidate(
+  candidates: readonly Candidate[],
+  from: OrthogonalEnd,
+  to: OrthogonalEnd,
+): { readonly candidate: Candidate; readonly valid: boolean } | undefined {
+  const ranked = candidates.map(score).sort(compareScored);
+  for (const s of ranked)
+    if (isValidCandidate(s.candidate.points, from, to))
+      return { candidate: s.candidate, valid: true };
+  const first = ranked[0];
+  return first && { candidate: first.candidate, valid: false };
 }
