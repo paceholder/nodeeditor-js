@@ -30,6 +30,10 @@ export { registerBuiltinCommands } from "./interact/commands/builtin-commands.js
 export { createCommandRegistry } from "./interact/commands/command-registry.js";
 export { isEditable } from "./interact/commands/editable-model.js";
 export { createKeymap, detectPlatform } from "./interact/commands/keymap.js";
+export {
+  registerTransformCommands,
+  TRANSFORM_COMMAND_IDS,
+} from "./interact/commands/transform-commands.js";
 export type {
   ViewCommandDeps,
   ViewCommandOutcome,
@@ -38,6 +42,12 @@ export type {
 export { createViewCommands } from "./interact/commands/view-commands.js";
 export type { FitOptions } from "./interact/commands/view-fit.js";
 export { fitViewport, revealViewport } from "./interact/commands/view-fit.js";
+export type {
+  AutoPanDriver,
+  AutoPanDriverDeps,
+  AutoPanHost,
+} from "./interact/input/auto-pan-driver.js";
+export { createAutoPanDriver } from "./interact/input/auto-pan-driver.js";
 export type { DomInput, DomInputDeps } from "./interact/input/dom-input.js";
 export { attachDomInput } from "./interact/input/dom-input.js";
 export type { EffectHost } from "./interact/input/effect-runner.js";
@@ -46,11 +56,35 @@ export {
   applySelectionChange,
   createSelectionModel,
 } from "./interact/selection/selection-model.js";
+export type { AutoPanArm, ViewSize } from "./interact/tools/auto-pan.js";
+export {
+  armedVelocity,
+  autoPanVelocity,
+  startArm,
+  updateArm,
+} from "./interact/tools/auto-pan.js";
+export type {
+  ResizeHandles,
+  ResizeHandlesDeps,
+} from "./interact/tools/resize-handles.js";
+export { createResizeHandles } from "./interact/tools/resize-handles.js";
+export type {
+  ResizeResult,
+  ResizeStart,
+  ResizeStep,
+} from "./interact/tools/resize-math.js";
+export { fixedFor, resizeStep } from "./interact/tools/resize-math.js";
+export type { ResizeState } from "./interact/tools/resize-tool.js";
+export { resizeTargetOf, resizeTool } from "./interact/tools/resize-tool.js";
 export { resolveToolOptions } from "./interact/tools/thresholds.js";
-export type { ToolContextDeps } from "./interact/tools/tool-context.js";
+export type {
+  SizeLimitsLookup,
+  ToolContextDeps,
+} from "./interact/tools/tool-context.js";
 export {
   capabilityProbe,
   createToolContext,
+  sizeLimitsOf,
 } from "./interact/tools/tool-context.js";
 export type {
   Gesture,
@@ -75,6 +109,21 @@ export {
   createHiddenIds,
   createPreviewHost,
 } from "./render/paint/previews/preview-host.js";
+export type {
+  LocalCorner,
+  ResizeHandle,
+} from "./render/paint/previews/resize-handle.js";
+export {
+  hitsResizeHandle,
+  RESIZE_HANDLE_PX,
+  resizeHandleOf,
+} from "./render/paint/previews/resize-handle.js";
+export type { ResizeHandleSource } from "./render/paint/previews/resize-handle-painter.js";
+export {
+  createResizeHandlePainter,
+  RESIZE_HANDLE_ORDER,
+  resizeHandleEntry,
+} from "./render/paint/previews/resize-handle-painter.js";
 export type {
   SceneLayerDeps,
   ScenePaintStats,

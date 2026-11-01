@@ -29,6 +29,12 @@ const MAX_STEP_MS = 50;
 /** Step assumed for the first frame after a start, milliseconds. */
 const FIRST_STEP_MS = 1000 / 60;
 
+/** What a host supplies for auto-pan: the view's frame clock and its CSS size. */
+export interface AutoPanHost {
+  readonly clock: FrameClock;
+  readonly size: () => ViewSize;
+}
+
 export interface AutoPanDriverDeps {
   readonly clock: FrameClock;
   readonly router: {

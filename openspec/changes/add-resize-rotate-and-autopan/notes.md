@@ -72,3 +72,24 @@ Deviations from design.md, clarifications made while implementing, and observati
   edge than at the press (including entering the band of another edge).
 - **The tool harness gained `applyViewport(op)`** so the driver test can pan the
   harness viewport the way the view's viewport state does.
+- **`dom-input.ts` also shed pointer capture** (`createPointerCapture` in
+  `pointer-input.ts`) when the auto-pan hook pushed it to 307 lines; it is 298 now. The
+  driver re-evaluates after every input routed through dom-input (a `route` wrapper);
+  its own replays use the plain `send`, so they do not recurse.
+- **Handle wiring is `interact/tools/resize-handles.ts`**, called from `view-editing.ts`
+  (267 lines), so no `view-gestures.ts` was needed. It adds the painter, repaints the
+  interaction layer on selection changes, on model changes while a handle target exists,
+  and on reset, and answers the hover cursor.
+- **Hover cursor**: an idle mouse over the handle shows `nwse-resize` (`DomInputDeps.
+  hoverCursor`), so the handle is discoverable before the press. D7 names the cursor;
+  showing it on hover is a small addition.
+- **The interaction layer follows the viewport while a handle is shown.** The handle is
+  drawn in world space; `mount-view.ts` already repainted the interaction layer on
+  viewport changes only for presence, and now also when
+  `editing.interactionFollowsViewport()` is true. Without it a wheel zoom left the
+  handle behind. `mount-view.ts` grows from 332 to 336 lines (it was already over 300).
+- **The view's capability probe sees the model's size limits** through `sizeLimitsOf`;
+  the probe gets a small adapter object (`reader`, `can`, `sizeLimits`) rather than a
+  spread of the model, so host models with prototype methods keep working.
+- **The resize browser check for per-instance disposal counts model subscriptions** (all released on
+  dispose); the painter goes with the interaction layer, which dispose destroys.
