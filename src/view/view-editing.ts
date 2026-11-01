@@ -236,7 +236,10 @@ export function attachEditing(deps: EditingDeps): Editing {
       autoPan: { clock: deps.clock, size: deps.size },
     });
     if (clipboard) {
-      bridge = attachClipboardEvents(deps.root, { run: commands.run });
+      bridge = attachClipboardEvents(deps.root, {
+        run: commands.run,
+        overlay: deps.overlay,
+      });
     }
     const dom = input;
     offs.push(

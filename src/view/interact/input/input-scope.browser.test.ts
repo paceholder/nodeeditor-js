@@ -52,6 +52,33 @@ describe("input scope", () => {
     expect(has(model, "a")).toBe(false);
   });
 
+  it("Escape leaves a menu: keys on overlay content run no graph shortcut", async () => {
+    const { model, view } = editor();
+    view.selection.replace(["n:a"]);
+    const button = document.createElement("button");
+    button.textContent = "Delete";
+    button.style.cssText = "pointer-events:auto;";
+    view.overlay.attach(button, { kind: "node", node: nodeId("a") });
+    await frames(2);
+    button.focus();
+    const esc = key(button, "Escape");
+    const del = key(button, "Delete");
+    expect(esc.defaultPrevented).toBe(false);
+    expect(del.defaultPrevented).toBe(false);
+    expect(view.selection.keys()).toEqual(["n:a"]);
+    expect(has(model, "a")).toBe(true);
+    // A copy with focus on the button is the page's, not a graph copy.
+    const data = new DataTransfer();
+    const copy = new ClipboardEvent("copy", {
+      clipboardData: data,
+      bubbles: true,
+      cancelable: true,
+    });
+    button.dispatchEvent(copy);
+    expect(copy.defaultPrevented).toBe(false);
+    expect(data.getData("text/plain")).toBe("");
+  });
+
   it("pointer presses inside overlay content start no gesture", async () => {
     const { model, view } = editor();
     const field = document.createElement("input");

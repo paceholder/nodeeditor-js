@@ -75,7 +75,9 @@ export type CancelReason =
   | "hidden"
   | "dispose"
   /** The whole document was replaced (a `reset` event). */
-  | "reset";
+  | "reset"
+  /** A context menu opened for a press that had not started dragging. */
+  | "context-menu";
 
 export type ToolInput =
   | PointerInput

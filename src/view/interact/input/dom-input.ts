@@ -62,6 +62,8 @@ export interface DomInput {
   entitiesRemoved(ids: readonly string[]): void;
   /** Tell the active tool the document was replaced: any gesture in flight cancels. */
   modelReset(): void;
+  /** Cancel the gesture in flight, if any: nothing is committed. */
+  cancelGesture(reason: CancelReason): void;
   /** World position of the pointer while it is over the root, else undefined. */
   pointerWorld(): Point<"world"> | undefined;
   dispose(): void;
@@ -202,6 +204,7 @@ export function attachDomInput(
 
   const keys = createKeyInput({
     router,
+    overlay: deps.overlay,
     route,
     modifiers,
     setCursor,
@@ -254,6 +257,7 @@ export function attachDomInput(
     modelReset() {
       cancel("reset");
     },
+    cancelGesture: cancel,
     pointerWorld() {
       return lastClient && deps.coords(lastClient.x, lastClient.y)?.world;
     },
