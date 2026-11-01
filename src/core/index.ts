@@ -164,5 +164,6 @@ export { createGraphModel } from "./graph-model.js";
 export * from "./io/fragment/index.js";
 export * from "./io/snapshot/index.js";
 export * from "./space/geometry/index.js";
+export * from "./space/routing/index.js";
 export * from "./space/scene/index.js";
 export * from "./space/spatial-index/index.js";

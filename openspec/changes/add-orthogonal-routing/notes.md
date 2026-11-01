@@ -15,3 +15,27 @@ the end of `add-connection-chooser`).
   radius 0.
 - **A cut on an interior zero-length segment** (two sharp corners at the same point) may
   lie on a vertex; the piece then repeats that point, which changes no distance or bound.
+- **`buildPath` and `RouteMode` are removed with the preview change (task 4.3), not in
+  task 2.1**: the scene (3.1) and the preview painters (4.3) still used them, and each
+  commit must build and pass on its own. The registry and routers land first, the
+  callers move over, then the old helper goes.
+- **Final tie-break: the corners ordered by (y, x), compared in turn**, instead of "the
+  smaller middle coordinate, then the smaller first corner (y, x)" (D4 step 5). It keeps
+  the stated outcomes (above before below, left before right at equal heights) and,
+  unlike "first corner", does not depend on which end is stored first. Lengths within a
+  relative 1e-9 count as equal so float noise does not decide between equal detours.
+- **Swapped ends are exact by construction**: the router orders the two ends
+  canonically (position, escape direction, body), routes, and reverses the result when
+  it swapped them, radii included. The candidate keys are order-independent anyway; this
+  makes "the same vertices in reverse" bit-exact.
+- **Validity also requires leaving along the source escape direction and entering
+  along the reverse of the target's** (D4 step 4 lists only reversal and bodies). With
+  the bodies exempt at their own end segments, a zero clearance or a stray candidate
+  could otherwise leave a port backwards through its node.
+- **"Same node" is detected by equal body rectangles**: `RouteEnd` carries no node ID.
+  Two distinct nodes with identical boxes overlap completely and fall back anyway.
+- **A perpendicular pair too close for an L** takes three bends with the jog at the
+  midpoint between the escape points (all jog heights between them have equal length;
+  the tie-break takes the highest).
+- **`polylinePath` and the `Polyline` type are exported from core**, so a host router
+  can build the same rounded geometry.
