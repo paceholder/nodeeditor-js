@@ -8,6 +8,7 @@
 import type {
   Availability,
   CapabilityAction,
+  ChoiceAlternative,
   Command,
   Endpoint,
   GeometryScene,
@@ -122,7 +123,17 @@ export type ToolEffect =
   | { readonly type: "commit"; readonly command: Command }
   | { readonly type: "select"; readonly change: SelectionChange }
   | { readonly type: "viewport"; readonly op: ViewportOp }
-  | { readonly type: "cursor"; readonly cursor: CursorKind };
+  | { readonly type: "cursor"; readonly cursor: CursorKind }
+  /** Ask the host chooser to pick a policy alternative; the preview stays. */
+  | { readonly type: "choose"; readonly request: ChoiceRelease };
+
+/** What a release on a choice target hands to the choice controller. */
+export interface ChoiceRelease {
+  readonly source: Endpoint;
+  readonly target: Endpoint;
+  readonly alternatives: readonly ChoiceAlternative[];
+  readonly at: Point<"world">;
+}
 
 /** Read-only facade tools query; they never mutate through it. */
 export interface ToolContext {
@@ -142,6 +153,8 @@ export interface ToolContext {
    */
   evaluateConnection(from: Endpoint, to: Endpoint): ConnectionEvaluation;
   readonly options: ToolOptions;
+  /** A host connection chooser is installed. */
+  readonly chooserInstalled: boolean;
 }
 
 export interface PressInfo {

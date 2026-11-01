@@ -55,7 +55,11 @@ export function connectPreview(
       endpoint: e,
       evaluation: ctx.evaluateConnection(source, e),
     }));
-  const target = candidates.find((c) => c.evaluation.state === "compatible");
+  // The release target: the first candidate the policy accepts or offers a choice for.
+  const target = candidates.find(
+    (c) =>
+      c.evaluation.state === "compatible" || c.evaluation.state === "choice",
+  );
   return {
     kind: "connect",
     source,

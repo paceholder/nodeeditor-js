@@ -43,6 +43,7 @@ import {
   type ToolSlot,
 } from "../interact/tools/tool-router.js";
 import {
+  type ChoiceRelease,
   type CursorKind,
   type Modifiers,
   NO_MODIFIERS,
@@ -61,6 +62,8 @@ export interface HarnessOptions {
   readonly options?: Partial<ToolOptions>;
   /** Port-hiding zoom (the theme's `lodHidePortsBelow`); omitted keeps ports pickable. */
   readonly hidePortsBelow?: number;
+  /** Pretend a host connection chooser is installed. */
+  readonly chooser?: boolean;
 }
 
 export interface ToolHarness {
@@ -79,6 +82,8 @@ export interface ToolHarness {
     readonly captures: number[];
     readonly releases: number[];
     readonly cursors: CursorKind[];
+    /** Releases handed to the connection chooser. */
+    readonly chooses: ChoiceRelease[];
   };
   /** Feed one input and execute its effects. */
   send(input: ToolInput): RouteResult;
@@ -132,6 +137,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     sizeLimits: model.sizeLimits,
     plan: model.plan,
     ...(opts.options ? { options: opts.options } : {}),
+    chooserInstalled: () => opts.chooser === true,
     ...(opts.hidePortsBelow !== undefined
       ? { hidePortsBelow: () => opts.hidePortsBelow ?? 0 }
       : {}),
@@ -143,6 +149,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     captures: [],
     releases: [],
     cursors: [],
+    chooses: [],
   };
   function applyViewport(op: ViewportOp): void {
     switch (op.kind) {
@@ -174,6 +181,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     },
     selection,
     viewport: applyViewport,
+    choose: (request) => void log.chooses.push(request),
   });
 
   let time = 0;

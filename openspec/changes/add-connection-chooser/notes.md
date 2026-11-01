@@ -15,3 +15,15 @@ results and size. The size baseline is `ac4dc5b` (the end of `add-context-menu-h
   `slow`, a key or a stored kind is accepted with that kind, so the commit validator
   (which passes the stored kind) accepts the chosen record; the "Revalidated" case is
   the default policy's input capacity.
+- **The `choose` effect carries the policy alternatives, not built options**
+  (`ChoiceRelease { source, target, alternatives, at }`); the controller turns them into
+  options with `choiceOptions` and adds the positions and the signal. So the tool layer
+  needs no chooser types.
+- **`EffectHost.choose` is optional**: a host without a chooser ignores the effect (the
+  tool never emits it then anyway, because `chooserInstalled` is false).
+- **The connect preview's `target` now also snaps to a choice port**, since it is the
+  release target (D2). The cursor over a choice port is the crosshair, like a compatible
+  one; the glyph is a fork in the compatible color.
+- **The choice-tool cases live in a new `connect-choice-tool.test.ts`**:
+  `connect-tool.test.ts` was already 319 lines. Every existing connect test passes
+  unchanged.
