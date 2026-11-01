@@ -6,6 +6,7 @@ import {
 } from "../../../core/space/scene/scene-fixtures.js";
 import { cleanupScope, frames, makeHost } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
+import { mouse, wheel } from "../input/input-test-support.js";
 
 const cleanup = cleanupScope();
 
@@ -115,5 +116,67 @@ describe("overlay", () => {
     expect(probe()).toBe(view.element);
     handle.setVisible(true);
     expect(probe()).toBe(el);
+  });
+
+  it("Menu fixed on screen: a viewport anchor ignores zoom and pan", async () => {
+    const host = makeHost(300, 200);
+    const view = mountView(host, {
+      model: buildModel([twoPortNode("a", 100, 60)]),
+    });
+    cleanup(() => view.dispose());
+    const menu = document.createElement("button");
+    menu.style.cssText = "width:80px;height:24px;margin:0;";
+    view.overlay.attach(menu, { kind: "viewport", point: { x: 40, y: 30 } });
+    await frames();
+    const hostBox = host.getBoundingClientRect();
+    const where = () => {
+      const r = menu.getBoundingClientRect();
+      return [r.left - hostBox.left, r.top - hostBox.top, r.width];
+    };
+    expect(where()).toEqual([40, 30, 80]);
+    wheel(view, 100, 60, -300);
+    view.viewport.panBy(25, -10);
+    await frames();
+    expect(view.viewport.get().zoom).toBeGreaterThan(1);
+    expect(where()).toEqual([40, 30, 80]);
+    // A press on the menu is the menu's: no pan, no selection.
+    const before = view.viewport.get();
+    const press = mouse(view, menu);
+    press.down(0, 0);
+    press.move(50, 50);
+    press.up(50, 50);
+    expect(view.viewport.get()).toEqual(before);
+    expect(view.selection.size).toBe(0);
+  });
+
+  it("Menu following the graph: a world anchor moves with a pan", async () => {
+    const host = makeHost(300, 200);
+    const view = mountView(host);
+    cleanup(() => view.dispose());
+    const menu = box();
+    view.overlay.attach(menu, { kind: "world", point: { x: 50, y: 40 } });
+    await frames();
+    view.viewport.panBy(20, 10);
+    await frames();
+    const r = menu.getBoundingClientRect();
+    const hostBox = host.getBoundingClientRect();
+    expect([r.left - hostBox.left, r.top - hostBox.top]).toEqual([70, 50]);
+  });
+
+  it("a hidden viewport-anchored element does not block input", async () => {
+    const host = makeHost(300, 200);
+    const view = mountView(host);
+    cleanup(() => view.dispose());
+    const el = box(100, 100);
+    const handle = view.overlay.attach(el, {
+      kind: "viewport",
+      point: { x: 0, y: 0 },
+    });
+    await frames();
+    const r = host.getBoundingClientRect();
+    const probe = () => document.elementFromPoint(r.left + 50, r.top + 50);
+    expect(probe()).toBe(el);
+    handle.setVisible(false);
+    expect(probe()).toBe(view.element);
   });
 });

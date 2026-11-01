@@ -8,6 +8,7 @@ import {
   type Availability,
   err,
   ok,
+  type Point,
   type Rejection,
   type Result,
   rejectionOf,
@@ -35,6 +36,11 @@ export interface CopyArgs {
 /** Arguments of edit.paste: text from a native paste event; the buffer otherwise. */
 export interface PasteArgs {
   readonly text?: string;
+  /**
+   * Centre the fragment here instead of at the pointer, e.g. "Paste here" from a context
+   * menu, which also works for touch.
+   */
+  readonly at?: Point<"world">;
 }
 
 const OK: Availability = { available: true };
@@ -113,7 +119,14 @@ export function registerClipboardCommands(
       // Native paste text is tried as is: `run` reports foreign text as not-a-fragment.
       (args, ctx) =>
         args?.text !== undefined && ctx.model ? OK : service.canPaste(),
-      (args) => changed(service.paste(args?.text), true),
+      (args) =>
+        changed(
+          service.paste(
+            args?.text,
+            args?.at && { kind: "center", at: { x: args.at.x, y: args.at.y } },
+          ),
+          true,
+        ),
     ),
   );
   registry.register(

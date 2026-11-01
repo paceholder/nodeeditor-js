@@ -26,6 +26,11 @@ export type OverlayAnchor =
       readonly kind: "node";
       readonly node: NodeId;
       readonly scale?: boolean;
+    }
+  | {
+      /** A fixed point of the view (a context menu): it stays put while the view pans and zooms. */
+      readonly kind: "viewport";
+      readonly point: Point<"viewport">;
     };
 
 export interface OverlayHandle {
@@ -62,23 +67,25 @@ export function createOverlayHost(deps: OverlayDeps): OverlayHost {
 
   function place(slot: Slot): void {
     const { style } = slot.element;
+    const { anchor } = slot;
     const origin =
-      slot.anchor.kind === "world"
-        ? slot.anchor.point
-        : deps.scene()?.node(slot.anchor.node)?.bodyBounds;
+      anchor.kind === "node"
+        ? deps.scene()?.node(anchor.node)?.bodyBounds
+        : anchor.point;
     if (!slot.visible || !origin) {
       style.display = "none";
       return;
     }
     const v = deps.viewport();
-    const at = worldToViewport(v, {
-      x: origin.x,
-      y: origin.y,
-    } as Point<"world">);
+    const at =
+      anchor.kind === "viewport"
+        ? anchor.point
+        : worldToViewport(v, { x: origin.x, y: origin.y } as Point<"world">);
     style.display = slot.display;
-    style.transform = slot.anchor.scale
-      ? `translate(${at.x}px, ${at.y}px) scale(${v.zoom})`
-      : `translate(${at.x}px, ${at.y}px)`;
+    style.transform =
+      anchor.kind !== "viewport" && anchor.scale
+        ? `translate(${at.x}px, ${at.y}px) scale(${v.zoom})`
+        : `translate(${at.x}px, ${at.y}px)`;
   }
 
   const host: OverlayHost = {

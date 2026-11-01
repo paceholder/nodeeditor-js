@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nodeId } from "../../../core/index.js";
+import { nodeId, rejectionOf } from "../../../core/index.js";
 import { twoPortNode } from "../../../core/space/scene/scene-fixtures.js";
+import { createCommandRegistry } from "../commands/command-registry.js";
 import { nodeKey } from "../selection/selection-model.js";
+import {
+  CLIPBOARD_COMMAND_IDS,
+  registerClipboardCommands,
+} from "./clipboard-commands.js";
 import {
   clipboardModel,
   clipboardSetup,
@@ -45,6 +50,41 @@ describe("clipboard service: copy, paste, duplicate", () => {
       { x: 20, y: 20 },
       { x: 40, y: 40 },
     ]);
+  });
+
+  it("Paste at a given position: centred at `at`, not at the pointer", () => {
+    const s = clipboardSetup();
+    const noView = () => ({
+      ok: false as const,
+      error: rejectionOf("unknown-entity", "none"),
+    });
+    const commands = createCommandRegistry(() => ({
+      model: s.model,
+      reader: s.model.reader,
+      selection: s.selection,
+      view: {
+        fitAll: noView,
+        fitSelection: noView,
+        resetView: noView,
+        reveal: noView,
+      },
+    }));
+    registerClipboardCommands(commands, s.service);
+    selectBoth(s);
+    s.service.copy();
+    s.setPointer({ x: 500, y: 500 });
+    const run = commands.run(CLIPBOARD_COMMAND_IDS.paste, {
+      at: { x: 300, y: 300 },
+    });
+    expect(run.ok).toBe(true);
+    const [first, second] = s.selection.nodeIds();
+    const at = (id: typeof first) => id && s.model.reader.getNode(id)?.position;
+    // The fragment a (0, 0) and b (100, 0) has its bounding-box centre at (50, 0).
+    expect([at(first), at(second)]).toEqual([
+      { x: 250, y: 300 },
+      { x: 350, y: 300 },
+    ]);
+    expect(s.model.historyState().undoLabel).toBe("Paste");
   });
 
   it("duplicates one step away and selects the copy", () => {
