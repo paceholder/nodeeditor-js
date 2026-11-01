@@ -20,6 +20,11 @@ export interface ConnectionProposal {
    * duplicate checks must ignore it.
    */
   readonly replacing?: ConnectionId;
+  /**
+   * The key of one alternative of an earlier `choice` outcome. The policy then
+   * accepts exactly that alternative or rejects; it must not answer `choice` again.
+   */
+  readonly choice?: string;
 }
 
 /** What an accepted proposal turns into. */
@@ -32,12 +37,25 @@ export interface ConnectionPlan {
   readonly auxiliary: readonly PatchOp[];
 }
 
+/**
+ * One alternative of a `choice` outcome. The key is unique within the outcome and stable
+ * across evaluations of the same proposal on the same graph, so a caller can name it
+ * back in `ConnectionProposal.choice`. The accepted plan must record what tells it
+ * apart (connection kind, endpoints or auxiliary entities): the commit validator
+ * re-evaluates the stored record without a `choice` and must get `accept`.
+ */
+export interface ConnectionAlternative extends ConnectionPlan {
+  readonly key: string;
+  /** Display text for a picker; optional. */
+  readonly label?: string;
+}
+
 export type PolicyOutcome =
   | { readonly kind: "accept"; readonly plan: ConnectionPlan }
   | { readonly kind: "reject"; readonly reason: Rejection }
   | {
       readonly kind: "choice";
-      readonly alternatives: readonly ConnectionPlan[];
+      readonly alternatives: readonly ConnectionAlternative[];
     }
   | { readonly kind: "pending"; readonly reason: string };
 
