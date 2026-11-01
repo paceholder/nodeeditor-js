@@ -31,9 +31,9 @@
 
 ## 7. Documentation (separate commit)
 
-- [ ] 7.1 Update `docs/interaction.md` with a connection-choice section (target picked by the existing order as in QtNodes, options are the target's policy alternatives, pending state, cancellation triggers, default without a chooser), with the Mermaid flow of design.md; verify by grepping for `chooseConnection` and `choice`, and that `choiceTiePx` appears nowhere
-- [ ] 7.2 Update `docs/guide-view.md` (`setConnectionChooser` with an `async` example and `AbortSignal`) and `docs/guide-using-the-model.md` (alternative keys, `connect` with `choice`, the policy contract that a chosen plan's record must validate on its own); verify by grepping for `setConnectionChooser`, `ConnectionAlternative` and `choice:`
-- [ ] 7.3 Update `docs/architecture.md` with the choice controller living beside the router (why a pending choice is not a router gesture); verify the diagram renders in a Markdown preview and names no upward import
+- [x] 7.1 Update `docs/interaction.md` with a connection-choice section (target picked by the existing order as in QtNodes, options are the target's policy alternatives, pending state, cancellation triggers, default without a chooser), with the Mermaid flow of design.md; verify by grepping for `chooseConnection` and `choice`, and that `choiceTiePx` appears nowhere
+- [x] 7.2 Update `docs/guide-view.md` (`setConnectionChooser` with an `async` example and `AbortSignal`) and `docs/guide-using-the-model.md` (alternative keys, `connect` with `choice`, the policy contract that a chosen plan's record must validate on its own); verify by grepping for `setConnectionChooser`, `ConnectionAlternative` and `choice:`
+- [x] 7.3 Update `docs/architecture.md` with the choice controller living beside the router (why a pending choice is not a router gesture); verify the diagram renders in a Markdown preview and names no upward import
 
 ## Workflow follow-up
 

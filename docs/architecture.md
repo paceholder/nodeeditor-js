@@ -362,6 +362,32 @@ flowchart LR
   hook --> host["host listener: menu in the overlay,<br/>view.commands.run(id)"]
 ```
 
+**A pending connection choice** (INT-12) lives beside the router too, not in it. When the
+policy offers several alternatives for the port a connection is dropped on, the connect
+tool ends its gesture with a `choose` effect instead of a commit, and a small DOM-free
+controller (`interact/choice/connection-choice.ts`) asks the host's async chooser and
+waits. The router's unit is "a pointer that is down"; a choice has no pointer, and
+keeping the tool non-idle after the release would bend the router's invariants (the
+active pointer, capture release, auto-pan, no shortcuts during a gesture) for every tool.
+The controller has two states, idle and pending with a token and an `AbortController`:
+an answer counts only while its token is current, choosing commits one `connect` naming
+the policy's key through the same command path as tool commits, and every other exit
+aborts the signal and commits nothing. The mount file `view-connection-choice.ts` adds the
+capture-phase Escape and press listeners and the model's removal and reset events. In
+QtNodes terms this is a modal `QMenu::exec` at the drop point, made asynchronous and
+cancellable, with the menu supplied by the host.
+
+```mermaid
+flowchart LR
+  tool["connect tool<br/>(interact/tools)"] -- "choose effect<br/>(source, target, alternatives)" --> runner["effect runner<br/>(interact/input)"]
+  runner -- "host.choose callback" --> wiring["view-connection-choice.ts<br/>(mount)"]
+  wiring --> ctrl["choice controller<br/>(interact/choice)"]
+  ctrl -- "request + AbortSignal" --> host["host chooser<br/>(picker in the overlay)"]
+  host -- "key or undefined" --> ctrl
+  ctrl -- "host.commit callback:<br/>connect {choice}" --> model["editable model<br/>(core, via index.ts)"]
+  dom["Escape, press, removal, reset"] --> wiring
+```
+
 ## 8. Code map
 
 The source tree is grouped by layer, lowest first. A module may import from its own layer
@@ -413,13 +439,15 @@ src/view/                                                     (nodeeditor-js/vie
                                  effect runner, view events
               context-menu/      context-menu input, target and      implemented
                                  selection rule, touch long-press
+              choice/            connection chooser types, options,  implemented
+                                 pending-choice controller
               commands/          command registry, keymap, view      implemented
                                  commands
               clipboard/         clipboard service, native-event     implemented
                                  bridge, paste placement
               overlay/           DOM overlay host, presence          implemented
   view-types.ts, view-editing.ts, view-context-menu.ts,              implemented
-  mount-view.ts
+  view-connection-choice.ts, mount-view.ts
   index.ts                       host API (nodeeditor-js/view)
   advanced.ts                    building blocks (nodeeditor-js/view/advanced)
 src/react/                       provider and hooks                  planned (Slice B)
@@ -441,8 +469,8 @@ flowchart BT
   end
   subgraph view["src/view"]
     platform["platform/<br/>dom, frame scheduler, viewport,<br/>model binding, render stats"] --> render["render/<br/>primitives, theme, assets,<br/>registries, presets, paint"]
-    render --> interact["interact/<br/>selection, tools, input, context-menu,<br/>commands, clipboard, overlay"]
-    interact --> mount["view-types.ts, view-editing.ts,<br/>view-context-menu.ts, mount-view.ts"]
+    render --> interact["interact/<br/>selection, tools, input, context-menu,<br/>choice, commands, clipboard, overlay"]
+    interact --> mount["view-types.ts, view-editing.ts, view-context-menu.ts,<br/>view-connection-choice.ts, mount-view.ts"]
     mount --> entries["index.ts (view)<br/>advanced.ts (view/advanced)"]
   end
   facade -- "only through src/core/index.ts" --> platform

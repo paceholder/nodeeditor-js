@@ -158,6 +158,54 @@ if (plan.kind === "ready") {
 The convenience methods (`connect`, `createNode`, ...) are shorthand for
 `model.execute({ kind: "connect", ... })`; both give identical results.
 
+### When the policy offers a choice
+
+A connection policy can answer "several plans are valid" instead of accepting one, for
+example two connection kinds for one port pair. Each alternative is a
+`ConnectionAlternative`: the plan plus a stable `key` and an optional `label`. `connect`
+then returns `choice-required` with the alternatives, and you name the one you want with
+`choice`:
+
+```ts
+const r = model.connect(from, to);
+if (r.status === "choice-required") {
+  r.alternatives.map((a) => [a.key, a.label]);   // [["direct", "Direct link"], ["delayed", "Delayed link"]]
+  model.execute({ kind: "connect", from, to, choice: "delayed" });   // one connection, one undo step
+}
+```
+
+The command goes through the policy again with `choice` in the proposal, so the choice is
+validated like any other connection; a key the policy does not know is rejected, and a
+policy that answers `choice` again is rejected with `choice-required` rather than picked.
+In the view a host chooser does this for the user (see guide-view.md).
+
+A policy that returns `choice` (this is the **breaking** part for hand-written policies)
+gives each alternative a key that is unique within the answer and the same on every
+evaluation of the same proposal. Given `proposal.choice`, it accepts exactly that
+alternative or rejects. And the accepted plan must record what tells it apart, usually
+the connection kind: the commit validator re-checks the stored connection with
+`{ from, to, kind }` and no `choice`, and must get `accept`:
+
+```ts
+const policy: ConnectionPolicy = {
+  evaluate(proposal, graph) {
+    const base = defaults.evaluate(proposal, graph);
+    if (base.kind !== "accept" || !offersKinds(proposal, graph)) return base;
+    const kind = proposal.choice ?? proposal.kind;   // a chosen key, or the stored kind
+    if (kind === "direct" || kind === "delayed") {
+      return { kind: "accept", plan: { ...base.plan, connectionKind: kind } };
+    }
+    return {
+      kind: "choice",
+      alternatives: [
+        { ...base.plan, connectionKind: "direct", key: "direct", label: "Direct link" },
+        { ...base.plan, connectionKind: "delayed", key: "delayed", label: "Delayed link" },
+      ],
+    };
+  },
+};
+```
+
 ## 4. Moving, updating, deleting
 
 ```ts

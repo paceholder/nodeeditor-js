@@ -107,14 +107,15 @@ glyph, so the state never depends on color alone:
 | incompatible | cross | The policy rejects (type, direction, self-loop, duplicate...). The reason is printed beside the hovered port. |
 | occupied | ring | The port's attachment limit is used up. |
 | unavailable | padlock | A capability denies connecting. |
-| pending | hourglass | The policy has not decided yet, or needs a choice between alternatives. |
+| pending | hourglass | The policy has not decided yet. |
+| choice | fork | The policy offers several alternatives (for example two connection kinds); a host chooser picks one (section 4b). |
 
-The wire snaps to the nearest compatible candidate (screen distance, ties by pick order).
-Releasing on a compatible port submits exactly one `connect` command; the planner checks
-it again at submission. Releasing anywhere else, pressing Escape, losing the pointer or
+The wire snaps to the nearest candidate that is compatible or a choice (screen distance,
+ties by pick order). Releasing on a compatible port submits exactly one `connect`
+command; the planner checks it again at submission. Releasing anywhere else, pressing Escape, losing the pointer or
 removing the source port cancels the gesture and submits nothing, so no dangling
 connection can exist. The cursor turns to `not-allowed` while the nearest candidate is
-refused.
+refused or undecided.
 
 Policy answers are cached per candidate for the current model revision, so moving the
 pointer over a dense cluster of ports does not re-run the policy.
@@ -144,7 +145,7 @@ sequenceDiagram
   else reject
     Note over H: red cross (ring if full, padlock if denied), reason beside it
   else choice required
-    Note over H: hourglass, no chooser UI yet
+    Note over H: fork glyph, the wire snaps to the port
   else pending
     Note over H: hourglass, the policy's reason
   end
@@ -152,14 +153,74 @@ sequenceDiagram
   alt a compatible port within the capture radius
     T->>H: clear preview, commit connect command
     H->>P: plan again and submit, one history entry
-  else reject, choice, pending, or empty canvas
+  else a choice port and a chooser installed
+    T->>H: choose effect, preview kept (section 4b)
+  else reject, pending, a choice without a chooser, or empty canvas
     T->>H: clear preview, nothing committed
   end
 ```
 
-Choice-required (the policy offers several alternative plans, for example with or without
-a converter node) currently commits nothing on release: picking between alternatives
-needs a chooser UI that a later change adds. Until then it is drawn like pending.
+## 4b. Choosing between policy alternatives [INT-12]
+
+Sometimes the policy cannot pick for the user: one port pair allows two connection kinds,
+or a connection with or without a converter node. It then answers `choice` with keyed
+alternatives (CON-04). The library ships no picker; a host installs one async function:
+
+```ts
+mountView(container, { model, input: { chooseConnection: myChooser } });
+view.setConnectionChooser(myChooser); // or later; undefined removes it
+```
+
+**Which port is never a question.** As in QtNodes, where the topmost item under the
+cursor wins, the existing deterministic order decides the target: ports in the capture
+radius, nearest first, ties in pick order, and the first one that is compatible or a
+choice is the target. Overlapping ports therefore resolve without a dialog, exactly as
+before. The chooser is asked only when that target's policy answer is `choice`, and its
+options are that target's alternatives, in policy order, under the policy's own keys.
+
+**Pending.** After the release the gesture is over (the pointer is up, capture released)
+but the choice is pending: the preview stays frozen on the ports, nothing is committed,
+and graph shortcuts do nothing, the same rule as during a drag. The chooser gets
+`{ source, target, options, client, viewport, world, signal }` and returns an option key,
+or `undefined` to decline, synchronously or as a promise. Choosing commits one `connect`
+command that names the key (`choice`), planned and validated again like any other
+(CON-05), so it is one history entry; if the graph changed meanwhile, for example the
+target's last slot was taken, it is rejected and nothing is created.
+
+**Cancelling.** Escape (from the editor or from the host's picker in the overlay), a press
+on the canvas outside overlay content (consumed, so it starts no pan or selection),
+removal of the source or target node or port, a document reset, replacing the chooser,
+and `dispose()` cancel it: the signal aborts, the preview clears, and a later answer is
+ignored. A declined, failing or unknown answer also commits nothing. Blur does not
+cancel, because the picker may take focus. There is no timeout; a host that wants one
+combines `AbortSignal.timeout` with the signal and resolves `undefined`.
+
+**Without a chooser** a choice is never picked silently. The target shows the fork glyph,
+and releasing there commits nothing. A port the policy accepts directly connects as
+always, chooser or not.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant T as connect tool
+  participant X as choice controller
+  participant H as host chooser
+  participant M as model
+  U->>T: release over a port whose policy offers two kinds
+  T-->>X: effect choose {source, target, options = its alternatives, at} (preview kept)
+  X->>H: chooser(request with signal)
+  Note over X,H: pending: shortcuts off, Escape / new press / removal / dispose cancel
+  H-->>X: "key of option 2"
+  X->>X: token current, not aborted
+  X->>M: commit connect {from, to, connectionKind, choice}
+  M->>M: plan via policy (choice key), validate, submit
+  M-->>U: one history entry
+  X-->>U: preview cleared
+```
+
+The plain demo's policy offers a "direct" and a "delayed" link between the level sensor
+and the controller; `examples/plain-js/choice-picker.ts` is the picker.
 
 ## 4a. Resizing a node
 
