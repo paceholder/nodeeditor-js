@@ -8,8 +8,8 @@
  *
  * Browsers target a clipboard event at the focused element only when it is editable, and
  * otherwise at the selection or the body. So the listeners sit on the document and act
- * only while focus is inside this editor's root, never in a text field (an overlay
- * editor keeps its own clipboard). Two editors on one page therefore never share an
+ * only while focus is inside this editor's root, never in a text field or other host
+ * content in the overlay (an overlay editor or menu keeps its own clipboard). Two editors on one page therefore never share an
  * event.
  *
  * There is no timed fallback: a native chord does nothing by itself, and the event alone
@@ -17,7 +17,7 @@
  * clipboard asynchronously before a paste event, so guessing that "no event came" after
  * some delay would race the real event. Hosts without the events use `view.clipboard`.
  */
-import { isTextTarget } from "../input/input-scope.js";
+import { isOverlayContent, isTextTarget } from "../input/input-scope.js";
 
 /** The kind of clipboard event and the command it runs. */
 export type ClipboardCommandId = "edit.copy" | "edit.cut" | "edit.paste";
@@ -27,6 +27,8 @@ export interface ClipboardEventsDeps {
   readonly run: (id: string, args: unknown) => { readonly ok: boolean };
   /** The command IDs per event type (defaults: edit.copy, edit.cut, edit.paste). */
   readonly commands?: Partial<Record<"copy" | "cut" | "paste", string>>;
+  /** The view's overlay layer; focus on host content inside it is not the editor's. */
+  readonly overlay?: HTMLElement;
 }
 
 export interface ClipboardEvents {
@@ -47,6 +49,7 @@ export function attachClipboardEvents(
   const owns = (e: Event): boolean => {
     const active = doc.activeElement;
     if (!active || !root.contains(active)) return false;
+    if (deps.overlay && isOverlayContent(active, deps.overlay)) return false;
     return !isTextTarget(active) && !isTextTarget(e.target);
   };
 

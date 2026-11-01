@@ -67,6 +67,28 @@ describe("tool router", () => {
     }
   });
 
+  it("INT-05, INT-11b a context menu cancels a pressed gesture: no select, no commit", () => {
+    // Select-move: a press inside a two-node selection would select only `a` on release.
+    const h = fixture();
+    const keys = [nodeKey(nodeId("a")), nodeKey(nodeId("b"))];
+    h.selection.replace(keys);
+    h.down({ x: 20, y: 10 });
+    h.send({ type: "cancel", reason: "context-menu" });
+    h.up({ x: 20, y: 10 });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.selection.keys()).toEqual(keys);
+    expect(h.log.releases).toEqual([1]);
+    expect(h.log.commits).toEqual([]);
+    // Connect, from b's left port: pressed, not yet dragging.
+    h.down({ x: 200, y: 10 });
+    expect(h.router.activeTool).toBe("connect");
+    h.send({ type: "cancel", reason: "context-menu" });
+    h.up({ x: 20, y: 10 });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.log.releases).toEqual([1, 1]);
+    expect(h.log.commits).toEqual([]);
+  });
+
   it("INT-05 Escape cancels the active gesture", () => {
     const h = fixture();
     h.down({ x: 20, y: 10 });
