@@ -17,7 +17,6 @@ import {
   compose,
   type NodeEntry,
   type PathGeometry,
-  pathBounds,
   transformRect,
 } from "../../../core/index.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
@@ -73,6 +72,21 @@ function polygonLength(p: Extract<PathGeometry, { kind: "cubic" }>): number {
   );
 }
 
+/** The larger side of a polyline's vertex box, without allocating. */
+function polylineSpan(p: Extract<PathGeometry, { kind: "polyline" }>): number {
+  let minX = Math.min(p.p0.x, p.p1.x);
+  let maxX = Math.max(p.p0.x, p.p1.x);
+  let minY = Math.min(p.p0.y, p.p1.y);
+  let maxY = Math.max(p.p0.y, p.p1.y);
+  for (const v of p.via) {
+    minX = Math.min(minX, v.x);
+    maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y);
+    maxY = Math.max(maxY, v.y);
+  }
+  return Math.max(maxX - minX, maxY - minY);
+}
+
 function traceSimplified(
   ctx: CanvasRenderingContext2D,
   path: PathGeometry,
@@ -86,9 +100,8 @@ function traceSimplified(
   if (path.kind === "polyline") {
     // Corners without arcs; a polyline whose vertex box is under the threshold is a
     // line between its endpoints, which still meet the ports.
-    const box = pathBounds(path);
     ctx.moveTo(path.p0.x, path.p0.y);
-    if (Math.max(box.w, box.h) * zoom >= LINE_BELOW_PX)
+    if (polylineSpan(path) * zoom >= LINE_BELOW_PX)
       for (const v of path.via) ctx.lineTo(v.x, v.y);
     ctx.lineTo(path.p1.x, path.p1.y);
     return;

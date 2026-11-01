@@ -3,6 +3,8 @@
  * Frame workloads: pan, zoom and single-node drag on
  * F-TYPICAL and culled F-LARGE at the instance's device pixel ratio, with real input
  * events on the production build. Results go to bench/.results/ for the baseline writer.
+ * `BENCH_ROUTES=orthogonal` routes every connection orthogonally; rows then name the
+ * fixture with the route (for example `F-LARGE orthogonal`).
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -15,6 +17,7 @@ import {
 import {
   browserInfo,
   DURATION_MS,
+  fixtureLabel,
   mergeSamples,
   mountFixture,
   QUICK,
@@ -110,18 +113,18 @@ describe("browser frame workloads", () => {
             expect(merged.nodes).toBeGreaterThan(c.spec.nodes * 0.9);
           else if (c.spec === F_LARGE)
             expect(merged.nodes).toBeLessThanOrEqual(c.maxVisibleNodes);
-          rows.push(...toInputs(workload, c.spec.name, merged));
+          rows.push(...toInputs(workload, fixtureLabel(c.spec.name), merged));
         } finally {
           mounted.dispose();
         }
       }
       await saveBrowserResult(
-        `browser-${c.spec.name}-dpr${window.devicePixelRatio}`,
+        `browser-${fixtureLabel(c.spec.name).replace(" ", "-")}-dpr${window.devicePixelRatio}`,
         {
           browser: await browserInfo(),
           dpr: window.devicePixelRatio,
           quick: QUICK,
-          fixture: c.spec.name,
+          fixture: fixtureLabel(c.spec.name),
           rows,
         },
       );

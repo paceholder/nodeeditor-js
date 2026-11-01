@@ -7,7 +7,7 @@
 import { resolveStyle } from "nodeeditor-js/view/advanced";
 import { expect, it } from "vitest";
 import { DEFAULT_SEED, F_TYPICAL } from "../fixtures/fixture-specs.js";
-import type { FixtureRoutes } from "../fixtures/fixture-view.js";
+import type { FixtureRoutes } from "../fixtures/fixture-types.js";
 import { mountFixture, settle } from "./harness.js";
 
 async function checkBatching(routes: FixtureRoutes): Promise<void> {

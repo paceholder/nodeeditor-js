@@ -63,6 +63,17 @@ test("F-LARGE one-node move (headless)", async ({ bench }) => {
     },
   ]);
   scene.dispose();
+  // The same with every connection routed orthogonally.
+  const orthogonal = buildScene(model, "orthogonal");
+  const withOrthogonal = await runCases(bench, [
+    {
+      name: "patch apply + scene/index update, orthogonal",
+      metric: "patchApplyMs",
+      fixture,
+      fn: apply,
+    },
+  ]);
+  orthogonal.dispose();
   const modelOnly = await runCases(bench, [
     {
       name: "patch apply, model only",
@@ -71,5 +82,5 @@ test("F-LARGE one-node move (headless)", async ({ bench }) => {
       fn: apply,
     },
   ]);
-  saveResults("patch", [...withScene, ...modelOnly]);
+  saveResults("patch", [...withScene, ...withOrthogonal, ...modelOnly]);
 }, 120_000);

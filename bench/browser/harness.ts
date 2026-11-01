@@ -11,9 +11,11 @@ import type { ViewHandle } from "nodeeditor-js/view";
 import { cdp, commands } from "vitest/browser";
 import { type FixtureSpec, worldSize } from "../fixtures/fixture-specs.js";
 import {
-  createFixtureModel,
   createFixtureRoutes,
   type FixtureRoutes,
+} from "../fixtures/fixture-types.js";
+import {
+  createFixtureModel,
   mountFixtureView,
 } from "../fixtures/fixture-view.js";
 import { generateFixture } from "../fixtures/generate-fixture.js";

@@ -15,6 +15,8 @@ import {
 import {
   createFixtureGeometry,
   createFixtureNodeTypes,
+  createFixtureRoutes,
+  type FixtureRoutes,
 } from "../fixtures/fixture-types.js";
 import { generateFixture } from "../fixtures/generate-fixture.js";
 import { createPrng } from "../fixtures/prng.js";
@@ -36,8 +38,14 @@ export function loadFixture(spec: FixtureSpec, seed = DEFAULT_SEED): Loaded {
   return { snapshot, model };
 }
 
-export function buildScene(model: GraphModel): GeometryScene {
-  return createGeometryScene(model, { registry: createFixtureGeometry() });
+export function buildScene(
+  model: GraphModel,
+  routes: FixtureRoutes = "bezier",
+): GeometryScene {
+  return createGeometryScene(model, {
+    registry: createFixtureGeometry(),
+    routes: createFixtureRoutes(routes),
+  });
 }
 
 /** Seeded points inside the world, for picking and culling. */
