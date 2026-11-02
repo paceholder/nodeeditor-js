@@ -625,8 +625,10 @@ draws the graph itself:
 - **Nodes** are their hit bounds (a plain rectangle), grouped by resolved fill, stroke and
   line width. Each group becomes one path that is filled once and stroked once.
 - **Connections** are grouped by resolved stroke style and stroked once per group. A cubic
-  only a few CSS pixels long on screen becomes a straight line. Paths still end at the
-  port anchors.
+  only a few CSS pixels long on screen (under 3) becomes a straight line. An orthogonal
+  wire is drawn with sharp corners, and one whose box is under 12 CSS pixels on screen
+  becomes a straight line from its start to its end: it would otherwise stroke three to
+  five segments that are too small to read. Paths still end at the port anchors.
 - **Selection outlines and diagnostic badges** are drawn per entity after each layer's
   batches, so they stay visible on top.
 

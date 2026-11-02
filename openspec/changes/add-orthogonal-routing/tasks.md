@@ -52,7 +52,7 @@
 
 - [x] 9.1 Keep a polyline shorter than `PIECE_LENGTH` as one index piece (D2, revised); longer polylines are split as before with every corner whole in one piece; verify `path-pieces.test.ts` cases titled PERF-04 (a polyline shorter than `PIECE_LENGTH` is one piece; a longer polyline keeps each corner and its arc in exactly one piece) and `geometry-scene-routes.test.ts` cases titled PERF-04 (a short route is one piece and the pick stays exact; a point inside a long route's overall box but far from every piece is not a candidate)
 - [x] 9.2 Draw a polyline whose screen box is under 12 CSS px as one straight segment in the overview (LAY-04, D7); verify `orthogonal-paint.browser.test.ts` case titled LAY-04: a small orthogonal wire is one segment from its start to its end, a larger one keeps its corners
-- [ ] 9.3 Update `docs/geometry.md` (short polylines are one piece) and the overview description in the docs that mention it (separate commit)
+- [x] 9.3 Update `docs/geometry.md` (short polylines are one piece) and the overview description in the docs that mention it (separate commit)
 - [ ] 9.4 Re-run the gates and the F-LARGE orthogonal measurements (build, culling, overview frames); record them and the power/refresh conditions in notes.md
 
 ## Workflow follow-up
