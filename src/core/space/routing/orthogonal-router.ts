@@ -10,15 +10,26 @@
  * The ends are put in a canonical order before routing and the result is reversed back,
  * so swapping `from` and `to` yields exactly the same vertices in reverse (ROU-01c,
  * ROU-07), which an undirected connection relies on.
+ *
+ * With route constraints (pinned segments) the candidate families are not used: the route
+ * is built by `orthogonal-pins.ts` and `realized` reports the segment of each pin
+ * (ROU-03c). Pins that lie on a port's own stub line leave the automatic route in place.
  */
-import { type Polyline, polylinePath } from "../geometry/polyline.js";
+
+import type { RouteConstraint } from "../../data/model/records.js";
+import {
+  type Polyline,
+  polylinePath,
+  polylineVertices,
+} from "../geometry/polyline.js";
 import type { Point, Rect } from "../geometry/spaces.js";
 import { escapeDirection } from "./escape.js";
 import {
   type OrthogonalEnd,
   orthogonalCandidates,
 } from "./orthogonal-candidates.js";
-import { chooseCandidate } from "./orthogonal-check.js";
+import { chooseCandidate, isValidCandidate } from "./orthogonal-check.js";
+import { realizedSegments, routeThroughPins } from "./orthogonal-pins.js";
 import type {
   ConnectionRoute,
   ConnectionRouter,
@@ -78,9 +89,20 @@ function routeOrdered(
   to: OrthogonalEnd,
   clearance: number,
   radius: number,
+  pins: readonly RouteConstraint[],
 ): { readonly path: Polyline; readonly outcome: RouteOutcome } {
   const p0 = from.position;
   const p1 = to.position;
+  const pinned =
+    pins.length > 0 ? routeThroughPins(from, to, pins, clearance) : undefined;
+  if (pinned) {
+    // The user's pins win over bodies of the endpoint nodes (ROU-03c).
+    const clear = isValidCandidate(pinned, from, to);
+    return {
+      path: polylinePath(pinned, radius),
+      outcome: clear ? COMPLETE : { status: "complete", clearOf: "nothing" },
+    };
+  }
   if (p0.x === p1.x && p0.y === p1.y)
     return { path: polylinePath([p0, p1]), outcome: COMPLETE };
   const candidates = orthogonalCandidates(from, to, clearance);
@@ -111,12 +133,22 @@ export function createOrthogonalRouter(
     body,
   });
   return {
-    route({ from, to }: RouteInput): ConnectionRoute {
+    route({ from, to, constraints }: RouteInput): ConnectionRoute {
       const a = end(from.position, from.normal, from.body, to.position);
       const b = end(to.position, to.normal, to.body, from.position);
-      if (compareEnds(a, b) <= 0) return routeOrdered(a, b, clearance, radius);
-      const back = routeOrdered(b, a, clearance, radius);
-      return { path: reversed(back.path), outcome: back.outcome };
+      const swap = compareEnds(a, b) > 0;
+      // Pins are listed from `from` to `to`; the canonical walk goes the other way.
+      const pins = swap ? [...constraints].reverse() : constraints;
+      const routed = swap
+        ? routeOrdered(b, a, clearance, radius, pins)
+        : routeOrdered(a, b, clearance, radius, pins);
+      const path = swap ? reversed(routed.path) : routed.path;
+      if (constraints.length === 0) return { path, outcome: routed.outcome };
+      return {
+        path,
+        outcome: routed.outcome,
+        realized: realizedSegments(polylineVertices(path), constraints),
+      };
     },
   };
 }
