@@ -10,14 +10,15 @@ points only (`nodeeditor-js`, `nodeeditor-js/view`, `nodeeditor-js/view/advanced
 | Command | What it does |
 | --- | --- |
 | `npm run bench` | Builds, then runs the headless benches (Node) on F-LARGE: validate, load, export, diff, scene and index build, culling query, picking, one-node patch. |
-| `npm run bench:browser` | Builds, then runs the browser workloads and the idle probe in the installed Google Chrome (headless, both device pixel ratios). |
+| `npm run bench:browser` | Builds, then runs the browser workloads and the idle probe in the installed Google Chrome (headless, both device pixel ratios). Quick by default; `BENCH_QUICK=0` runs full length. |
 | `npm run bench:size` | Bundles `core`, `view`, `advanced` (`nodeeditor-js/view/advanced`) and `react` like a consumer would and prints gzip sizes against the budgets (`advanced` and `react` have none). `view` bundles only the core code it uses, since it does not re-export core. `node scripts/bundle-size.mjs --enforce` exits non-zero on overrun. |
 | `npm run bench:baseline` | The full run: all of the above at full duration, then writes `bench/baseline/<date>-<browser>.json` and `SUMMARY.md`. |
 | `npm run test:bench` | Unit tests of the fixtures, statistics, baseline writer and budget logic. `npm test` does not include them. |
 
-Quick iteration: `BENCH_QUICK=1 npm run bench:browser` runs each workload once for 5 s
-instead of three times 30 s. Quick results are marked as such and the baseline writer
-refuses them.
+Browser runs are quick unless `BENCH_QUICK=0`: each workload runs once for 5 s, about
+1.5 min per device pixel ratio. Full length is three repeats of 10 s, pooled into 30 s per
+workload, about 5 min per ratio; `npm run bench:baseline` always runs full length. Quick
+results are marked as such and the baseline writer refuses them.
 
 On macOS, `bench:browser` and `bench:baseline` hold a `caffeinate -d -i` assertion for
 the length of the run (`scripts/keep-awake.mjs`) and warn when the machine is on battery.
@@ -46,7 +47,7 @@ and `met`, `missed` or `no-target`. `SUMMARY.md` renders the same data and lists
 missed target.
 
 - Percentiles are nearest-rank values of the raw samples. Numbers are never pooled across
-  device pixel ratios or browsers. The three 30 s repeats of one workload are pooled.
+  device pixel ratios or browsers. The three 10 s repeats of one workload are pooled.
 - `frameIntervalMs`: gap between consecutive `requestAnimationFrame` timestamps while a
   scripted workload (pan, zoom sweep, node drag) sends one real pointer or wheel event
   per frame through the view root.
