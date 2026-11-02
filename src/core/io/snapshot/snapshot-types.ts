@@ -13,6 +13,7 @@ import type {
   CapabilityOverrides,
   PortDirection,
   PortPlacement,
+  RouteConstraint,
 } from "../../data/model/records.js";
 import type { QuarterTurns, Size, Vec2 } from "../../data/model/values.js";
 import type { JsonValue } from "./json-value.js";
@@ -58,6 +59,8 @@ export interface ConnectionSnapshot {
   readonly kind?: string;
   readonly from: EndpointSnapshot;
   readonly to: EndpointSnapshot;
+  /** Route constraints; omitted when there are none. */
+  readonly route?: readonly RouteConstraint[];
 }
 
 export interface GraphSnapshot {

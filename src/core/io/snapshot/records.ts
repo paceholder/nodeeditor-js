@@ -11,7 +11,9 @@ import type {
   NodeRecord,
   Payload,
   PortRecord,
+  RouteConstraint,
 } from "../../data/model/records.js";
+import { normalizeRoute } from "../../data/model/route-constraints.js";
 import { cloneJson } from "./json-value.js";
 import type {
   ConnectionSnapshot,
@@ -56,12 +58,21 @@ export function nodeToRecord(
   };
 }
 
+/** A copied `route` entry, or nothing for an absent or empty list. */
+function routeField(route: readonly RouteConstraint[] | undefined): {
+  readonly route?: readonly RouteConstraint[];
+} {
+  const list = normalizeRoute(route);
+  return list ? { route: list.map((c) => ({ ...c })) } : {};
+}
+
 export function connectionToRecord(c: ConnectionSnapshot): ConnectionRecord {
   return {
     id: connectionId(c.id),
     kind: c.kind ?? "default",
     from: { node: nodeId(c.from.node), port: portId(c.from.port) },
     to: { node: nodeId(c.to.node), port: portId(c.to.port) },
+    ...routeField(c.route),
   };
 }
 
@@ -119,5 +130,6 @@ export function connectionToSnapshot(c: ConnectionRecord): ConnectionSnapshot {
     ...(c.kind === "default" ? {} : { kind: c.kind }),
     from: { node: c.from.node, port: c.from.port },
     to: { node: c.to.node, port: c.to.port },
+    ...routeField(c.route),
   };
 }

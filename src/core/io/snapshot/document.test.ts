@@ -251,3 +251,18 @@ describe("no network access on open", () => {
     });
   });
 });
+
+describe("route in documents", () => {
+  it("Pinned segment survives reload through a saved document", () => {
+    const input = sampleSnapshot();
+    const conns = input.connections as Record<string, unknown>[];
+    const route = [{ kind: "segment", orientation: "horizontal", at: -5 }];
+    conns[0] = { ...conns[0], route };
+    const saved = saveDocument(loadedModel(input));
+    if (!saved.ok) throw new Error("save failed");
+    expect(JSON.parse(saved.value).version).toBe(1);
+    const fresh = makeTestModel();
+    expect(loadDocument(fresh, saved.value).ok).toBe(true);
+    expect(fresh.reader.connections()[0]?.route).toEqual(route);
+  });
+});

@@ -87,3 +87,10 @@ describe("excluded content", () => {
     ]);
   });
 });
+
+describe("export of route", () => {
+  it("omits a route that is absent", () => {
+    const snapshot = exportSnapshot(buildSession());
+    expect(snapshot.connections[0]).not.toHaveProperty("route");
+  });
+});
