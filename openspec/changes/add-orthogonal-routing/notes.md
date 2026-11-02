@@ -199,7 +199,7 @@ scene's registry and routers), advanced 27,164 -> 27,300 (+136).
 
 Applied: all tasks ticked, gates green, not archived, nothing pushed. Before archiving:
 
-1. The user tries the demo (`npm run demo`, the "Orthogonal wires" checkbox).
+1. Done 2026-11-02: the user tried the demo; "orthogonal wires look good".
 2. The user answers the two open questions above (recommended: do both, as a small
    follow-up inside this change, then re-run the perf gates).
 3. Fold the ghost-preview fix `588caa0` into the view commit `07c86db` (fixes are folded
