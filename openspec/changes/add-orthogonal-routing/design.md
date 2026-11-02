@@ -297,8 +297,10 @@ Alternatives considered:
 
 ### D7. Overview batching (PERF-03, PERF-06)
 
-`traceSimplified` in `overview-painter.ts` handles polylines: when the vertex box is
-under 3 CSS px on screen it draws a line from `p0` to `p1`; otherwise it traces the
+`traceSimplified` in `overview-painter.ts` handles polylines: when the larger side of
+the vertex box is under 12 CSS px on screen it draws a line from `p0` to `p1` (cubics
+keep their 3 px threshold; a polyline strokes three to five segments, so it is
+simplified earlier, as decided after the overview measurements); otherwise it traces the
 vertices with `lineTo` and drops the arcs (an overview stroke may be simplified, LAY-04,
 and endpoints still meet the ports). Polylines join the same style batches as other
 paths, so the stroke count per frame is unchanged.
