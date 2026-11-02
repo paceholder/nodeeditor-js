@@ -47,7 +47,7 @@ function pathTo(
   };
   if (end && preview.target) {
     const body = scene.node(preview.target.node)?.bodyBounds;
-    return router.route({ from, to: { ...end, body } }).path;
+    return router.route({ from, to: { ...end, body }, constraints: [] }).path;
   }
   const pointer = preview.pointer;
   const dx = source.position.x - pointer.x;
@@ -57,6 +57,7 @@ function pathTo(
   return router.route({
     from,
     to: { position: pointer, normal, body: undefined },
+    constraints: [],
   }).path;
 }
 

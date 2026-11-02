@@ -257,3 +257,44 @@ describe("picking and culling orthogonal routes", () => {
     ]);
   });
 });
+
+describe("route constraints in the scene", () => {
+  const pin = [{ kind: "segment", orientation: "vertical", at: 150 }] as const;
+
+  it("a route update op rebuilds only that connection", () => {
+    const model = mixed();
+    const scene = createGeometryScene(model, { routes: routesFor() });
+    const before = scene.stats();
+    const other = scene.connection(c("c0"));
+    const seen: unknown[] = [];
+    const spy = createRouteRegistry();
+    spy.register("ortho", {
+      route: (input) => {
+        seen.push(input.constraints);
+        return createOrthogonalRouter().route(input);
+      },
+    });
+    expect(
+      model.execute({ kind: "setRoute", connection: c("c1"), route: pin })
+        .status,
+    ).toBe("accepted");
+    expect(scene.stats().connectionRebuilds - before.connectionRebuilds).toBe(
+      1,
+    );
+    expect(scene.connection(c("c0"))).toBe(other);
+    expect(scene.connection(c("c1"))?.record.route).toEqual(pin);
+    // A fresh scene hands the stored constraints to the router of the kind.
+    createGeometryScene(model, { routes: spy });
+    expect(seen).toEqual([pin]);
+  });
+
+  it("Route kind ignores constraints: Bezier draws the curve and the pin stays stored", () => {
+    const model = mixed();
+    const scene = createGeometryScene(model, { routes: routesFor() });
+    const plain = pathOf(scene, "c0");
+    model.execute({ kind: "setRoute", connection: c("c0"), route: pin });
+    expect(pathOf(scene, "c0")).toEqual(plain);
+    expect(scene.connection(c("c0"))?.realized).toBeUndefined();
+    expect(model.reader.getConnection(c("c0"))?.route).toEqual(pin);
+  });
+});

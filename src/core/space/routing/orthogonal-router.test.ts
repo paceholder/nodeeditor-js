@@ -14,7 +14,8 @@ import {
 } from "./test-kit.js";
 
 const router = createOrthogonalRouter();
-const route = (from: RouteEnd, to: RouteEnd) => router.route({ from, to });
+const route = (from: RouteEnd, to: RouteEnd) =>
+  router.route({ from, to, constraints: [] });
 const COMPLETE = { status: "complete", clearOf: "endpoint-nodes" };
 
 describe("orthogonal route shape", () => {
@@ -103,6 +104,7 @@ describe("orthogonal route shape", () => {
     const wide = createOrthogonalRouter({ clearance: 40 }).route({
       from: ends[0],
       to: ends[1],
+      constraints: [],
     });
     expect(verticesOf(wide.path)).toEqual([
       w(0, 0),
@@ -134,6 +136,7 @@ describe("orthogonal route shape", () => {
     const round = createOrthogonalRouter({ cornerRadius: 6 }).route({
       from: end(w(0, 0), RIGHT),
       to: end(w(200, 80), LEFT),
+      constraints: [],
     });
     if (round.path.kind !== "polyline") throw new Error("kind");
     expect(round.path.radii).toEqual([6, 6]);

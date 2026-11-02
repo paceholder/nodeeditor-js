@@ -79,8 +79,12 @@ function finite(r: ConnectionRoute): boolean {
 describe("orthogonal determinism", () => {
   it("equal inputs give identical results on a second run", () => {
     for (const router of ROUTERS) {
-      const first = pairs().map(([from, to]) => router.route({ from, to }));
-      const second = pairs().map(([from, to]) => router.route({ from, to }));
+      const first = pairs().map(([from, to]) =>
+        router.route({ from, to, constraints: [] }),
+      );
+      const second = pairs().map(([from, to]) =>
+        router.route({ from, to, constraints: [] }),
+      );
       expect(second).toEqual(first);
     }
   });
@@ -88,8 +92,8 @@ describe("orthogonal determinism", () => {
   it("Swapped ends: the same vertices in reverse order and the same outcome", () => {
     for (const router of ROUTERS) {
       for (const [from, to] of pairs()) {
-        const ab = router.route({ from, to });
-        const ba = router.route({ from: to, to: from });
+        const ab = router.route({ from, to, constraints: [] });
+        const ba = router.route({ from: to, to: from, constraints: [] });
         expect(verticesOf(ba.path)).toEqual(verticesOf(ab.path).reverse());
         expect(ba.outcome).toEqual(ab.outcome);
         if (ab.path.kind === "polyline" && ba.path.kind === "polyline")
@@ -103,7 +107,7 @@ describe("orthogonal determinism", () => {
   it("output is finite and orthogonal for degenerate inputs", () => {
     for (const router of ROUTERS) {
       for (const [from, to] of pairs()) {
-        const r = router.route({ from, to });
+        const r = router.route({ from, to, constraints: [] });
         expect(finite(r)).toBe(true);
         expect(isAxisAligned(r.path)).toBe(true);
         expect(r.path.p0).toEqual(from.position);
@@ -117,6 +121,7 @@ describe("orthogonal determinism", () => {
     const r = ROUTERS[0]?.route({
       from: end(here, w(0, 0), { x: 0, y: 0, w: 10, h: 10 }),
       to: end(here, w(Number.NaN, 1), undefined),
+      constraints: [],
     });
     expect(r?.path).toEqual({ kind: "polyline", p0: here, via: [], p1: here });
     expect(r?.outcome.status).toBe("complete");

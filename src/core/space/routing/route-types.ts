@@ -3,8 +3,10 @@
  *
  * A router turns the two ends of a connection into a path and an outcome. It is a pure,
  * synchronous function of its input; the input is a struct so later changes can add
- * fields (stored route constraints, an obstacle query) without reshaping the output.
+ * fields (an obstacle query) without reshaping the output. Stored route constraints
+ * arrive in `constraints`; a router that does not use them ignores them.
  */
+import type { RouteConstraint } from "../../data/model/records.js";
 import type { PathGeometry } from "../geometry/path-geometry.js";
 import type { Point, Rect } from "../geometry/spaces.js";
 
@@ -21,6 +23,8 @@ export interface RouteEnd {
 export interface RouteInput {
   readonly from: RouteEnd;
   readonly to: RouteEnd;
+  /** The connection's route constraints in walk order; empty when none. */
+  readonly constraints: readonly RouteConstraint[];
 }
 
 /**
@@ -36,6 +40,12 @@ export interface RouteOutcome {
 export interface ConnectionRoute {
   readonly path: PathGeometry;
   readonly outcome: RouteOutcome;
+  /**
+   * For each constraint, the index of the path segment (between consecutive vertices of
+   * `polylineVertices(path)`) that lies on it, or -1 when the router ignored it. Omitted
+   * by routers that ignore constraints.
+   */
+  readonly realized?: readonly number[];
 }
 
 export interface ConnectionRouter {

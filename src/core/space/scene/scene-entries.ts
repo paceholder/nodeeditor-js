@@ -62,6 +62,8 @@ export interface ConnectionEntry {
   readonly path: PathGeometry | undefined;
   /** How the route turned out; undefined when pathless. */
   readonly route: RouteOutcome | undefined;
+  /** Path segment realizing each route constraint, -1 when ignored. */
+  readonly realized?: readonly number[];
   /** Path bounds grown by stroke and arrowhead margins. */
   readonly paintedBounds: Rect<W> | undefined;
   /** The path split into pieces for the spatial index; empty without a path. */
@@ -123,13 +125,14 @@ export function buildConnectionEntry(
   if (!from || !to) {
     return pathless(record, seq);
   }
-  const { path, outcome } = router.route({
+  const { path, outcome, realized } = router.route({
     from: {
       position: from.position,
       normal: from.normal,
       body: fromNode?.bodyBounds,
     },
     to: { position: to.position, normal: to.normal, body: toNode?.bodyBounds },
+    constraints: record.route ?? [],
   });
   if (!isFinitePath(path)) {
     return pathless(record, seq);
@@ -141,6 +144,7 @@ export function buildConnectionEntry(
     seq,
     path,
     route: outcome,
+    ...(realized ? { realized } : {}),
     paintedBounds: inflateRect(pathBounds(path), margin),
     segments,
     segmentBounds: segments.map((s) => inflateRect(controlBounds(s), margin)),
