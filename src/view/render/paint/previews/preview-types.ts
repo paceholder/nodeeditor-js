@@ -5,12 +5,14 @@
  */
 import type {
   ChoiceAlternative,
+  ConnectionId,
   Endpoint,
   NodeId,
   Point,
   Rect,
   RejectionCode,
   ResizeFixed,
+  RouteConstraint,
   Size,
   Vec2,
 } from "../../../../core/index.js";
@@ -64,6 +66,12 @@ export type ToolPreview =
       /** The anchored centre for `size`; what the commit will store. */
       readonly position: Vec2;
       readonly fixed: ResizeFixed;
+    }
+  /** A connection re-routed through tentative constraints while a handle is dragged (ROU-03c). */
+  | {
+      readonly kind: "route";
+      readonly connection: ConnectionId;
+      readonly route: readonly RouteConstraint[];
     }
   | {
       readonly kind: "connect";
