@@ -7,7 +7,8 @@ the end of `add-connection-chooser`).
 ## Deviations and clarifications
 
 - **`splitPath(polyline, count)` treats `count` as an upper bound**: a polyline's pieces
-  follow its corners (D2), so the count is not a free parameter; `pieceCount` of a
+  follow its corners (D2; one piece when it is shorter than 800 units), so the count is
+  not a free parameter; `pieceCount` of a
   polyline is the length of its default split. Lines and cubics are split as before.
 - **Corner tangent length uses `|cross| / (1 + dot)`** for `tan(θ/2)`, so a 90-degree
   corner's tangent length is exactly its radius (`Math.tan(Math.PI / 4)` is not exactly
@@ -73,8 +74,9 @@ the installed Chrome (`channel: "chrome"`, script kept out of the repo):
   frame of the preview and after the drop;
 - no console errors. `examples/plain-js/main.ts` is 297 lines.
 - The run found a bug from group 4: the move preview drew the dragged node at twice the
-  offset (the shifted body box went through the unshifted inverse transform). Fixed in
-  its own commit with a browser test.
+  offset (the shifted body box went through the unshifted inverse transform). Fixed
+  with a browser test, and the fix was then folded into the view commit `ed10cce`
+  (the history before the fold is tagged `pre-fold-ghost-fix`).
 
 ## Performance (tasks 5.1 to 5.4)
 
@@ -100,10 +102,10 @@ Headless F-LARGE (`npm run bench`, production build), p95 in ms, quietest run:
 All targets the Bezier rows meet are met by the orthogonal rows; "culling at fit-all"
 was already missed at the baseline (the view serves that query from its fit-all cache).
 The orthogonal build costs about 2.4x the Bezier build, mostly index inserts: per-corner
-pieces (D2) give about 60k pieces on F-LARGE instead of 35k. An experiment that keeps
-a polyline shorter than 800 units as one piece brought the orthogonal build to 542 ms
-p95 and culling at zoom 0.5 to 1.36 ms, the same as Bezier; it is not applied because D2
-fixes one corner per piece (see Open questions). The incremental test confirms a
+pieces (D2 as first written) give about 60k pieces on F-LARGE instead of 35k. An
+experiment that keeps a polyline shorter than 800 units as one piece brought the
+orthogonal build to 542 ms p95 and culling at zoom 0.5 to 1.36 ms, the same as Bezier;
+the user approved it, and it is now applied (see "Follow-up on the open questions"). The incremental test confirms a
 one-node move writes only that node's and its incident connections' piece keys with
 orthogonal routes (PERF-04, IDX-02, ROU-08).
 
@@ -167,18 +169,68 @@ Bundle (gzip): core 31,650 -> 35,405 bytes (+3,755: the core entry exports every
 router), view 42,768 -> 44,930 (+2,162, of which the core it uses grows with the
 scene's registry and routers), advanced 27,164 -> 27,300 (+136).
 
-## Open questions
+## Open questions (resolved 2026-11-02)
 
-- **Short polylines as one index piece?** D2 gives every corner its own piece. On
-  F-LARGE that makes the orthogonal scene build 2.4x the Bezier one and culling at zoom
-  0.5 1.5x (1.89 ms p95 against a 2 ms target). Keeping a polyline shorter than 800
-  units (the cubic piece length) as a single piece, still with every corner whole in one
-  piece, measured 542 ms and 1.36 ms. Recommended for a follow-up if the margin matters;
-  it changes D2 and the "one corner per piece" PERF-04 test.
-- **Overview cost of orthogonal wires.** The overview frame p95 is at the 33.3 ms
-  labelled target on battery. Drawing a polyline whose box is small on screen (for
-  example under 12 CSS px) as a straight line, as cubics under 3 px already are, would
-  cut most of the extra segments; it is a LAY-04 simplification choice for the user.
+Both approved by the user and done in task group 9:
+
+- **Short polylines as one index piece: yes.** A polyline shorter than `PIECE_LENGTH`
+  (800 units, the existing constant) is one piece; longer ones are split per corner as
+  before, every corner whole inside one piece. D2 is revised with the reason. F-LARGE
+  with every wire orthogonal now indexes 29,352 pieces (59,798 before; Bezier 34,650).
+  Picking stays exact (the coarse box only narrows candidates); the PERF-04 tests now
+  check "short is one piece" and "long keeps each corner whole in one piece", and the
+  scene test checks both a short route (one piece, exact pick) and a long one (tight
+  pieces).
+- **Small orthogonal wires as a line in the overview: yes.** A polyline whose screen
+  box is under 12 CSS px (`POLYLINE_LINE_BELOW_PX`, next to the cubic's
+  `LINE_BELOW_PX = 3`) is stroked as one segment from start to end (D7, LAY-04). Normal
+  zoom is unchanged.
+
+## Follow-up on the open questions (task group 9)
+
+Measured 2026-11-02 on AC power (`pmset -g batt`: "AC Power", charging). Headless
+Chrome frames at 60 Hz (frame 16.7 ms), as in the earlier runs, so the latency target
+still reads as "no dropped frame"; a system media-analysis process kept the load
+average at about 4 to 10 during the runs (an unrelated compile at the start pushed it
+above 30, and that first headless run is discarded).
+
+Headless F-LARGE (`npm run bench`), p95 in ms, two quiet runs:
+
+| Row | Bezier now | Orthogonal before (battery) | Orthogonal now | Target |
+| --- | --- | --- | --- | --- |
+| scene + index build | 295 / 312 | 750 | 534 / 524 | <= 1000 |
+| culling 1440x900, zoom 1 | 0.51 / 0.55 | 0.67 | 0.42 / 0.42 | <= 2 |
+| culling 1440x900, zoom 0.5 | 1.27 / 1.47 | 1.89 | 1.18 / 1.08 | <= 2 |
+| pick, zoom 1 | 0.16 / 0.17 | 0.11 | 0.08 / 0.08 | <= 2 |
+| pick, fit-all zoom | 0.28 / 0.27 | 0.22 | 0.17 / 0.16 | <= 2 |
+| culling at fit-all (whole world) | 20.5 / 21.5 (missed) | 32.9 (missed) | 19.9 / 18.9 (missed) | <= 2 |
+| one-node patch + scene/index update | 0.012 / 0.012 | 0.100 | 0.041 / 0.040 | <= 4 |
+
+The orthogonal build is now about 1.7x the Bezier one (was 2.4x), and orthogonal
+culling at zoom 0.5 is at or below Bezier, with margin to the 2 ms target.
+
+Browser, `BENCH_QUICK=1`, Bezier then orthogonal back to back, F-LARGE p95 frame /
+latency (dpr 1, dpr 2):
+
+| Workload | Bezier | Orthogonal before (battery) | Orthogonal now |
+| --- | --- | --- | --- |
+| pan | 16.7 / 33.3, 16.7 / 33.3 | 16.7 / 33.2, 16.7 / 33.3 | 16.8 / 33.2, 16.7 / 33.2 |
+| zoom | 16.7 / 32.8, 16.8 / 33.2 | 16.7 / 32.5, 16.7 / 32.6 | 16.7 / 33.2, 16.7 / 33.3 |
+| drag | 16.7 / 31.9, 16.7 / 32.7 | 16.7 / 31.1, 16.8 / 30.9 | 16.7 / 32.8, 16.8 / 32.7 |
+| overview-pan (PERF-02e) | 33.3 / 38.4, 33.3 / 37.0 | 33.4 / 47.5, 33.4 / 46.5 | 33.3 / 37.4, 33.3 / 32.4 |
+| overview-zoom (PERF-02e) | 33.3 / 33.1, 33.3 / 32.0 | 33.4 / 45.6, 33.4 / 43.8 | 33.2 / 31.7, 16.8 / 33.1 |
+
+The orthogonal overview latency dropped from 44 to 48 ms to 32 to 37 ms, the same as
+Bezier in this session; the overview frame p95 sits at the 33.3 ms labelled target for
+both route kinds. F-TYPICAL (Bezier): frame 16.7 to 16.8, latency 32.2 to 33.4. The
+overview batching check passes in both route modes. Step 4 below (a baseline-quality
+re-measure at 120 Hz like the 2026-10-30 baseline) is still open.
+
+Gates after group 9: `npm run lint` 469 files, no findings; `npm run typecheck` clean;
+`npm test` 124 files, 741 tests; `npm run test:browser` 38 files, 187 tests;
+`npm run test:bench` 32 tests; bench browser project 10 tests in both route modes;
+`npm run build` ok; `npm run bench:size` core 34.6 KiB, view 43.9 KiB, advanced
+26.7 KiB, react 43.9 KiB (gzip), all budgets met.
 
 ## Documentation (group 8)
 
@@ -200,10 +252,11 @@ scene's registry and routers), advanced 27,164 -> 27,300 (+136).
 Applied: all tasks ticked, gates green, not archived, nothing pushed. Before archiving:
 
 1. Done 2026-11-02: the user tried the demo; "orthogonal wires look good".
-2. The user answers the two open questions above (recommended: do both, as a small
-   follow-up inside this change, then re-run the perf gates).
-3. Fold the ghost-preview fix `588caa0` into the view commit `07c86db` (fixes are folded
-   into their original commit; tag the current head first).
+2. Done 2026-11-02: the user approved both open questions; done in task group 9 and
+   the perf gates re-run (see "Follow-up on the open questions").
+3. Done: the ghost-preview fix is folded into the view commit `ed10cce`; the history
+   before the fold is tagged `pre-fold-ghost-fix`.
 4. Re-measure the browser perf on mains power at 120 Hz, as the baseline was; the
-   numbers above were taken on battery at 60 Hz.
+   numbers above were taken at 60 Hz (the group 9 runs on AC power, the earlier ones on
+   battery).
 5. Archive with the spec sync (`/opsx:archive add-orthogonal-routing`).
