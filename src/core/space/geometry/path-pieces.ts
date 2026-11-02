@@ -6,9 +6,9 @@
  * around them contains the piece. The piece count grows with the control-polygon length,
  * so short wires stay one entry and long ones are bounded near the pointer.
  *
- * A polyline is split at the midpoints of its interior segments, so each piece holds one
- * corner with its arc; a segment longer than `PIECE_LENGTH` is also split at equal steps,
- * moved outside any arc. Pieces carry the fitted radii of their corners, so distances on
+ * A polyline shorter than `PIECE_LENGTH` is one piece. A longer one is split at the
+ * midpoints of its interior segments, so each piece holds one corner with its arc; a
+ * segment longer than `PIECE_LENGTH` is also split at equal steps, moved outside any arc. Pieces carry the fitted radii of their corners, so distances on
  * a piece are exact, and when there are more than `MAX_PIECES` consecutive pieces are
  * merged into evenly sized groups.
  */
@@ -53,7 +53,8 @@ export function controlPolygonLength(path: PathGeometry): number {
 
 /**
  * Pieces to index: one for a line, `ceil(length / PIECE_LENGTH)` clamped to
- * [1, MAX_PIECES] for a cubic, one per corner (plus long-segment steps) for a polyline.
+ * [1, MAX_PIECES] for a cubic; for a polyline one when it is shorter than PIECE_LENGTH,
+ * else one per corner (plus long-segment steps).
  */
 export function pieceCount(path: PathGeometry): number {
   if (path.kind === "line") return 1;
@@ -143,6 +144,8 @@ function polylineCuts(path: Polyline, v: readonly Point<W>[]): Cut[] {
 
 /** Polyline pieces between kept cuts, at most `max` of them (evenly merged groups). */
 function splitPolyline(path: Polyline, max: number): PathGeometry[] {
+  // A short wire's box is small anyway; one entry halves the index inserts (D2).
+  if (controlPolygonLength(path) < PIECE_LENGTH) return [path];
   const v = polylineVertices(path);
   const all = polylineCuts(path, v);
   const cap = Math.max(1, Math.floor(max));

@@ -107,16 +107,22 @@ describe("PERF-04 path pieces for the spatial index", () => {
 
 type Poly = Extract<PathGeometry, { kind: "polyline" }>;
 
-const POLYLINES: Poly[] = [
-  // An S with rounded corners, a U with corners rounded to fit, and a sharp staircase.
-  polylinePath([w(0, 0), w(400, 0), w(400, 300), w(900, 300)], 12),
-  polylinePath([w(0, 0), w(120, 0), w(120, 40), w(100, 40)], 30),
+const staircase = (scale: number, radius: number) =>
   polylinePath(
     Array.from({ length: 8 }, (_, i) =>
-      w(Math.ceil(i / 2) * 60, Math.floor(i / 2) * 40),
+      w(Math.ceil(i / 2) * 60 * scale, Math.floor(i / 2) * 40 * scale),
     ),
-    6,
-  ),
+    radius,
+  );
+
+const POLYLINES: Poly[] = [
+  // An S with rounded corners, a U with corners rounded to fit, and a sharp staircase,
+  // short (one piece) and long (split per corner).
+  polylinePath([w(0, 0), w(400, 0), w(400, 300), w(900, 300)], 12),
+  polylinePath([w(0, 0), w(120, 0), w(120, 40), w(100, 40)], 30),
+  polylinePath([w(0, 0), w(600, 0), w(600, 200), w(500, 200)], 30),
+  staircase(1, 6),
+  staircase(5, 0),
 ];
 
 function joinsExactly(path: PathGeometry, pieces: PathGeometry[]) {
@@ -127,8 +133,30 @@ function joinsExactly(path: PathGeometry, pieces: PathGeometry[]) {
 }
 
 describe("PERF-04 polyline pieces", () => {
-  it("PERF-04 each corner and its arc lies in exactly one piece", () => {
-    for (const path of POLYLINES) {
+  it("PERF-04 a polyline shorter than PIECE_LENGTH is one piece", () => {
+    const short = POLYLINES.filter(
+      (p) => controlPolygonLength(p) < PIECE_LENGTH,
+    );
+    expect(short.length).toBe(2);
+    for (const path of short) {
+      expect(splitPath(path)).toEqual([path]);
+      expect(pieceCount(path)).toBe(1);
+    }
+    // A whole polyline under the length, even with many corners.
+    const zigzag = polylinePath(
+      Array.from({ length: 12 }, (_, i) => w(i * 30, (i % 2) * 30)),
+      5,
+    );
+    expect(controlPolygonLength(zigzag)).toBeLessThan(PIECE_LENGTH);
+    expect(splitPath(zigzag)).toEqual([zigzag]);
+  });
+
+  it("PERF-04 a longer polyline keeps each corner and its arc in exactly one piece", () => {
+    const long = POLYLINES.filter(
+      (p) => controlPolygonLength(p) >= PIECE_LENGTH,
+    );
+    expect(long.length).toBe(3);
+    for (const path of long) {
       const pieces = splitPath(path) as Poly[];
       expect(pieces.length).toBe(Math.max(1, path.via.length));
       pieces.forEach((piece, i) => {

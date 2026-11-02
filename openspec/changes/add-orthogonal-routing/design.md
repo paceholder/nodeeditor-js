@@ -114,19 +114,28 @@ Alternatives considered:
 
 ### D2. Index pieces of a polyline keep each corner whole
 
-`splitPath` splits a polyline at the midpoints of its interior segments, so each piece
-holds one corner (with its arc) and the half segments on either side; a single-segment
-polyline is one piece. A segment longer than `PIECE_LENGTH` is additionally split at
-equal steps, with split points moved outside any arc. When the count would exceed
-`MAX_PIECES`, consecutive pieces are merged into evenly sized groups, by index. Pieces
-are polylines carrying the fitted radii of their corners, so `pathDistance` on a piece is
-exact. `controlBounds` of a polyline is its vertex box. Joint points are shared exactly,
-and the first and last piece keep the path's endpoints (the same invariants the cubic
-split has today).
+A polyline whose vertex length (the control-polygon length) is under `PIECE_LENGTH`
+(800 units, the cubic piece length) is one piece. A longer one is split by `splitPath`
+at the midpoints of its interior segments, so each piece holds one corner (with its arc)
+and the half segments on either side; a single-segment polyline is one piece. A segment
+longer than `PIECE_LENGTH` is additionally split at equal steps, with split points moved
+outside any arc. When the count would exceed `MAX_PIECES`, consecutive pieces are merged
+into evenly sized groups, by index. Pieces are polylines carrying the fitted radii of
+their corners, so `pathDistance` on a piece is exact. `controlBounds` of a polyline is
+its vertex box. Joint points are shared exactly, and the first and last piece keep the
+path's endpoints (the same invariants the cubic split has today). In every case each
+corner lies whole inside one piece.
 
 Why: an orthogonal route has at most about seven segments, so one piece per corner keeps
-the index boxes tight (an L-shaped wire's overall box is mostly empty) while the piece
-count stays well under the cap for F-LARGE.
+a long wire's index boxes tight (an L-shaped wire's overall box is mostly empty) while
+the piece count stays well under the cap. Short wires are one piece because splitting
+them costs more than their loose box: on F-LARGE one piece per corner gave about 60k
+index pieces against about 35k for Bezier, and the scene build was 2.4x the Bezier one
+(750 ms p95) with culling at zoom 0.5 at 1.89 ms p95 against the 2 ms target. Keeping
+polylines under 800 units whole measured 542 ms and 1.36 ms, the same as Bezier. The
+coarse box only narrows the candidates: picking still measures `pathDistance` on the
+piece, so it stays exact. (Decided by the user after the first measurements; the
+per-corner rule for all polylines was the earlier version of this decision.)
 
 ### D3. Routers and a route registry keyed by connection kind (core)
 
@@ -346,9 +355,9 @@ Inside `core/space`, `routing/` imports `geometry/`, and `scene/` imports both;
   scoring can be tuned without changing the representation.
 - [Hosts that switched on `PathGeometry["kind"]` or used `routeMode`/`buildPath` break]
   → Pre-release; TypeScript's exhaustiveness check points at every site.
-- [Long far-apart wires in F-LARGE now have up to five corners] → Pieces stay at most 12
-  and per-corner pieces are tighter than cubic control boxes; the orthogonal bench rows
-  prove the budgets.
+- [Long far-apart wires in F-LARGE now have up to five corners] → Pieces stay at most 12,
+  wires under 800 units are one piece, and per-corner pieces of longer wires are tighter
+  than cubic control boxes; the orthogonal bench rows prove the budgets.
 
 ## Migration Plan
 
