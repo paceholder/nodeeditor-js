@@ -26,6 +26,7 @@ export type RejectionCode =
   | "not-creatable"
   | "factory-failed"
   | "unsupported-command"
+  | "nothing-to-do"
   // Clipboard fragments
   | "empty-fragment"
   | "not-a-fragment"
