@@ -7,7 +7,8 @@ import type { RouteEnd } from "./route-types.js";
 import { box, end, LEFT, RIGHT, verticesOf, w } from "./test-kit.js";
 
 const router = createOrthogonalRouter();
-const route = (from: RouteEnd, to: RouteEnd) => router.route({ from, to });
+const route = (from: RouteEnd, to: RouteEnd) =>
+  router.route({ from, to, constraints: [] });
 const COMPLETE = { status: "complete", clearOf: "endpoint-nodes" };
 
 /** True when no segment except the exempt end ones crosses either body. */
@@ -170,7 +171,7 @@ describe("ROU-01b orthogonal route clear of its endpoint nodes", () => {
       const from = randomEnd();
       const to = randomEnd();
       for (const r of routers) {
-        const { outcome } = r.route({ from, to });
+        const { outcome } = r.route({ from, to, constraints: [] });
         expect(["nothing", "endpoint-nodes"]).toContain(outcome.clearOf);
         if (outcome.status !== "complete")
           expect(outcome.clearOf).toBe("nothing");

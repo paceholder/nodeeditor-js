@@ -5,14 +5,16 @@
  * and incident connections re-routed between the changed anchors and the anchors of
  * nodes that stay where they are, each with the router of its kind (ROU-01e).
  */
-import type {
-  ConnectionEntry,
-  GeometryScene,
-  GraphReader,
-  NodeEntry,
-  NodeId,
-  RouteEnd,
-  RouteRegistry,
+import {
+  type ConnectionEntry,
+  type GeometryScene,
+  type GraphReader,
+  type NodeEntry,
+  type NodeId,
+  type RouteConstraint,
+  type RouteEnd,
+  type RouteRegistry,
+  translateConstraints,
 } from "../../../../core/index.js";
 
 export interface GhostSource {
@@ -34,6 +36,27 @@ export function previewedEntityIds(
   return ids;
 }
 
+/**
+ * The pins a ghost routes with: a connection whose two ends both move shifts them by the
+ * mean node offset, as the move command will (ROU-03e); otherwise they stay.
+ */
+function ghostPins(
+  e: ConnectionEntry,
+  changed: ReadonlyMap<string, NodeEntry>,
+  source: GhostSource,
+): readonly RouteConstraint[] {
+  const route = e.record.route ?? [];
+  const a = changed.get(e.record.from.node);
+  const b = changed.get(e.record.to.node);
+  const was = (n: string) => source.scene.node(n as NodeId)?.record.position;
+  const wasA = was(e.record.from.node);
+  const wasB = was(e.record.to.node);
+  if (route.length === 0 || !a || !b || !wasA || !wasB) return route;
+  const dx = (a.record.position.x - wasA.x + b.record.position.x - wasB.x) / 2;
+  const dy = (a.record.position.y - wasA.y + b.record.position.y - wasB.y) / 2;
+  return translateConstraints(route, dx, dy);
+}
+
 function ghostConnection(
   e: ConnectionEntry,
   changed: ReadonlyMap<string, NodeEntry>,
@@ -49,10 +72,17 @@ function ghostConnection(
   const from = end(e.record.from.node, e.record.from.port);
   const to = end(e.record.to.node, e.record.to.port);
   if (!from || !to) return undefined;
-  const { path, outcome } = source.routes
+  const { path, outcome, realized } = source.routes
     .get(e.record.kind)
-    .route({ from, to });
-  return { ...e, path, route: outcome, paintedBounds: undefined };
+    .route({ from, to, constraints: ghostPins(e, changed, source) });
+  const { realized: _stale, ...rest } = e;
+  return {
+    ...rest,
+    path,
+    route: outcome,
+    ...(realized ? { realized } : {}),
+    paintedBounds: undefined,
+  };
 }
 
 /** Incident connections of the changed nodes, each once, routed to the new anchors. */

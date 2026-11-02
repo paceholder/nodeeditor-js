@@ -7,6 +7,7 @@ import { end, LEFT, RIGHT, w } from "./test-kit.js";
 const INPUT = {
   from: end(w(0, 0), RIGHT),
   to: end(w(200, 80), LEFT),
+  constraints: [],
 };
 
 describe("ROU-01, ROU-06 route registry", () => {
