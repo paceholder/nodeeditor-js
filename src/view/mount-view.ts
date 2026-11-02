@@ -42,6 +42,7 @@ import {
   type ViewState,
 } from "./render/paint/scene-layer.js";
 import { createPainterRegistries } from "./render/registries/painters.js";
+import { createRouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 import { DEFAULT_THEME, mergeTheme } from "./render/theme/tokens.js";
 import { attachEditing, type Editing } from "./view-editing.js";
 import type { ViewHandle, ViewOptions } from "./view-types.js";
@@ -66,6 +67,7 @@ export function mountView(
   const painters = options.painters ?? createPainterRegistries();
   const geometry = options.geometry ?? createGeometryRegistry();
   const routes = options.routes ?? createRouteRegistry();
+  const routeEditors = options.routeEditors ?? createRouteEditorRegistry();
   const assets = createAssetService(options.assets);
   const stats = createStatsRecorder();
   let theme = mergeTheme(DEFAULT_THEME, options.theme ?? {});
@@ -231,6 +233,7 @@ export function mountView(
       markDirty("scene");
     },
     input: options.input ?? {},
+    routeEditors,
     hidePortsBelow: () => theme.lodHidePortsBelow,
   });
 
@@ -239,6 +242,7 @@ export function mountView(
     painters.portGlyphs.onChange(() => markDirty("scene")),
     painters.connections.onChange(() => markDirty("scene")),
     painters.background.onChange(() => markDirty("background")),
+    routeEditors.onChange(() => markDirty("scene")),
     // A ready or failed asset repaints the scene (AST-02).
     assets.onChange(() => markDirty("scene")),
   ];
@@ -247,6 +251,7 @@ export function mountView(
     painters,
     geometry,
     routes,
+    routeEditors,
     assets: {
       status: assets.status,
       diagnostics: assets.diagnostics,

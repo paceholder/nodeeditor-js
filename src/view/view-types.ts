@@ -36,6 +36,7 @@ import type { GestureBitmapOptions } from "./render/paint/gesture-bitmap.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import type { ViewState } from "./render/paint/scene-layer.js";
 import type { PainterRegistries } from "./render/registries/painters.js";
+import type { RouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 import type { ThemeInput, ThemeTokens } from "./render/theme/tokens.js";
 
 /** Pointer, wheel and keyboard input of a mounted view (INT-05, INT-06). */
@@ -73,6 +74,12 @@ export interface ViewOptions {
    * created when omitted. Its default router also draws the connection-drag preview.
    */
   readonly routes?: RouteRegistry;
+  /**
+   * Route editor per connection kind (ROU-03b); an empty registry is created when
+   * omitted, so connections can be selected but their routes cannot be dragged.
+   * Register `createOrthogonalSegmentEditor()` next to the orthogonal router.
+   */
+  readonly routeEditors?: RouteEditorRegistry;
   /** Paint layers bottom to top (also the scene's order). Default connections, nodes, ports. */
   readonly zOrder?: readonly SceneLayer[];
   /** Painter registries; a fresh set with fallbacks is created when omitted. */
@@ -124,6 +131,8 @@ export interface ViewHandle {
   readonly geometry: GeometryRegistry;
   /** Route registrations, shared with the options when given. Changes repaint (ROU-12). */
   readonly routes: RouteRegistry;
+  /** Route editors, shared with the options when given. Changes repaint (ROU-03b). */
+  readonly routeEditors: RouteEditorRegistry;
   /** Ordered painters for previews and tool drawing, with explicit invalidation. */
   readonly interaction: Pick<InteractionLayer, "add" | "invalidate">;
   /** Host DOM aligned to the viewport (OVL-01, REN-03). */

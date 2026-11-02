@@ -23,6 +23,7 @@ import type {
   ConnectionEvaluation,
   ToolPreview,
 } from "../../render/paint/previews/preview-types.js";
+import type { RouteEditorRegistry } from "../../render/registries/route-editor-registry.js";
 import type {
   ReadonlySelection,
   SelectionChange,
@@ -113,6 +114,9 @@ export type CursorKind =
   | "move"
   | "crosshair"
   | "not-allowed"
+  /** Over or dragging a route handle (ROU-03c). */
+  | "ew-resize"
+  | "ns-resize"
   /** Over or dragging the resize handle (always the screen bottom-right corner). */
   | "nwse-resize";
 
@@ -155,6 +159,8 @@ export interface ToolContext {
   readonly options: ToolOptions;
   /** A host connection chooser is installed (INT-12, INT-12b). */
   readonly chooserInstalled: boolean;
+  /** Route editor per connection kind (ROU-03b). */
+  readonly routeEditors: Pick<RouteEditorRegistry, "get">;
 }
 
 export interface PressInfo {

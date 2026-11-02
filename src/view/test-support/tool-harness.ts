@@ -13,6 +13,7 @@ import {
   type GraphModelOptions,
   nodeId,
   type Point,
+  type RouteRegistry,
   type Vec2,
   type Viewport,
   viewportToWorld,
@@ -51,6 +52,7 @@ import {
   type ToolPreview,
   type ViewportOp,
 } from "../interact/tools/tool-types.js";
+import type { RouteEditorRegistry } from "../render/registries/route-editor-registry.js";
 
 export interface HarnessOptions {
   readonly nodes?: readonly NodeSpec[];
@@ -59,6 +61,10 @@ export interface HarnessOptions {
   readonly modelOptions?: GraphModelOptions;
   readonly viewport?: Viewport;
   readonly tools?: readonly ToolSlot[];
+  /** Route registry of the scene (ROU-01); default Bezier for every kind. */
+  readonly routes?: RouteRegistry;
+  /** Route editors the tool context offers (ROU-03b). */
+  readonly routeEditors?: RouteEditorRegistry;
   readonly options?: Partial<ToolOptions>;
   /** Port-hiding zoom (the theme's `lodHidePortsBelow`); omitted keeps ports pickable. */
   readonly hidePortsBelow?: number;
@@ -123,7 +129,10 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     });
     if (r.status !== "accepted") throw new Error("harness fixture rejected");
   }
-  const scene = createGeometryScene(model);
+  const scene = createGeometryScene(
+    model,
+    opts.routes ? { routes: opts.routes } : {},
+  );
   const selection = createSelectionModel();
   const stopBinding = selection.bindToModel(model);
   let viewport: Viewport = opts.viewport ?? { zoom: 1, panX: 0, panY: 0 };
@@ -138,6 +147,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     plan: model.plan,
     ...(opts.options ? { options: opts.options } : {}),
     chooserInstalled: () => opts.chooser === true,
+    ...(opts.routeEditors ? { routeEditors: opts.routeEditors } : {}),
     ...(opts.hidePortsBelow !== undefined
       ? { hidePortsBelow: () => opts.hidePortsBelow ?? 0 }
       : {}),

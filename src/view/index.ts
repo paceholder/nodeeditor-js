@@ -158,6 +158,13 @@ export type {
   PainterSlot,
 } from "./render/registries/painters.js";
 export { createPainterRegistries } from "./render/registries/painters.js";
+export type {
+  RouteCursor,
+  RouteEditor,
+  RouteEditorRegistry,
+  RouteHandle,
+} from "./render/registries/route-editor-registry.js";
+export { createRouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 export type { ResolvedStyle, StyleKey } from "./render/theme/resolve-style.js";
 export type {
   PortShape,

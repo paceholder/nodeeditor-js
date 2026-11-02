@@ -63,6 +63,7 @@ import type { FrameClock } from "./platform/frame-scheduler.js";
 import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
+import type { RouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 import {
   attachViewConnectionChoice,
   type ViewConnectionChoice,
@@ -90,6 +91,7 @@ export interface EditingDeps {
   readonly setHovered: (id: string | undefined) => void;
   /** `false` keeps selection and commands but attaches no DOM listeners. */
   readonly input: false | InputOptions;
+  readonly routeEditors: Pick<RouteEditorRegistry, "get">;
   /** Current port-hiding zoom of the theme (LAY-04). */
   readonly hidePortsBelow: () => number;
 }
@@ -196,6 +198,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       options: () => toolOptions,
       hidePortsBelow: deps.hidePortsBelow,
       chooserInstalled: () => choices?.installed() === true,
+      routeEditors: deps.routeEditors,
     });
     handles = editable
       ? createResizeHandles({
