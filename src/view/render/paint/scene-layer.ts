@@ -20,6 +20,7 @@ import {
 import type { AssetService } from "../assets/asset-service.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
 import type { PainterRegistries } from "../registries/painters.js";
+import type { RouteEditorRegistry } from "../registries/route-editor-registry.js";
 import { resolveStyle } from "../theme/resolve-style.js";
 import {
   diagnosticsOf,
@@ -36,6 +37,7 @@ import {
   paintOverviewConnections,
   paintOverviewNodes,
 } from "./overview-painter.js";
+import { drawRouteGrips } from "./route-grips.js";
 
 /** Outcome reported for a path built before routes carried one. */
 const UNCHECKED_ROUTE = { status: "complete", clearOf: "nothing" } as const;
@@ -64,6 +66,8 @@ export interface SceneLayerDeps {
   readonly zOrder: readonly SceneLayer[];
   readonly state: ViewState;
   readonly assets: AssetService;
+  /** Selected connections of a kind with an editor get grips; omitted: none. */
+  readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
 }
 
 export interface ScenePaintStats {
@@ -101,6 +105,10 @@ function paintConnections(
       selected,
     });
     ctx.restore();
+    if (selected) {
+      const editor = deps.routeEditors?.get(e.record.kind);
+      if (editor) drawRouteGrips(ctx, e, editor, frame.theme, unit);
+    }
   }
 }
 

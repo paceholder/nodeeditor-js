@@ -7,6 +7,7 @@
  */
 import {
   type ConnectionEntry,
+  type ConnectionId,
   type GeometryScene,
   type GraphReader,
   type NodeEntry,
@@ -61,6 +62,7 @@ function ghostConnection(
   e: ConnectionEntry,
   changed: ReadonlyMap<string, NodeEntry>,
   source: GhostSource,
+  pins: readonly RouteConstraint[] = ghostPins(e, changed, source),
 ): ConnectionEntry | undefined {
   const end = (node: string, port: string): RouteEnd | undefined => {
     const entry = changed.get(node) ?? source.scene.node(node as NodeId);
@@ -74,7 +76,7 @@ function ghostConnection(
   if (!from || !to) return undefined;
   const { path, outcome, realized } = source.routes
     .get(e.record.kind)
-    .route({ from, to, constraints: ghostPins(e, changed, source) });
+    .route({ from, to, constraints: pins });
   const { realized: _stale, ...rest } = e;
   return {
     ...rest,
@@ -102,4 +104,14 @@ export function ghostConnections(
     }
   }
   return out;
+}
+
+/** A connection re-routed through tentative constraints, ends unchanged. */
+export function ghostWithRoute(
+  id: ConnectionId,
+  route: readonly RouteConstraint[],
+  source: GhostSource,
+): ConnectionEntry | undefined {
+  const entry = source.scene.connection(id);
+  return entry && ghostConnection(entry, new Map(), source, route);
 }

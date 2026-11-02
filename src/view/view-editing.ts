@@ -48,6 +48,7 @@ import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
 import { createResizeHandles } from "./interact/tools/resize-handles.js";
+import { routeCursorAt } from "./interact/tools/route-edit-tool.js";
 import {
   resolveToolOptions,
   type ToolOptions,
@@ -242,7 +243,8 @@ export function attachEditing(deps: EditingDeps): Editing {
         return true;
       },
       onHover: (hit) => deps.setHovered(hoverId(hit)),
-      ...(live ? { hoverCursor: live.cursorAt } : {}),
+      hoverCursor: (world) =>
+        live?.cursorAt(world) ?? routeCursorAt(world, context()),
       autoPan: { clock: deps.clock, size: deps.size },
     });
     if (clipboard) {
