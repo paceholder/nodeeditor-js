@@ -298,6 +298,7 @@ an unavailable command returns the reason (for example a capability denial).
 | `selection.selectAll` | Select every node and connection. |
 | `selection.clear` | Clear the selection. |
 | `nodes.nudge` | Move the selected, movable nodes by `{ dx, dy }` world units: one move command. |
+| `route.reset` | Remove all pinned route segments of the selected connections: one command. Unavailable when none of them has any (see [guide-view.md](guide-view.md#route-editors-dragging-a-wires-middle-segments)). |
 | `nodes.rotate` | Turn the selected nodes a quarter turn, `{ turns: 1 }` clockwise or `{ turns: -1 }`, each about its own centre: one command. Nodes that may not rotate are left out; with none left it is unavailable with the capability reason. |
 | `nodes.mirror` | Mirror the selected nodes in screen axes, `{ axis: "horizontal" }` (left and right swap) or `{ axis: "vertical" }` (top and bottom), each about its own centre: one command. Locked nodes are left out as for rotate. |
 | `view.fitAll` | Fit the whole graph in view. |
@@ -515,7 +516,8 @@ mountView(container, {
 ```
 
 `toolOptions` also holds `dragThresholdPx`, `pickTolerancePx`, `wheelSensitivity`,
-`autoPan` (section 5a; `false` turns it off) and `longPressMs` (section 7a; `false` turns
+`autoPan` (section 5a; `false` turns it off), `doubleClickMs` (the gap that makes two
+presses on a route handle a double-click, default 500) and `longPressMs` (section 7a; `false` turns
 the touch long-press off).
 Snapping is off unless `gridStep` is set. Options can change while the view runs:
 `view.setToolOptions({ gridStep: undefined })` turns snapping off from the next input
