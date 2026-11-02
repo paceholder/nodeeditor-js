@@ -256,7 +256,27 @@ Applied: all tasks ticked, gates green, not archived, nothing pushed. Before arc
    the perf gates re-run (see "Follow-up on the open questions").
 3. Done: the ghost-preview fix is folded into the view commit `ed10cce`; the history
    before the fold is tagged `pre-fold-ghost-fix`.
-4. Re-measure the browser perf on mains power at 120 Hz, as the baseline was; the
-   numbers above were taken at 60 Hz (the group 9 runs on AC power, the earlier ones on
-   battery).
+4. Done 2026-11-02, reduced: the user found a full re-measure (4 runs, about 52 min)
+   excessive, so one quick run replaced it (see "120 Hz quick check").
 5. Archive with the spec sync (`/opsx:archive add-orthogonal-routing`).
+
+## 120 Hz quick check (2026-11-02)
+
+One quick headed run (`BENCH_QUICK=1 BENCH_HEADED=1 BENCH_DPR=2 BENCH_ROUTES=orthogonal`,
+5 s and 1 repeat per workload, about 1.5 min) on mains power at 120 Hz. Quick numbers are
+noisier than a baseline run; they are a sanity check, not a new baseline. p95, against the
+Bezier 2026-10-30 baseline at DPR 2:
+
+| Workload (F-LARGE) | Frame interval | Latency | Pick | Baseline latency (Bezier) |
+| --- | --- | --- | --- | --- |
+| pan | 9.2 | 17.0 | 0.2 | 21.2 |
+| zoom | 9.1 | 16.2 | 0.2 | 16.8 |
+| drag | 9.3 | 16.1 | 0.5 | 16.5 |
+| overview-pan | 25.0 | 28.2 | 0.2 | 25.4 |
+| overview-zoom | 25.0 | 26.1 | 0.3 | 31.8 |
+
+F-TYPICAL pan, zoom and drag: frame interval p95 at most 9.1 ms, latency p95 at most 16.1
+ms. Every target is met; orthogonal routes are level with the Bezier baseline.
+
+The full browser bench (30 s, 3 repeats, two pixel ratios: about 13 min per ratio and
+route mode) is to be made lighter in a separate small change, as the user asked.
