@@ -4,8 +4,9 @@
  * Below the theme's `lodOverviewBelow` the scene layer calls no node or connection
  * painters. Nodes are drawn as their hit bounds, added to one path per resolved style
  * (fill, stroke, line width) and filled and stroked once. Connections are added to one
- * path per resolved stroke style and stroked once, and a cubic only a few pixels long on
- * screen becomes a line. Paths still end at the port anchors.
+ * path per resolved stroke style and stroked once; a cubic only a few pixels long on
+ * screen, or a polyline whose box is small on screen, becomes a line. Paths still end at
+ * the port anchors.
  *
  * Selection outlines and diagnostic badges are drawn per entity after each layer's
  * batches, so they always sit on top. Canvas state is set once per batch, with one
@@ -31,6 +32,8 @@ import {
 
 /** A cubic whose control polygon is shorter than this on screen (CSS px) is a line. */
 const LINE_BELOW_PX = 3;
+/** A polyline whose vertex box is smaller than this on screen (CSS px) is a line. */
+const POLYLINE_LINE_BELOW_PX = 12;
 
 export interface OverviewState {
   isSelected(id: string): boolean;
@@ -101,7 +104,7 @@ function traceSimplified(
     // Corners without arcs; a polyline whose vertex box is under the threshold is a
     // line between its endpoints, which still meet the ports.
     ctx.moveTo(path.p0.x, path.p0.y);
-    if (polylineSpan(path) * zoom >= LINE_BELOW_PX)
+    if (polylineSpan(path) * zoom >= POLYLINE_LINE_BELOW_PX)
       for (const v of path.via) ctx.lineTo(v.x, v.y);
     ctx.lineTo(path.p1.x, path.p1.y);
     return;

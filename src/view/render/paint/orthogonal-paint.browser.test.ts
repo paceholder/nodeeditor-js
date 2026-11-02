@@ -1,5 +1,5 @@
 /// <reference types="@vitest/browser-playwright" />
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createOrthogonalRouter,
   createRouteRegistry,
@@ -134,5 +134,57 @@ describe("orthogonal connections in the overview", () => {
     expect(alpha(438, 250)).toBeGreaterThan(0);
     expect(alpha(300, 200)).toBeGreaterThan(0);
     expect(alpha(300, 150)).toBeGreaterThan(0);
+  });
+
+  it("a polyline under 12 CSS px on screen is one straight segment; a larger one keeps its corners", async () => {
+    const big = { w: 200, h: 100 };
+    // "s" -> "t" spans 60 x 60 world units, 6 CSS px at zoom 0.1.
+    const model = buildModel(
+      [
+        twoPortNode("s", 0, 0),
+        twoPortNode("t", 100, 60),
+        twoPortNode("a", -1500, -500, big),
+        twoPortNode("b", 1500, 500, big),
+      ],
+      [
+        ["small", "s", "sR", "t", "tL"],
+        ["large", "a", "aR", "b", "bL"],
+      ],
+    );
+    const view = mountView(makeHost(600, 400), {
+      model,
+      routes: createRouteRegistry({ default: createOrthogonalRouter() }),
+      initialViewport: { zoom: 0.1, panX: 300, panY: 200 },
+    });
+    cleanup(() => view.dispose());
+    await frames();
+    const ctx = view.canvases.scene.getContext("2d");
+    if (!ctx) throw new Error("no context");
+    // Overview connections are traced with moveTo and lineTo only, in world units.
+    const paths: { x: number; y: number }[][] = [];
+    const moveTo = vi.spyOn(ctx, "moveTo").mockImplementation((x, y) => {
+      paths.push([{ x, y }]);
+      CanvasRenderingContext2D.prototype.moveTo.call(ctx, x, y);
+    });
+    const lineTo = vi.spyOn(ctx, "lineTo").mockImplementation((x, y) => {
+      paths[paths.length - 1]?.push({ x, y });
+      CanvasRenderingContext2D.prototype.lineTo.call(ctx, x, y);
+    });
+    view.viewport.panBy(1, 0);
+    await frames();
+    moveTo.mockRestore();
+    lineTo.mockRestore();
+    const startingAt = (x: number, y: number) =>
+      paths.filter((p) => p[0]?.x === x && p[0]?.y === y);
+    expect(startingAt(20, 0)).toEqual([
+      [
+        { x: 20, y: 0 },
+        { x: 80, y: 60 },
+      ],
+    ]);
+    const large = startingAt(-1400, -500);
+    expect(large.length).toBe(1);
+    expect(large[0]?.length).toBe(4);
+    expect(large[0]?.[3]).toEqual({ x: 1400, y: 500 });
   });
 });
