@@ -82,7 +82,8 @@ export default defineConfig({
       {
         resolve: { alias: distAlias },
         define: {
-          __BENCH_QUICK__: JSON.stringify(process.env.BENCH_QUICK === "1"),
+          // Quick unless BENCH_QUICK=0 (full length, as bench:baseline runs).
+          __BENCH_QUICK__: JSON.stringify(process.env.BENCH_QUICK !== "0"),
           __BENCH_EMULATE_DPR__: JSON.stringify(headed ? (dprs[0] ?? 1) : 0),
           __BENCH_ROUTES__: JSON.stringify(
             process.env.BENCH_ROUTES === "orthogonal" ? "orthogonal" : "bezier",
