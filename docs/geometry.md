@@ -248,14 +248,19 @@ wire. So a path is indexed as **pieces**:
 - `pieceCount(path)`: a line is one piece; a cubic gets `ceil(L / 800)` pieces, clamped to
   1..12, where `L` is the control-polygon length in world units (an upper bound of the
   arc length). Short wires stay one entry; the index grows by about 1.5x on F-LARGE.
-- A polyline is split at the midpoints of its interior segments, so **each piece holds
-  one corner** with its arc and the half segments on either side; a segment longer than
-  800 units is also split at equal steps, moved outside any arc. Above 12 pieces,
-  consecutive pieces merge into evenly sized groups. Pieces are polylines carrying the
-  fitted radii of their corners, so distances on a piece are exact; the box of a piece
-  is its vertex box. An L-shaped wire's overall box is mostly empty, and per-corner
-  boxes stay tight around the stroke. With every F-LARGE wire orthogonal the index holds
-  about 60k pieces instead of 35k.
+- A polyline shorter than 800 units (its vertex length) is **one piece**, like a short
+  cubic. A longer one is split at the midpoints of its interior segments, so **each
+  piece holds one corner** with its arc and the half segments on either side; a segment
+  longer than 800 units is also split at equal steps, moved outside any arc. Above 12
+  pieces, consecutive pieces merge into evenly sized groups. Either way every corner
+  lies whole inside one piece. Pieces are polylines carrying the fitted radii of their
+  corners, so distances on a piece are exact; the box of a piece is its vertex box. A
+  long L-shaped wire's overall box is mostly empty, and per-corner boxes stay tight
+  around the stroke; for a short wire the extra index entries cost more than its loose
+  box saves, and picking stays exact anyway because the box only narrows the
+  candidates. With every F-LARGE wire orthogonal the index holds about 29k pieces
+  (35k for Bezier); splitting every polyline per corner gave about 60k and a scene
+  build 2.4x the Bezier one.
 - `splitPath(path)` splits at equal parameter steps with de Casteljau subdivision, so each
   piece is an exact cubic with its own control points. By the convex hull property the box
   around a piece's four control points contains that piece, and the union of the piece
