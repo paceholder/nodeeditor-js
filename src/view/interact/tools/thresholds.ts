@@ -33,6 +33,11 @@ export interface ToolOptions {
    * `false` turns long-press off. Armed only while a listener exists.
    */
   readonly longPressMs: number | false;
+  /**
+   * Largest gap between two presses on a route handle that count as a double-click, in
+   * ms. The second press must also stay within the drag threshold.
+   */
+  readonly doubleClickMs: number;
 }
 
 export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
@@ -45,6 +50,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
   wheelSensitivity: 0.0015,
   autoPan: DEFAULT_AUTO_PAN,
   longPressMs: 500,
+  doubleClickMs: 500,
 };
 
 export function resolveToolOptions(

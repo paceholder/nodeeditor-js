@@ -57,6 +57,7 @@ export type {
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";
 export type { PresenceEntry } from "./interact/overlay/presence.js";
+export { createOrthogonalSegmentEditor } from "./interact/route-edit/orthogonal-segment-editor.js";
 export type {
   ReadonlySelection,
   SelectionChange,
