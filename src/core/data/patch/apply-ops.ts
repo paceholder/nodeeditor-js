@@ -51,6 +51,7 @@ const CONNECTION_FIELDS: Record<keyof ConnectionFieldChanges, true> = {
   kind: true,
   from: true,
   to: true,
+  route: true,
 };
 
 interface Kind<R extends { readonly id: string }> {

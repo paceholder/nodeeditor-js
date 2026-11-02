@@ -114,6 +114,23 @@ function endpointShape(value: unknown): boolean {
   return e !== undefined && isWellFormedId(e.node) && isWellFormedId(e.port);
 }
 
+/** A route is an array of known constraints with finite coordinates (ROU-03a). */
+export function isRouteShape(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((c) => {
+      const o = asObject(c);
+      return (
+        o !== undefined &&
+        o.kind === "segment" &&
+        (o.orientation === "horizontal" || o.orientation === "vertical") &&
+        typeof o.at === "number" &&
+        Number.isFinite(o.at)
+      );
+    })
+  );
+}
+
 export function validateConnectionRecord(
   input: unknown,
 ): Result<ConnectionRecord, Rejection> {
@@ -129,6 +146,13 @@ export function validateConnectionRecord(
     return reject("malformed-id", "Connection endpoint IDs are malformed", [
       id,
     ]);
+  }
+  if (o.route !== undefined && !isRouteShape(o.route)) {
+    return reject(
+      "malformed-record",
+      "Connection route constraints are malformed or not finite",
+      [id],
+    );
   }
   return ok(o as unknown as ConnectionRecord);
 }
