@@ -8,12 +8,29 @@ import {
   createRouteRegistry,
   type RouteRegistry,
 } from "nodeeditor-js";
-import type { ViewHandle } from "nodeeditor-js/view";
+import {
+  createOrthogonalSegmentEditor,
+  createRouteEditorRegistry,
+  type RouteEditorRegistry,
+  type ViewHandle,
+} from "nodeeditor-js/view";
 
 export function demoRoutes(): RouteRegistry {
   const routes = createRouteRegistry();
   routes.register("delayed", createOrthogonalRouter({ cornerRadius: 6 }));
   return routes;
+}
+
+// Select an orthogonal wire to see grips on its middle segments: drag one to pin it,
+// double-click a pinned one to free it, and "Reset route" in the context menu clears a
+// selection's pins.
+// The editor is registered for the kinds the router can draw orthogonally ("default" only
+// shows grips while the checkbox below makes it orthogonal; a Bezier path has no segments).
+export function demoRouteEditors(): RouteEditorRegistry {
+  const editors = createRouteEditorRegistry();
+  editors.register("delayed", createOrthogonalSegmentEditor());
+  editors.register("default", createOrthogonalSegmentEditor());
+  return editors;
 }
 
 /** Wire a checkbox that switches the "default" kind between Bezier and orthogonal. */
