@@ -2,7 +2,7 @@
 
 ## 1. Constraint data (core/data)
 
-- [ ] 1.1 Add `RouteConstraint` and `ConnectionRecord.route?` (D1), the shape check in `validate-records.ts`, `route` in `CONNECTION_FIELDS`, value comparison in `equal.ts` if needed, and `translateConstraints(route, dx, dy)`; export the type from `src/core/index.ts`; verify `validate-records.test.ts` and a new `route-constraints.test.ts` named for the route constraint data rule and the rule that route-only edits keep topology: valid pins accepted, non-finite `at`, unknown kind or orientation rejected, an update op of `route` applies, inverts and redoes, an empty list is stored as absent, and translation shifts vertical pins by dx and horizontal pins by dy only
+- [x] 1.1 Add `RouteConstraint` and `ConnectionRecord.route?` (D1), the shape check in `validate-records.ts`, `route` in `CONNECTION_FIELDS`, value comparison in `equal.ts` if needed, and `translateConstraints(route, dx, dy)`; export the type from `src/core/index.ts`; verify `validate-records.test.ts` and a new `route-constraints.test.ts` named for the route constraint data rule and the rule that route-only edits keep topology: valid pins accepted, non-finite `at`, unknown kind or orientation rejected, an update op of `route` applies, inverts and redoes, an empty list is stored as absent, and translation shifts vertical pins by dx and horizontal pins by dy only
 
 ## 2. Snapshot (core/io)
 

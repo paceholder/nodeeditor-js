@@ -41,7 +41,12 @@ export type {
   PortDirection,
   PortPlacement,
   PortRecord,
+  RouteConstraint,
 } from "./data/model/records.js";
+export {
+  normalizeRoute,
+  translateConstraints,
+} from "./data/model/route-constraints.js";
 export type { GraphState } from "./data/model/state.js";
 export type { StoreOptions } from "./data/model/store.js";
 export {

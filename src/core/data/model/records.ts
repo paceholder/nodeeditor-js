@@ -78,6 +78,18 @@ export interface Endpoint {
   readonly port: PortId;
 }
 
+/**
+ * A route constraint: durable view data stored on a connection, in world
+ * coordinates and ordered from the connection's `from` end to its `to` end. A closed union
+ * so core can validate, shift and diff it without knowing route kinds; routers read it.
+ */
+export type RouteConstraint = {
+  readonly kind: "segment";
+  readonly orientation: "horizontal" | "vertical";
+  /** World y of a horizontal segment, world x of a vertical one. */
+  readonly at: number;
+};
+
 export interface ConnectionRecord {
   readonly id: ConnectionId;
   /** "default" unless a policy sets another kind. */
@@ -85,4 +97,6 @@ export interface ConnectionRecord {
   /** Order carries no meaning when the connection is undirected. */
   readonly from: Endpoint;
   readonly to: Endpoint;
+  /** Route constraints in walk order; absent when there are none (never empty). */
+  readonly route?: readonly RouteConstraint[];
 }
