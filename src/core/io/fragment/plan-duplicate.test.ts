@@ -115,3 +115,34 @@ describe("EDT-03 duplicate", () => {
     ]);
   });
 });
+
+describe("ROU-03e, EDT-03 duplicate keeps the shape", () => {
+  it("Duplicate keeps the shape: the copy's pins shift by the duplicate offset", () => {
+    const model = makeModel();
+    const { a, b } = pairWithNeighbour(model);
+    const original = model.reader.connections()[0];
+    if (!original) throw new Error("setup");
+    model.execute({
+      kind: "setRoute",
+      connection: original.id,
+      route: [
+        { kind: "segment", orientation: "vertical", at: 50 },
+        { kind: "segment", orientation: "horizontal", at: 5 },
+      ],
+    });
+    const plan = ready(
+      duplicate(
+        { kind: "duplicate", nodes: [a.node, b.node], placement },
+        contextOf(model),
+      ),
+    );
+    expect(model.submit(plan.patch).status).toBe("accepted");
+    const copy = plan.effects.created.connections[0];
+    const record = copy && model.reader.getConnection(copy);
+    expect(record?.route).toEqual([
+      { kind: "segment", orientation: "vertical", at: 70 },
+      { kind: "segment", orientation: "horizontal", at: 25 },
+    ]);
+    expect(model.reader.getConnection(original.id)?.route?.[0]?.at).toBe(50);
+  });
+});

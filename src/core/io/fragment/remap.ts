@@ -15,6 +15,7 @@ import type {
   Payload,
   PortRecord,
 } from "../../data/model/records.js";
+import { translateConstraints } from "../../data/model/route-constraints.js";
 import type { Vec2 } from "../../data/model/values.js";
 import type { IdAllocator } from "../../edit/commands/id-allocator.js";
 import type { Placement } from "../../edit/commands/types.js";
@@ -112,11 +113,18 @@ export function remapRecords(
     };
     return { node, ports };
   });
-  const connections = snapshot.connections.map((c) => ({
-    ...connectionToRecord(c),
-    id: need(maps.connections.get(c.id)),
-    from: need(remapEndpoint(c.from, maps)),
-    to: need(remapEndpoint(c.to, maps)),
-  }));
+  const connections = snapshot.connections.map((c) => {
+    const record = connectionToRecord(c);
+    return {
+      ...record,
+      id: need(maps.connections.get(c.id)),
+      from: need(remapEndpoint(c.from, maps)),
+      to: need(remapEndpoint(c.to, maps)),
+      // Pinned segments move with the placement so the copy keeps its shape (ROU-03e).
+      ...(record.route
+        ? { route: translateConstraints(record.route, delta.x, delta.y) }
+        : {}),
+    };
+  });
   return { nodes, connections };
 }

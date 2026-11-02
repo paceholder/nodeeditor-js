@@ -1,7 +1,8 @@
 /** moveNodes, rotateNodes, mirrorNodes, reorderNodes planners (UC-02, NOD-04, MOD-08). */
 import type { NodeId } from "../../base/ids/ids.js";
 import { mirroredRotation } from "../../data/model/node-frame.js";
-import type { QuarterTurns } from "../../data/model/values.js";
+import { translateConstraints } from "../../data/model/route-constraints.js";
+import type { QuarterTurns, Vec2 } from "../../data/model/values.js";
 import type { PatchOp } from "../../data/patch/types.js";
 import { ready, unknownEntity } from "./ops.js";
 import type { PlanContext, PlannerFor, PlanResult } from "./types.js";
@@ -36,8 +37,46 @@ export const planMoveNodes: PlannerFor<"moveNodes"> = (command, ctx) => {
       fields: { position: { old: node.position, new: position } },
     });
   }
+  ops.push(...shiftPins(ctx, last));
   return ready("Move", ops, ctx.ids);
 };
+
+/**
+ * Route updates for connections whose both endpoint nodes move (ROU-03e): their pins shift
+ * by the mean of the two node offsets, which is the common offset in a whole-group move.
+ * A connection with one fixed end keeps its pins. Ordered by connection collection order.
+ */
+function shiftPins(
+  ctx: PlanContext,
+  targets: ReadonlyMap<NodeId, Vec2>,
+): PatchOp[] {
+  const delta = (id: NodeId): Vec2 | undefined => {
+    const node = ctx.reader.getNode(id);
+    const to = targets.get(id);
+    if (!node || !to) return undefined;
+    const d = { x: to.x - node.position.x, y: to.y - node.position.y };
+    return d.x === 0 && d.y === 0 ? undefined : d;
+  };
+  const ops: PatchOp[] = [];
+  for (const c of ctx.reader.connections()) {
+    if (!c.route) continue;
+    const a = delta(c.from.node);
+    const b = delta(c.to.node);
+    if (!a || !b) continue;
+    const route = translateConstraints(
+      c.route,
+      (a.x + b.x) / 2,
+      (a.y + b.y) / 2,
+    );
+    ops.push({
+      op: "update",
+      entity: "connection",
+      id: c.id,
+      fields: { route: { old: c.route, new: route } },
+    });
+  }
+  return ops;
+}
 
 export const planRotateNodes: PlannerFor<"rotateNodes"> = (command, ctx) => {
   const bad = missing(ctx, command.nodes);

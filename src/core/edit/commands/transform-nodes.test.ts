@@ -4,7 +4,7 @@ import type { NodeRecord } from "../../data/model/records.js";
 import type { QuarterTurns, Vec2 } from "../../data/model/values.js";
 import { applyPoint, applyVector } from "../../space/geometry/affine.js";
 import { nodeTransform } from "../../space/geometry/node-transform.js";
-import { make, makeModel } from "./test-kit.js";
+import { end, make, makeModel } from "./test-kit.js";
 
 describe("UC-02 move, rotate, mirror", () => {
   it("moves several nodes as one patch and one history entry", () => {
@@ -236,5 +236,48 @@ describe("NOD-04 mirror in screen axes", () => {
     expect(placed(m0, i0)).toMatchObject({ mirrored: true, rotation: 2 });
     m0.undo();
     expect(placed(m0, i0)).toMatchObject({ mirrored: false, rotation: 0 });
+  });
+});
+
+describe("ROU-03e pins follow whole moves", () => {
+  const pinned = () => {
+    const model = makeModel();
+    const a = make(model, "source", 0, 0);
+    const b = make(model, "sink", 100, 0);
+    model.connect(end(a, 0), end(b, 0));
+    const id = model.reader.connections()[0]?.id;
+    if (!id) throw new Error("setup");
+    model.execute({
+      kind: "setRoute",
+      connection: id,
+      route: [
+        { kind: "segment", orientation: "vertical", at: 60 },
+        { kind: "segment", orientation: "horizontal", at: 30 },
+      ],
+    });
+    return { model, a, b, id };
+  };
+
+  it("Moving both ends shifts the pin in the same patch", () => {
+    const { model, a, b, id } = pinned();
+    const patches: number[] = [];
+    model.on("change", (e) => patches.push(e.patch.ops.length));
+    model.moveNodes([
+      { node: a.node, position: { x: 50, y: 10 } },
+      { node: b.node, position: { x: 150, y: 10 } },
+    ]);
+    expect(patches).toEqual([3]);
+    expect(model.reader.getConnection(id)?.route).toEqual([
+      { kind: "segment", orientation: "vertical", at: 110 },
+      { kind: "segment", orientation: "horizontal", at: 40 },
+    ]);
+    model.undo();
+    expect(model.reader.getConnection(id)?.route?.[0]?.at).toBe(60);
+  });
+
+  it("Endpoint moves after a pin: moving one endpoint keeps it", () => {
+    const { model, b, id } = pinned();
+    model.moveNodes([{ node: b.node, position: { x: 150, y: 10 } }]);
+    expect(model.reader.getConnection(id)?.route?.[0]?.at).toBe(60);
   });
 });
