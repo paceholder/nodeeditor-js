@@ -14,6 +14,7 @@ const LABELS: ReadonlyArray<readonly [string, string, unknown?]> = [
   ["command.edit.delete", "Delete"],
   ["command.nodes.rotate", "Rotate clockwise", { turns: 1 }],
   ["command.nodes.mirror", "Mirror left-right", { axis: "horizontal" }],
+  ["command.route.reset", "Reset route"],
   ["command.selection.selectAll", "Select all"],
   ["command.view.fitAll", "Fit all"],
   ["command.history.undo", "Undo"],

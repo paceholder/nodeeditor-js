@@ -18,7 +18,7 @@ import {
 import { choicePicker, demoPolicy } from "./choice-picker.js";
 import { installContextMenu } from "./context-menu.js";
 import pumpUrl from "./pump.svg?url";
-import { demoRoutes, installRouteToggle } from "./routes.js";
+import { demoRouteEditors, demoRoutes, installRouteToggle } from "./routes.js";
 import tankUrl from "./tank.svg?url";
 import valveUrl from "./valve.svg?url";
 
@@ -182,6 +182,7 @@ const view = mountView(container, {
   geometry,
   painters,
   routes: demoRoutes(), // delayed links are orthogonal (routes.ts)
+  routeEditors: demoRouteEditors(), // grips on orthogonal wires' middle segments
   assets: { resolve: resolveAsset },
   // Signal ports are square and amber, so the two port types read apart.
   theme: {
