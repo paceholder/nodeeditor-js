@@ -45,7 +45,7 @@ do not repeat their `node` field.
 | snapshot | `format`, `version`, `nodes`, `connections` | `idCursor`; reserved `assemblies`, `references`, `groups`, `routes` |
 | node | `id`, `type`, `position`, `size`, `ports`, `payload` | `rotation` (0), `mirrored` (false), `z` (0), `title`, `status`, `capabilities` |
 | port | `id`, `direction`, `typeKey` | `limit` ("unlimited"), `label`, `placement` |
-| connection | `id`, `from`, `to` | `kind` ("default") |
+| connection | `id`, `from`, `to` | `kind` ("default"), `route` (omitted when empty) |
 
 Rules:
 
@@ -57,6 +57,10 @@ Rules:
 - Unknown fields are rejected, not dropped, so no data is silently lost.
 - The reserved sections must be absent or empty. A non-empty one fails with
   `unsupported-section` until its capability exists.
+- `route` is an ordered list of pinned segments, `{ "kind": "segment", "orientation":
+  "horizontal" | "vertical", "at": <finite number> }`, in world coordinates from the
+  `from` end. An unknown kind or orientation or a non-finite `at` fails the
+  load naming the connection. The field is additive, so the format version stays 1.
 - Load fills the defaults back in; export omits them.
 
 ### Ordering

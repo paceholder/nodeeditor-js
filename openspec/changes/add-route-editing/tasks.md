@@ -27,7 +27,7 @@
 
 ## 6. Docs, demo and gates
 
-- [ ] 6.1 Register the segment editor for the orthogonal kind in `examples/plain-js`; update `docs/guide-view.md` (route editors, segment drag, reset, limits), `docs/geometry.md` (pin routing) and `docs/format.md` (`route` field); verify `npm run demo` shows grips on a selected orthogonal wire and the docs build-free check (`npm run lint`) passes
+- [x] 6.1 Register the segment editor for the orthogonal kind in `examples/plain-js`; update `docs/guide-view.md` (route editors, segment drag, reset, limits), `docs/geometry.md` (pin routing) and `docs/format.md` (`route` field); verify `npm run demo` shows grips on a selected orthogonal wire and the docs build-free check (`npm run lint`) passes
 - [ ] 6.2 Run the gates: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run bench:browser` (quick, both route modes), `npm run bench:size`, `npm run build`; record results and sizes in `notes.md`
 
 ## Workflow follow-up

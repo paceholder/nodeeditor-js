@@ -160,8 +160,10 @@ interface RouteOutcome {
 }
 ```
 
-Routing is a pure, synchronous function of the two ends. The input is a struct so later
-changes can add stored route constraints or an obstacle query without reshaping it.
+Routing is a pure, synchronous function of the two ends and the connection's stored
+route constraints (`constraints`, empty when none). The input is a struct so a
+later obstacle query needs no reshaping. A router that does not use constraints ignores
+them and omits `realized`; they stay in the model.
 
 Three built-in routers, each made by a factory so an unused one is not bundled:
 `createStraightRouter()`, `createBezierRouter()` and
@@ -231,9 +233,34 @@ The two ends are put in a canonical order before routing and the result is rever
 so swapping `from` and `to` gives exactly the same vertices in reverse:
 an undirected connection does not change shape with the stored end order.
 
+#### Pinned segments
+
+A connection may carry `route`: an ordered list (from `from` to `to`) of
+`{ kind: "segment", orientation, at }`, a horizontal segment at world y or a vertical one
+at world x. With no pins the router above is unchanged. With pins it skips the candidate
+families and builds one path deterministically (`orthogonal-pins.ts`):
+
+1. Escape points and directions as above; the ends go into the canonical order and the
+   pin list is reversed with them, so end order does not matter.
+2. The path is `p0, e0`, the pins in order, `e1, p1`. The stub `p0 -> e0` is fixed; the
+   segment after it may continue along the escape direction or turn, never reverse, and
+   the segment before `e1` must arrive along the reverse of the target escape.
+3. Walking from `e0`, a vertical pin at `x = a` is reached by a horizontal move to
+   `(a, y)`, a horizontal pin by a vertical move. When that move would run backwards
+   along the current direction, or two pins of the same orientation follow each other, a
+   free perpendicular segment is inserted first, at the midpoint between the current
+   coordinate and the next fixed one (offset by the clearance when they coincide).
+4. Collinear points merge, and `realized[k]` records which segment of
+   `polylineVertices(path)` lies on pin `k` (-1 when a degenerate pin collapsed).
+
+The outcome is `complete`; `clearOf` is `endpoint-nodes` when no segment crosses the open
+interior of either end body and `nothing` otherwise: a pinned route that crosses its own
+nodes is the user's choice and is drawn as such. A pin on a stub's own line is realized by
+that stub. Editing the pins is the view's job (guide-view.md, route editors).
+
 **What is not avoided yet.** Only the two endpoint nodes are obstacles. A wire may cross
 an unrelated node, and its outcome says so: an orthogonal route is clear of
-`endpoint-nodes`, never of all nodes. Avoiding other nodes, editing a route and
+`endpoint-nodes`, never of all nodes. Avoiding other nodes and
 jumps at crossings are later changes. Hosts that need avoidance now keep Bezier for those
 kinds.
 
