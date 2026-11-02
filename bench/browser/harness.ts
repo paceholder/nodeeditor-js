@@ -34,8 +34,11 @@ export const ROUTES: FixtureRoutes = __BENCH_ROUTES__;
 /** Fixture label for result rows: the spec name, plus the route when not the default. */
 export const fixtureLabel = (name: string): string =>
   ROUTES === "bezier" ? name : `${name} ${ROUTES}`;
-/** Workload length, repeats and warm-up (design D4; quick runs are for iteration only). */
-export const DURATION_MS = QUICK ? 5_000 : 30_000;
+/**
+ * Workload length, repeats and warm-up: three pooled 10 s repeats give 30 s per workload.
+ * Quick runs, the default of `bench:browser`, are for iteration only.
+ */
+export const DURATION_MS = QUICK ? 5_000 : 10_000;
 export const REPEATS = QUICK ? 1 : 3;
 export const WARMUP_MS = 1_000;
 /** Input arrival phase within a frame (see `runWorkload`). */
