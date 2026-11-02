@@ -76,6 +76,7 @@ export { defaultToolSlots } from "./interact/tools/default-tools.js";
 export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";
 export { marqueeTool } from "./interact/tools/marquee-tool.js";
 export { panTool } from "./interact/tools/pan-tool.js";
+export { createRouteEditTool } from "./interact/tools/route-edit-tool.js";
 export { selectMoveTool } from "./interact/tools/select-move-tool.js";
 export type { ToolOptions } from "./interact/tools/thresholds.js";
 export { DEFAULT_TOOL_OPTIONS } from "./interact/tools/thresholds.js";
