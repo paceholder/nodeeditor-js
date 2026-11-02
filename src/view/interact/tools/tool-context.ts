@@ -17,6 +17,7 @@ import type {
   Viewport,
 } from "../../../core/index.js";
 import { DEFAULT_SIZE_LIMITS, rejectionOf } from "../../../core/index.js";
+import type { RouteEditorRegistry } from "../../render/registries/route-editor-registry.js";
 import type { ReadonlySelection } from "../selection/selection-model.js";
 import { evaluationOf, NO_MODEL_EVALUATION } from "./connect-evaluation.js";
 import { resolveToolOptions, type ToolOptions } from "./thresholds.js";
@@ -44,7 +45,13 @@ export interface ToolContextDeps {
   readonly hidePortsBelow?: () => number;
   /** Whether a host connection chooser is installed; omitted: none. */
   readonly chooserInstalled?: () => boolean;
+  /** Route editors per connection kind; omitted: none. */
+  readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
 }
+
+const NO_ROUTE_EDITORS: Pick<RouteEditorRegistry, "get"> = {
+  get: () => undefined,
+};
 
 export type SizeLimitsLookup = (id: NodeId) => ResolvedSizeLimits | undefined;
 
@@ -114,6 +121,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       evaluateConnection,
       options,
       chooserInstalled: deps.chooserInstalled?.() === true,
+      routeEditors: deps.routeEditors ?? NO_ROUTE_EDITORS,
     };
   };
 }

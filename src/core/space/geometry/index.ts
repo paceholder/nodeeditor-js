@@ -54,7 +54,7 @@ export {
   pathPointAt,
 } from "./path-geometry.js";
 export type { Polyline } from "./polyline.js";
-export { polylinePath } from "./polyline.js";
+export { polylinePath, polylineVertices } from "./polyline.js";
 export type { Orientation, Side } from "./port-layout.js";
 export type { CardOptions } from "./presets/card-geometry.js";
 export { createCardGeometry } from "./presets/card-geometry.js";
