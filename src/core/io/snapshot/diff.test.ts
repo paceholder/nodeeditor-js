@@ -255,3 +255,25 @@ describe("ADP-05 / PAT-03 diff property", () => {
     expect(model.reader.getPort("p1" as never)?.node).toBe("n2");
   });
 });
+
+describe("ROU-03a diffSnapshot route", () => {
+  it("emits a route update with old and new values", () => {
+    const model = loadedModel();
+    const route = [{ kind: "segment", orientation: "vertical", at: 7 }];
+    const patch = diffSnapshot(
+      model.reader,
+      target((s) => {
+        const c = s.connections as Record<string, unknown>[];
+        c[0] = { ...c[0], route };
+      }),
+    );
+    expect(patch.ops).toEqual([
+      {
+        op: "update",
+        entity: "connection",
+        id: "c1",
+        fields: { route: { new: route } },
+      },
+    ]);
+  });
+});

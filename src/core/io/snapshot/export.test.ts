@@ -87,3 +87,10 @@ describe("SER-03 / MOD-04 excluded content", () => {
     ]);
   });
 });
+
+describe("ROU-03a export of route", () => {
+  it("omits a route that is absent", () => {
+    const snapshot = exportSnapshot(buildSession());
+    expect(snapshot.connections[0]).not.toHaveProperty("route");
+  });
+});

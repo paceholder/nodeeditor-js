@@ -1,6 +1,10 @@
 /** Shape checks for connections (SNP-02). */
 import { isWellFormedId } from "../../base/ids/ids.js";
-import { validateConnectionRecord } from "../../data/model/validate-records.js";
+import type { RouteConstraint } from "../../data/model/records.js";
+import {
+  isRouteShape,
+  validateConnectionRecord,
+} from "../../data/model/validate-records.js";
 import { isObj, onlyKeys, optStr, reqStr } from "./parse-fields.js";
 import { connectionToRecord } from "./records.js";
 import type { ErrorSink } from "./snapshot-errors.js";
@@ -39,6 +43,39 @@ function endpoint(
   return node === undefined || port === undefined ? undefined : { node, port };
 }
 
+const CONSTRAINT_KEYS = ["kind", "orientation", "at"] as const;
+
+/** Route constraints: known kinds and finite coordinates only (ROU-03a). */
+function parseRoute(
+  value: unknown,
+  path: string,
+  id: string | undefined,
+  sink: ErrorSink,
+): readonly RouteConstraint[] | undefined {
+  if (value === undefined) return undefined;
+  const entities = id === undefined ? [] : [id];
+  if (!Array.isArray(value)) {
+    sink.add("invalid-shape", "Route must be an array", path, entities);
+    return undefined;
+  }
+  const out: RouteConstraint[] = [];
+  value.forEach((item: unknown, i) => {
+    const at = `${path}[${i}]`;
+    if (!isObj(item) || !isRouteShape([item])) {
+      sink.add(
+        "malformed-record",
+        "Route constraint has an unknown kind or orientation, or a non-finite coordinate",
+        at,
+        entities,
+      );
+      return;
+    }
+    onlyKeys(item, CONSTRAINT_KEYS, at, sink);
+    out.push(item as unknown as RouteConstraint);
+  });
+  return out;
+}
+
 export function parseConnection(
   raw: unknown,
   path: string,
@@ -49,7 +86,7 @@ export function parseConnection(
     return undefined;
   }
   const before = sink.errors.length;
-  onlyKeys(raw, ["id", "kind", "from", "to"], path, sink);
+  onlyKeys(raw, ["id", "kind", "from", "to", "route"], path, sink);
   const id = reqStr(raw, "id", path, sink);
   if (id !== undefined && !isWellFormedId(id)) {
     sink.add("malformed-id", "Connection ID is malformed", `${path}.id`, [id]);
@@ -57,6 +94,7 @@ export function parseConnection(
   const kind = optStr(raw, "kind", path, sink);
   const from = endpoint(raw.from, `${path}.from`, sink);
   const to = endpoint(raw.to, `${path}.to`, sink);
+  const route = parseRoute(raw.route, `${path}.route`, id, sink);
   if (sink.errors.length > before || id === undefined || !from || !to)
     return undefined;
   const connection: ConnectionSnapshot = {
@@ -64,6 +102,7 @@ export function parseConnection(
     ...(kind === undefined ? {} : { kind }),
     from,
     to,
+    ...(route === undefined ? {} : { route }),
   };
   const checked = validateConnectionRecord(connectionToRecord(connection));
   if (!checked.ok) {

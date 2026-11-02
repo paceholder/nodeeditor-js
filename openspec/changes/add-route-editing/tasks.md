@@ -6,7 +6,7 @@
 
 ## 2. Snapshot (core/io)
 
-- [ ] 2.1 Add `route?` to `ConnectionSnapshot`, accept it in `parse-connection.ts`, map it in `connectionToRecord`/`connectionToSnapshot` (omitted when empty) and check that `diff.ts` emits a `route` update (D2); verify `load.test.ts`, `export.test.ts`, `diff.test.ts` and `document.test.ts` cases titled ROU-03a, SER-01: "Pinned segment survives reload" (save, load, equal constraints), "Invalid constraint rejected on load" names the connection, a snapshot without `route` loads unchanged, and the format version is still 1
+- [x] 2.1 Add `route?` to `ConnectionSnapshot`, accept it in `parse-connection.ts`, map it in `connectionToRecord`/`connectionToSnapshot` (omitted when empty) and check that `diff.ts` emits a `route` update (D2); verify `load.test.ts`, `export.test.ts`, `diff.test.ts` and `document.test.ts` cases titled ROU-03a, SER-01: "Pinned segment survives reload" (save, load, equal constraints), "Invalid constraint rejected on load" names the connection, a snapshot without `route` loads unchanged, and the format version is still 1
 
 ## 3. Commands (core/edit, core/io/fragment)
 

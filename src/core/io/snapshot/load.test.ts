@@ -150,3 +150,43 @@ describe("MOD-03a ID cursor reconciliation", () => {
     expect(model.idCursor()).toEqual({ c: 1, n: 2, p: 3 });
   });
 });
+
+describe("ROU-03a, SER-01 route constraints on load", () => {
+  const pinned = (route: unknown) => {
+    const input = sampleSnapshot();
+    const conns = input.connections as Record<string, unknown>[];
+    conns[0] = { ...conns[0], route };
+    return input;
+  };
+
+  it("Pinned segment survives reload", () => {
+    const route = [{ kind: "segment", orientation: "vertical", at: 120 }];
+    const source = makeTestModel();
+    expect(loadSnapshot(source, pinned(route)).ok).toBe(true);
+    const target = makeTestModel();
+    expect(loadSnapshot(target, exportSnapshot(source)).ok).toBe(true);
+    expect(target.reader.connections()[0]?.route).toEqual(route);
+    expect(exportSnapshot(target)).toEqual(exportSnapshot(source));
+  });
+
+  it("Invalid constraint rejected on load", () => {
+    for (const bad of [
+      [{ kind: "segment", orientation: "vertical", at: Number.NaN }],
+      [{ kind: "waypoint", orientation: "vertical", at: 1 }],
+    ]) {
+      const result = loadSnapshot(makeTestModel(), pinned(bad));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error[0]?.path).toBe("connections[0].route[0]");
+        expect(result.error[0]?.entities).toEqual(["c1"]);
+      }
+    }
+  });
+
+  it("a snapshot without route loads unchanged", () => {
+    const model = makeTestModel();
+    expect(loadSnapshot(model, sampleSnapshot()).ok).toBe(true);
+    expect(model.reader.connections()[0]).not.toHaveProperty("route");
+    expect(exportSnapshot(model).connections[0]).not.toHaveProperty("route");
+  });
+});

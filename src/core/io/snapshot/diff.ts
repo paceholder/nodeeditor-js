@@ -68,7 +68,7 @@ const PORT_KEYS = [
   "label",
   "placement",
 ] as const;
-const CONNECTION_KEYS = ["kind", "from", "to"] as const;
+const CONNECTION_KEYS = ["kind", "from", "to", "route"] as const;
 
 export function diffSnapshot(from: GraphReader, to: GraphSnapshot): Patch {
   const wantNodes = new Map(to.nodes.map((n) => [n.id, n]));
