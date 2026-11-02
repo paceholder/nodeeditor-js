@@ -104,6 +104,8 @@ export function routeCursorAt(
   world: Point<"world">,
   ctx: ToolContext,
 ): CursorKind | undefined {
+  // Handles exist only on selected connections: skip the pick for an empty selection.
+  if (ctx.selection.size === 0) return undefined;
   const target = routeTargetAt(world, ctx.pick(world), ctx);
   return target?.editor.cursor(target.handle);
 }

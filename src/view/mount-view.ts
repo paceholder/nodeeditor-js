@@ -132,6 +132,7 @@ export function mountView(
     assets,
     zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
     viewState,
+    routeEditors,
     bound: () => (reader && scene ? { reader, scene } : undefined),
   });
 
@@ -183,6 +184,7 @@ export function mountView(
             zOrder: options.zOrder ?? DEFAULT_Z_ORDER,
             state: viewState,
             assets,
+            routeEditors,
           }
         : undefined,
   });

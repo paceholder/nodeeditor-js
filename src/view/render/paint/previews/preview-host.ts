@@ -18,6 +18,7 @@ import { paintMarquee } from "./marquee-painter.js";
 import { paintMovePreview } from "./move-preview-painter.js";
 import type { ToolPreview } from "./preview-types.js";
 import { paintResizePreview } from "./resize-preview-painter.js";
+import { paintRoutePreview } from "./route-preview-painter.js";
 
 /** Mutable set of entity IDs the scene layer skips; read through `isHidden`. */
 export interface HiddenIds {
@@ -69,6 +70,8 @@ function hiddenBy(
       return previewedEntityIds(reader, preview.moving);
     case "resize":
       return previewedEntityIds(reader, [preview.node]);
+    case "route":
+      return new Set([preview.connection]);
     default:
       return new Set();
   }
@@ -102,6 +105,9 @@ export function createPreviewHost(env: PreviewHostEnv): PreviewHost {
           return;
         case "resize":
           paintResizePreview(ctx, bound, frame, current);
+          return;
+        case "route":
+          paintRoutePreview(ctx, bound, frame, current);
           return;
       }
     },

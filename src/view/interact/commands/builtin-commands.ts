@@ -1,6 +1,6 @@
 /**
  * Built-in editor commands (INT-07, MOD-11, D9): edit.delete, history.undo/redo,
- * selection.selectAll/clear, nodes.nudge, nodes.rotate/mirror, the view.* commands, and
+ * selection.selectAll/clear, nodes.nudge, route.reset, nodes.rotate/mirror, the view.* commands, and
  * edit.copy/cut/paste/duplicate when a clipboard service is given. Each is a thin wrapper
  * over the model's command API or the view-local services, so a shortcut and an API call
  * produce identical patches on equal models.
@@ -48,6 +48,7 @@ export const COMMAND_IDS = {
   selectAll: "selection.selectAll",
   clearSelection: "selection.clear",
   nudge: "nodes.nudge",
+  resetRoute: "route.reset",
   ...TRANSFORM_COMMAND_IDS,
   fitAll: "view.fitAll",
   fitSelection: "view.fitSelection",
@@ -131,6 +132,20 @@ function planNudge(
     : { kind: "moveNodes", moves };
 }
 
+/** Reset-route (ROU-03d): clears the constraints of the selected connections that have any. */
+function planResetRoute(
+  ctx: CommandContext,
+  _args: unknown,
+  model: EditableModel,
+): Command | Refusal {
+  const connections = ctx.selection
+    .connectionIds()
+    .filter((id) => model.reader.getConnection(id)?.route !== undefined);
+  return connections.length === 0
+    ? refusal("No selected connection has a pinned route")
+    : { kind: "resetRoutes", connections };
+}
+
 function history(direction: "undo" | "redo"): EditorCommand {
   const id = `history.${direction}`;
   return {
@@ -195,6 +210,7 @@ export function registerBuiltinCommands(
     ),
   );
   registry.register(modelEdit<NudgeArgs>(COMMAND_IDS.nudge, planNudge));
+  registry.register(modelEdit<void>(COMMAND_IDS.resetRoute, planResetRoute));
   registerTransformCommands(registry);
   registry.register(
     simple(

@@ -12,6 +12,7 @@ import type { LayerName } from "../../platform/frame-scheduler.js";
 import type { AssetService } from "../assets/asset-service.js";
 import { createPaintFrame } from "../primitives/frame.js";
 import type { PainterRegistries } from "../registries/painters.js";
+import type { RouteEditorRegistry } from "../registries/route-editor-registry.js";
 import type { ThemeTokens } from "../theme/tokens.js";
 import type { InteractionLayer } from "./interaction-layer.js";
 import {
@@ -30,6 +31,7 @@ export interface LayerPainterEnv {
   readonly assets: AssetService;
   readonly zOrder: readonly SceneLayer[];
   readonly viewState: ViewState;
+  readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
   /** Present when the view is bound to a model. */
   readonly bound: () =>
     | { reader: GraphReader; scene: GeometryScene }
@@ -63,6 +65,7 @@ export function createLayerPainter(
             zOrder: env.zOrder,
             state: env.viewState,
             assets: env.assets,
+            ...(env.routeEditors ? { routeEditors: env.routeEditors } : {}),
           },
           frame,
         );
