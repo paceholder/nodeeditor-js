@@ -228,12 +228,26 @@ describe("picking and culling orthogonal routes", () => {
     ]);
   });
 
-  it("a point inside the route's overall box but far from every piece is not a candidate", () => {
+  it("a short route is one piece; its box only narrows candidates and the pick stays exact", () => {
     const scene = createGeometryScene(apart(), { routes: orthogonalDefault() });
-    const entry = scene.connection(c("c1"));
-    expect(entry?.segments.length).toBe(2);
+    // c1 is 660 units long, under PIECE_LENGTH.
+    expect(scene.connection(c("c1"))?.segments.length).toBe(1);
+    expect(scene.queryRect(rect(325, 55, 10, 10))).toEqual([
+      { kind: "connection", id: "c1" },
+    ]);
     expect(scene.pick({ x: 330, y: 60 }, { zoom: 1 })).toEqual([]);
-    expect(scene.queryRect(rect(325, 55, 10, 10))).toEqual([]);
+  });
+
+  it("a point inside a long route's overall box but far from every piece is not a candidate", () => {
+    const model = modelWith(
+      [twoPortNode("a", 0, 0), twoPortNode("b", 1000, 600)],
+      [["c1", "a", "aR", "b", "bL"]],
+    );
+    const scene = createGeometryScene(model, { routes: orthogonalDefault() });
+    // c1 runs (20,0) -> (500,0) -> (500,600) -> (980,600), one corner per piece.
+    expect(scene.connection(c("c1"))?.segments.length).toBe(2);
+    expect(scene.pick({ x: 800, y: 100 }, { zoom: 1 })).toEqual([]);
+    expect(scene.queryRect(rect(795, 95, 10, 10))).toEqual([]);
   });
 
   it("queryRect returns a connection whose middle segment alone crosses the viewport", () => {
