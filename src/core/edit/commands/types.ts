@@ -14,6 +14,7 @@ import type {
   Endpoint,
   NodeRecord,
   Payload,
+  RouteConstraint,
 } from "../../data/model/records.js";
 import type { Size, Vec2 } from "../../data/model/values.js";
 import type { PortSpec } from "../../data/node-types/definition.js";
@@ -119,6 +120,17 @@ export type Command =
       readonly title?: string;
       readonly status?: string;
       readonly payload?: Payload;
+    }
+  /** Replace a connection's route constraints; an empty list clears them (ROU-03c). */
+  | {
+      readonly kind: "setRoute";
+      readonly connection: ConnectionId;
+      readonly route: readonly RouteConstraint[];
+    }
+  /** Clear the constraints of every listed connection that has some (ROU-03d). */
+  | {
+      readonly kind: "resetRoutes";
+      readonly connections: readonly ConnectionId[];
     }
   /**
    * Paste a clipboard fragment (EDT-03, EDT-05). The fragment is untrusted input and is

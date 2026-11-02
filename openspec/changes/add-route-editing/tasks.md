@@ -10,7 +10,7 @@
 
 ## 3. Commands (core/edit, core/io/fragment)
 
-- [ ] 3.1 Add `setRoute` and `resetRoutes` to the `Command` union and planners (D9); verify `route-commands.test.ts` titled ROU-03c, ROU-03d, ROU-12, INT-08: `setRoute` yields one patch with one connection update of `route` only, `resetRoutes` clears two connections in one patch and is rejected when none has constraints, and undo restores the previous constraints
+- [x] 3.1 Add `setRoute` and `resetRoutes` to the `Command` union and planners (D9); verify `route-commands.test.ts` titled ROU-03c, ROU-03d, ROU-12, INT-08: `setRoute` yields one patch with one connection update of `route` only, `resetRoutes` clears two connections in one patch and is rejected when none has constraints, and undo restores the previous constraints
 - [ ] 3.2 Shift pins in `planMoveNodes` for connections whose both endpoint nodes move, and in fragment remap and paste placement (D10); verify `transform-nodes.test.ts` and the paste/duplicate tests titled ROU-03e, EDT-03, EDT-04: "Moving both ends" shifts the pin in the same patch, moving one endpoint keeps it ("Endpoint moves after a pin"), and "Duplicate keeps the shape" shifts the copy's pin by the duplicate offset
 
 ## 4. Routing (core/space)

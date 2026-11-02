@@ -8,6 +8,7 @@ import { planCreateNode } from "./create-node.js";
 import { planDeleteEntities } from "./delete-entities.js";
 import { rejected } from "./ops.js";
 import { planResizeNode } from "./resize-node.js";
+import { planResetRoutes, planSetRoute } from "./route-commands.js";
 import { planSetPorts } from "./set-ports.js";
 import {
   planMirrorNodes,
@@ -44,6 +45,10 @@ export function planCommand(command: Command, ctx: PlanContext): PlanResult {
       return planSetPorts(command, ctx);
     case "updateNode":
       return planUpdateNode(command, ctx);
+    case "setRoute":
+      return planSetRoute(command, ctx);
+    case "resetRoutes":
+      return planResetRoutes(command, ctx);
     case "paste":
       return ctx.fragments
         ? ctx.fragments.paste(command, ctx)
