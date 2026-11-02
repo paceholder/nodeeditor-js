@@ -11,7 +11,7 @@
 ## 3. Commands (core/edit, core/io/fragment)
 
 - [x] 3.1 Add `setRoute` and `resetRoutes` to the `Command` union and planners (D9); verify `route-commands.test.ts` named for the orthogonal segment drag rule, the freeing and resetting a route rule, the rule that route-only edits keep topology and the one committed edit per gesture rule: `setRoute` yields one patch with one connection update of `route` only, `resetRoutes` clears two connections in one patch and is rejected when none has constraints, and undo restores the previous constraints
-- [ ] 3.2 Shift pins in `planMoveNodes` for connections whose both endpoint nodes move, and in fragment remap and paste placement (D10); verify `transform-nodes.test.ts` and the paste/duplicate tests named for the rule that constraints follow copies and whole moves, the duplicate and paste fragments rule and the explicit external-reference handling on paste rule: "Moving both ends" shifts the pin in the same patch, moving one endpoint keeps it ("Endpoint moves after a pin"), and "Duplicate keeps the shape" shifts the copy's pin by the duplicate offset
+- [x] 3.2 Shift pins in `planMoveNodes` for connections whose both endpoint nodes move, and in fragment remap and paste placement (D10); verify `transform-nodes.test.ts` and the paste/duplicate tests named for the rule that constraints follow copies and whole moves, the duplicate and paste fragments rule and the explicit external-reference handling on paste rule: "Moving both ends" shifts the pin in the same patch, moving one endpoint keeps it ("Endpoint moves after a pin"), and "Duplicate keeps the shape" shifts the copy's pin by the duplicate offset
 
 ## 4. Routing (core/space)
 
