@@ -81,3 +81,32 @@
   `view.commands.run("route.reset")`. Grips were not checked by eye; `demo:build` passes.
 - The first browser bench after this change was not compared against a baseline; the
   machine was on battery.
+
+## Prior art (2026-11-03)
+
+Survey of manual orthogonal wire editing in other libraries, done for the revision. Web
+access was partial; items marked unconfirmed come from memory, not from fetched docs.
+
+| Tool | Stored | Add a bend | Remove a bend | Node moves |
+| --- | --- | --- | --- | --- |
+| GoJS | full point list | drag a diamond at a segment middle (`resegmentable`) | automatic when collinear | `adjusting: End`: interior kept, end points adapt |
+| JointJS | vertices the router passes through | click on the wire (Vertices tool) | double-click a vertex; `redundancyRemoval` | vertices kept (unconfirmed) |
+| draw.io / mxGraph | waypoints | drag a segment handle; virtual bends at segment centres | right-click remove, "Clear Waypoints" | waypoints kept (unconfirmed) |
+| yFiles | full bend list | bends created while dragging segments | `orthogonalBendRemoval`, `cleanUpEdge` | unconfirmed |
+| Visio | automatic until edited | right-click "Add Point" (unconfirmed) | drag into line; "Reset Connector" | unconfirmed |
+
+Sources: gojs.net/latest/intro/tools.html, gojs.net/api/symbols/LinkAdjusting.html,
+forum.nwoods.com/t/add-segment-to-the-link/10331,
+unpkg.com/jointjs@3.4.2/tutorials/link-tools.html,
+jgraph.github.io/mxgraph/docs/js-api/files/handler/mxEdgeHandler-js.html,
+drawio-app.com/blog/waypoints-in-draw-io-building-a-path-for-your-connectors/,
+docs.yfiles.com/yfiles-html/dguide/customizing_interaction_orthogonal_edges/,
+support.microsoft.com/en-us/visio/reset-the-path-of-a-connector.
+
+Our pins are the segment-coordinate form of an interior point list: an alternating pin
+list describes an orthogonal path exactly, and keeping pins on node moves matches GoJS
+`adjusting: End`. Decisions taken from this: diamond handle to add bends (D11),
+automatic removal of redundant pins (D12), reset command kept, first and last segments
+draggable with fixed stubs (D6).
+
+The demo's "Reset route" is in its context menu (the console hint above is outdated).

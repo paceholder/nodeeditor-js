@@ -27,7 +27,7 @@ Pointer mechanics for editing a route SHALL be a registration per connection kin
 - **THEN** presses on that kind's connections use the host editor, and its router and painter are unchanged
 
 ### Requirement: ROU-03c Orthogonal segment drag
-With the orthogonal segment editor, each inner segment of a selected orthogonal connection (every segment except the first and the last) SHALL be draggable perpendicular to its direction, with a grip drawn on it and a resize cursor while hovered. Dragging SHALL preview the re-routed connection and on release commit one route edit: the dragged segment becomes a pinned segment at its new coordinate, and earlier pins of the connection are kept. The orthogonal router SHALL route through the pins in order and adapt only free segments, adding bends when a pin cannot be reached otherwise, and SHALL report which path segment realizes each pin. Routing with pins SHALL be deterministic and independent of end order (ROU-07). A drag cancelled with Escape SHALL leave the model unchanged (ROU-03, ROU-12, INT-05, INT-08).
+With the orthogonal segment editor, each segment of a selected orthogonal connection SHALL be draggable perpendicular to its direction, with a square grip drawn on it and a resize cursor while hovered. Dragging the first or last segment SHALL keep the port stub (the escape segment of ROU-04) fixed and add a step after it. Dragging SHALL preview the re-routed connection and on release commit one route edit: the dragged segment becomes a pinned segment at its new coordinate, and earlier pins of the connection are kept. The orthogonal router SHALL route through the pins in order and adapt only free segments, adding bends when a pin cannot be reached otherwise, and SHALL report which path segment realizes each pin. Routing with pins SHALL be deterministic and independent of end order (ROU-07). A drag cancelled with Escape SHALL leave the model unchanged (ROU-03, ROU-12, INT-05, INT-08).
 
 #### Scenario: Move a middle segment
 - **WHEN** the user drags the vertical middle segment of a selected S-shaped orthogonal connection 40 units to the right and releases
@@ -41,9 +41,13 @@ With the orthogonal segment editor, each inner segment of a selected orthogonal 
 - **WHEN** a node moves so that a pinned vertical segment lies beyond the target port
 - **THEN** the route still passes along the pinned segment, with extra bends to reach the target from its escape direction
 
-#### Scenario: First and last segments are not draggable
-- **WHEN** the user presses on the first segment of a selected orthogonal connection
-- **THEN** no route edit starts and the press behaves as a press on the connection
+#### Scenario: End segment drag keeps the stub
+- **WHEN** the user drags the first segment of a selected orthogonal connection sideways
+- **THEN** the route still leaves the port along its escape direction for at least the clearance, then steps to the dragged segment
+
+#### Scenario: Straight wire becomes editable
+- **WHEN** the user drags the only segment of a straight orthogonal connection sideways
+- **THEN** the route steps out from both port stubs to the dragged segment
 
 #### Scenario: Undo a segment move
 - **WHEN** the user moves a segment and then undoes
@@ -70,3 +74,25 @@ Paste and duplicate SHALL shift copied pinned segments by the placement offset a
 #### Scenario: Moving both ends
 - **WHEN** both endpoint nodes of a connection with a pinned vertical segment are moved 50 units right in one gesture
 - **THEN** the pin moves 50 units right in the same history entry
+
+### Requirement: ROU-03f Adding bends to an orthogonal route
+With the orthogonal segment editor, each segment long enough on screen SHALL show a diamond handle next to its square grip. Dragging the diamond SHALL break the segment at the handle into a step: the part before the handle stays, a new perpendicular segment appears at the handle, and the part after it follows the pointer, adding two bends in one history entry. Repeated breaks SHALL be able to produce any orthogonal path between the two port stubs (ROU-03, INT-08).
+
+#### Scenario: Break a segment
+- **WHEN** the user drags the diamond of a horizontal segment 30 units down and releases
+- **THEN** the route has two more bends, the part of the segment after the handle lies 30 units lower, and one history entry is added
+
+#### Scenario: Short segment has no diamond
+- **WHEN** a segment is too short on screen for both handles
+- **THEN** only its square grip is shown
+
+### Requirement: ROU-03g Redundant pins removed
+When a route edit commits, the editor SHALL drop every pin whose removal leaves the routed path unchanged, such as a segment dragged into line with its neighbours or back to the automatic shape. A commit whose remaining constraints equal the previous ones SHALL add no history entry (ROU-03, INT-08).
+
+#### Scenario: Drag into line removes the bends
+- **WHEN** the user drags the middle segment of a step until the step's two outer segments are in line, and releases
+- **THEN** the pins of that step are removed and the route has two fewer bends
+
+#### Scenario: Drag back to the start
+- **WHEN** the user drags a free segment and returns it to its starting position before release
+- **THEN** no pin is stored and no history entry is added

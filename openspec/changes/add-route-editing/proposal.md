@@ -26,9 +26,13 @@ segment behavior built now (2026-11-02).
   editor: the handles it offers, its hit test, the constraints a drag produces, and what
   a double-click does. One generic route-edit tool delegates to the editor of the pressed
   connection's kind. Kinds without an editor behave as today.
-- **Orthogonal segment editor.** On a selected orthogonal wire, every inner segment (not
-  the first or last, which leave and enter the ports) shows a grip and can be dragged
-  sideways. Dragging pins it; a pinned segment keeps its place when nodes move, and the
+- **Orthogonal segment editor.** On a selected orthogonal wire, every segment shows a
+  square grip and can be dragged sideways; on the first and last segment the short stub
+  at the port stays fixed and a step is added after it. A diamond handle next to each
+  long enough segment breaks the segment into a step when dragged, adding two bends, so
+  any orthogonal path can be built. On release, pins that no longer change the shape
+  (segments dragged into line, or back to the automatic shape) are removed, which is
+  also how a single bend is removed. Dragging pins it; a pinned segment keeps its place when nodes move, and the
   router adds bends to reach it if needed. Double-clicking a pinned segment frees it.
 - **Reset route command.** A view command clears all constraints of the selected
   connections, usable from a host context menu or keyboard binding.
@@ -39,10 +43,10 @@ segment behavior built now (2026-11-02).
   list, omitted when empty. The document format stays version 1 (additive field).
 
 Requirement IDs: ROU-03 (segment part), ROU-12, ROU-06, ROU-07, ROU-01e, INT-05, INT-08,
-EDT-03, EDT-04, SER-01, REN-01. New: ROU-03a to ROU-03e.
+EDT-03, EDT-04, SER-01, REN-01. New: ROU-03a to ROU-03g.
 
 Out of scope: free waypoints and click-to-route (INT-04), route editors for Bezier or
-straight kinds, dragging the first or last segment, segment snapping (ROU-11), obstacle
+straight kinds, segment snapping (ROU-11), obstacle
 avoidance (ROU-05), and changing a connection's endpoints by dragging its ends.
 
 ## Capabilities
@@ -53,8 +57,9 @@ None.
 
 ### Modified Capabilities
 
-- `routing`: adds ROU-03a to ROU-03e (constraint data, route editor contract, orthogonal
-  segment drag, freeing and reset, constraints on copy and whole moves). ROU-03 itself is
+- `routing`: adds ROU-03a to ROU-03g (constraint data, route editor contract, orthogonal
+  segment drag, freeing and reset, constraints on copy and whole moves, adding bends,
+  removing redundant pins). ROU-03 itself is
   unchanged; waypoints remain open under it.
 
 ## Impact
@@ -69,3 +74,12 @@ None.
 - Docs: `docs/guide-view.md`, `docs/geometry.md`, `docs/format.md`, and the demo
   (orthogonal kind gets the segment editor).
 - Bundle size: view and core grow; budgets are checked by `bench:size`.
+
+## Revision (2026-11-03)
+
+After trying the first version the user found it could not build arbitrary orthogonal
+paths: only router-made inner segments could move. A survey of other diagram libraries
+(notes.md, "Prior art") showed the common conventions: a midpoint handle that adds
+bends, automatic removal of collinear bends, a reset command, and interior edits kept
+when nodes move. The user chose: first and last segments draggable with fixed port
+stubs, a diamond handle to add bends, automatic removal of redundant pins on release.
