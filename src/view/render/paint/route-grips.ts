@@ -1,6 +1,7 @@
 /**
- * Route grips (D8): a small square at each handle of a selected connection whose
- * kind has a route editor. A pinned handle is filled, a free one outlined. Sizes are in
+ * Route grips (D8, D11): a small square at each move handle of a
+ * selected connection whose kind has a route editor, and a diamond at each split handle.
+ * A pinned handle is filled, a free one (and every diamond) outlined. Sizes are in
  * screen pixels (`unit` converts), so grips keep their size at every zoom. Context
  * transform: world space.
  */
@@ -17,14 +18,27 @@ export function drawRouteGrips(
   editor: RouteEditor,
   theme: ThemeTokens,
   unit: number,
+  zoom: number,
 ): void {
   const size = GRIP_SIZE_PX * unit;
   ctx.save();
   ctx.lineWidth = GRIP_LINE_PX * unit;
   ctx.strokeStyle = theme.selection;
-  for (const handle of editor.handles(entry)) {
+  const r = size / 2;
+  for (const handle of editor.handles(entry, { zoom })) {
+    const { x, y } = handle.at;
     ctx.beginPath();
-    ctx.rect(handle.at.x - size / 2, handle.at.y - size / 2, size, size);
+    if (handle.role === "split") {
+      // Slightly larger than the square so the diamond reads as a different handle.
+      const d = r * 1.25;
+      ctx.moveTo(x, y - d);
+      ctx.lineTo(x + d, y);
+      ctx.lineTo(x, y + d);
+      ctx.lineTo(x - d, y);
+      ctx.closePath();
+    } else {
+      ctx.rect(x - r, y - r, size, size);
+    }
     ctx.fillStyle = handle.pinned ? theme.selection : theme.background;
     ctx.fill();
     ctx.stroke();

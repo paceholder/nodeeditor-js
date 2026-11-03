@@ -95,6 +95,7 @@ export function routeTargetAt(
     entry,
     world,
     ctx.options.pickTolerancePx / ctx.zoom,
+    { zoom: ctx.zoom },
   );
   return handle && { connection, editor, handle };
 }
@@ -169,6 +170,7 @@ export function createRouteEditTool(): Tool<RouteEditState> {
       state.handle,
       state.startWorld,
       input.world,
+      { zoom: ctx.zoom, reroute: ctx.reroute },
     );
     return {
       state: { ...state, kind: "dragging", route },

@@ -106,6 +106,18 @@ export function ghostConnections(
   return out;
 }
 
+/**
+ * `entry` re-routed through `route`, ends unchanged: the routing a route editor asks for
+ * when it checks which constraints change nothing (D12).
+ */
+export function rerouteEntry(
+  entry: ConnectionEntry,
+  route: readonly RouteConstraint[],
+  source: GhostSource,
+): ConnectionEntry | undefined {
+  return ghostConnection(entry, new Map(), source, route);
+}
+
 /** A connection re-routed through tentative constraints, ends unchanged. */
 export function ghostWithRoute(
   id: ConnectionId,

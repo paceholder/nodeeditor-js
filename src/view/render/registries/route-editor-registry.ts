@@ -25,18 +25,43 @@ export interface RouteHandle {
   readonly at: Point<"world">;
   /** The handle is backed by a stored constraint (drawn filled). */
   readonly pinned: boolean;
+  /**
+   * `move` shifts an existing part of the route (drawn as a square); `split` breaks a
+   * part into more parts (drawn as a diamond).
+   */
+  readonly role: "move" | "split";
 }
 
 export type RouteCursor = "ew-resize" | "ns-resize" | "move";
 
+/** What an editor needs to know about the view to offer handles (screen-size rules). */
+export interface RouteView {
+  /** Screen pixels per world unit. */
+  readonly zoom: number;
+}
+
+/** What an editor needs to turn a gesture into constraints (D12). */
+export interface RouteEditContext extends RouteView {
+  /**
+   * `entry` re-routed through `constraints` with its own router, or undefined when it
+   * cannot be routed. The editor uses it to drop constraints that change nothing, and so
+   * stays independent of the route registry.
+   */
+  reroute(
+    entry: ConnectionEntry,
+    constraints: readonly RouteConstraint[],
+  ): ConnectionEntry | undefined;
+}
+
 export interface RouteEditor {
   /** Handles on a connection entry, in world space; for painting and hit testing. */
-  handles(entry: ConnectionEntry): readonly RouteHandle[];
+  handles(entry: ConnectionEntry, view: RouteView): readonly RouteHandle[];
   /** Handle under a world point within `tolerance` world units, if any. */
   hit(
     entry: ConnectionEntry,
     world: Point<"world">,
     tolerance: number,
+    view: RouteView,
   ): RouteHandle | undefined;
   /** Constraints while `handle` is dragged from `start` to `world`. */
   drag(
@@ -44,6 +69,7 @@ export interface RouteEditor {
     handle: RouteHandle,
     start: Point<"world">,
     world: Point<"world">,
+    context: RouteEditContext,
   ): readonly RouteConstraint[];
   /** Constraints after a double-click on a handle; `undefined` does nothing. */
   activate(

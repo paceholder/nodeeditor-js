@@ -236,6 +236,7 @@ export function mountView(
     },
     input: options.input ?? {},
     routeEditors,
+    routes,
     hidePortsBelow: () => theme.lodHidePortsBelow,
   });
 
