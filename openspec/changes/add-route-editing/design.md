@@ -129,8 +129,13 @@ orthogonal router for the same kind.
 
 ### D6. Orthogonal segment editor
 
-- Handles: one per inner segment of the routed path (segment indices 1 to n-2), at the
-  segment midpoint; `pinned` when `realized` contains that index.
+- Handles: a `move` handle per segment of the routed path (all indices, including the
+  first and last), at the segment midpoint, `pinned` when `realized` contains that index;
+  and a `split` handle (D11) per segment at least `splitMinPx` long on screen.
+  (Revised 2026-11-03: inner segments only before.)
+- Drag of the first or last segment: the new pin is placed at the start or end of the
+  list; the router keeps the stub `p0→e0` (or `e1→p1`) and inserts the connecting step
+  (D4 step 3), so the stub never moves.
 - Drag of segment `i` with orientation `o`: the new coordinate is the start coordinate
   plus the pointer delta on the perpendicular axis. If `i` is realized by pin `k`,
   replace pin `k`; otherwise insert a new pin at the position that keeps walk order
@@ -176,11 +181,34 @@ update shifting its pins by the move delta (x for vertical pins, y for horizonta
 Fragment remap and paste placement shift pins by the placement offset the same way. A
 small `translateConstraints(route, dx, dy)` in `core/data` serves both.
 
+### D11. Adding bends (split handle)
+
+The split handle is a small diamond drawn 16 CSS px from the square along the segment,
+toward its later end; it is shown only when the segment is at least `splitMinPx` (48 CSS
+px) long on screen. Its hit test runs before the segment's move hit test. Dragging the
+split handle of segment `i` (orientation `o`, coordinate `c`) at handle point `h` by the
+perpendicular delta `d` replaces the segment's pin, or inserts one, by three pins in walk
+order: `o` at `c` (the part before `h`), the perpendicular orientation at `h`'s
+along-axis coordinate (the new step), and `o` at `c + d` (the part after `h`). The
+route-edit tool runs this as a normal drag (preview each move, one commit). The handle's
+cursor is `move`. `RouteHandle` gains `role: "move" | "split"`.
+
+### D12. Redundant pins removed on commit
+
+Before a route edit commits, the editor normalizes the new list: for each pin in walk
+order, route without it (same ends, current router); if the path's vertices are
+identical, drop it, and continue with the reduced list. Pins whose `realized` is -1 are
+dropped first. The tool commits nothing when the result equals the stored list. The
+editor gets the router through a `reroute(entry, constraints)` callback in the editor
+context, so it stays independent of the route registry. Cost: one route per pin per
+commit, a few microseconds each.
+
 ## Risks / Trade-offs
 
-- Straight and L-shaped orthogonal wires have no inner segment, so they cannot be edited
-  until waypoints or end-segment dragging exist → stated in the guide; the user chose
-  inner segments only.
+- Pins realize only segments the user touched; untouched segments between pins are
+  placed by the router (D4 midpoints), so editing one segment can shift a free
+  neighbour → each split pins all three parts, and a user who wants a segment fixed
+  drags it once.
 - Pins in absolute coordinates can produce long detours after big node moves → kept on
   purpose ("keep the pin"); double-click or reset frees them.
 - Pin routing ignores bodies of unrelated nodes, like automatic routing.
