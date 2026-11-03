@@ -21,9 +21,10 @@ export function demoRoutes(): RouteRegistry {
   return routes;
 }
 
-// Select an orthogonal wire to see grips on its middle segments: drag one to pin it,
-// double-click a pinned one to free it, and "Reset route" in the context menu clears a
-// selection's pins.
+// Select an orthogonal wire to see a square grip on every segment, ends included: drag
+// one to pin it (port stubs stay fixed). Drag the diamond on a long segment to break it
+// into a step. Dragging a step back into line removes its bends; double-click a pinned
+// segment to free it, and "Reset route" in the context menu clears a selection's pins.
 // The editor is registered for the kinds the router can draw orthogonally ("default" only
 // shows grips while the checkbox below makes it orthogonal; a Bezier path has no segments).
 export function demoRouteEditors(): RouteEditorRegistry {

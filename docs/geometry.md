@@ -256,7 +256,8 @@ families and builds one path deterministically (`orthogonal-pins.ts`):
 The outcome is `complete`; `clearOf` is `endpoint-nodes` when no segment crosses the open
 interior of either end body and `nothing` otherwise: a pinned route that crosses its own
 nodes is the user's choice and is drawn as such. A pin on a stub's own line is realized by
-that stub. Editing the pins is the view's job (guide-view.md, route editors).
+that stub. A pin on the first or last segment's line away from the stub gives a step
+after the stub, so alternating pins reproduce any orthogonal staircase exactly. Editing the pins is the view's job (guide-view.md, route editors).
 
 **What is not avoided yet.** Only the two endpoint nodes are obstacles. A wire may cross
 an unrelated node, and its outcome says so: an orthogonal route is clear of

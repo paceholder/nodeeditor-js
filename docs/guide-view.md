@@ -295,7 +295,7 @@ The connection painter needs no change for orthogonal wires: `tracePath` draws a
 polyline with `lineTo` and `arcTo`, endpoint dots sit on the ports, the arrowhead points
 along the last segment and a dash runs continuously around the corners.
 
-### Route editors: dragging a wire's middle segments
+### Route editors: shaping a wire segment by segment
 
 Pointer mechanics for reshaping a wire are a fourth registration, per connection kind
 and independent of the router and the path painter. A **route editor** says which
@@ -317,30 +317,43 @@ routeEditors.register("signal", createOrthogonalSegmentEditor());
 mountView(container, { model, routes, routeEditors });
 ```
 
-- Select an orthogonal wire: a small square grip appears on every **inner** segment (all
-  but the first and the last). A grip is filled when the segment is pinned and outlined
-  when it is free. Hovering a segment shows the resize cursor.
+- Select an orthogonal wire: a small square grip appears on **every** segment, the first
+  and the last included. A grip is filled when the segment is pinned and outlined when it
+  is free. Hovering a segment shows the resize cursor.
 - Drag a segment perpendicular to its direction. The wire is re-routed live (the preview
   lives on the interaction layer, like move previews); on release one history entry
   "Edit route" stores a **pinned segment** at the new coordinate. Earlier pins are kept.
-  Escape cancels. A press on a handle never moves nodes or changes the selection.
+  Escape cancels. A press on a handle never moves nodes or changes the selection. The
+  short stub at each port stays fixed: dragging the first or last segment (or the only
+  segment of a straight wire) makes the router add a step after the stub.
+- A **diamond** next to a square (16 CSS px along the segment toward its later end) shows
+  on segments at least 48 CSS px long on screen (`splitMinPx` in the editor options).
+  Dragging it breaks the segment at the diamond into a step: the part before stays, a
+  new perpendicular segment appears, the part after follows the pointer. One entry adds
+  two bends; repeated breaks can build any orthogonal path between the two stubs. The
+  diamond shows the move cursor.
+- On release the editor drops every pin whose removal leaves the routed path unchanged,
+  so dragging a step back into line removes its bends, and a drag that ends where it
+  started stores nothing and adds no history entry. The editor learns about routing
+  through the `reroute` callback of its context, not through the route registry.
 - The orthogonal router then runs the wire through its pins in order and only adapts the
   free segments. A pin keeps its coordinate when a node moves; if that puts it behind a
   port, the wire gains bends to reach the port from its facing direction.
 - Double-click a pinned segment to free it (one history entry, other pins stay). The
   second press must come within `toolOptions.doubleClickMs` (default 500) and the drag
   threshold of the first. Double-clicking a free segment does nothing.
-- `route.reset` (no default key) removes every pin from the selected wires in one entry.
-  It is unavailable when none of them has a pin.
+- `route.reset` (no default key; "Reset route" in the plain demo's context menu) removes
+  every pin from the selected wires in one entry. It is unavailable when none of them has
+  a pin.
 - Pins follow the wire: copy, paste and duplicate shift them by the placement offset,
   and a move that carries both end nodes shifts them too (one end alone leaves them).
 - A kind without a registered editor behaves as before: a press selects, a drag does
   nothing. A host can register its own editor for a kind (`routeEditors.replace`) and its
   router and painter stay untouched. `RouteEditor` is `handles`, `hit`, `drag`,
-  `activate` and `cursor`; constraints are `{ kind: "segment", orientation, at }` in
+  `activate` and `cursor` (handles carry a `role`, `move` or `split`; `handles` and `hit`
+  get the zoom, `drag` also gets `reroute`); constraints are `{ kind: "segment", orientation, at }` in
   world coordinates, ordered from the `from` end.
-- Limits: a straight or L-shaped wire has no inner segment, so it cannot be edited;
-  there are no waypoints, no snapping of segments, and Bezier or straight kinds have no
+- Limits: there are no waypoints, no snapping of segments, and Bezier or straight kinds have no
   editor. Pinned routes ignore the bodies of unrelated nodes, like automatic routing.
 
 ### The image-symbol preset
