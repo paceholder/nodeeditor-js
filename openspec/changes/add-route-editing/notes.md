@@ -110,3 +110,37 @@ automatic removal of redundant pins (D12), reset command kept, first and last se
 draggable with fixed stubs (D6).
 
 The demo's "Reset route" is in its context menu (the console hint above is outdated).
+
+## Revision deviations (2026-11-03)
+
+- Editor contract: `handles` and `hit` take a `RouteView` (`{ zoom }`) and `drag` takes a
+  `RouteEditContext` (`{ zoom, reroute }`) as last argument, because the diamond rule is in
+  screen pixels and D12 needs the router. `ToolContext.reroute` is built from the route
+  registry (`rerouteEntry` in `ghost-entries.ts`); the tool harness always has a registry.
+- Normalization runs inside `drag`, so the preview shows exactly what a commit stores.
+  `activate` (double-click) is not normalized.
+- "Vertex-identical" compares corners: the router keeps zero-length segments of collapsed
+  pins and collinear points, so repeated and collinear points are ignored in the comparison
+  (`orthogonal-normalize.ts`). The router output itself is unchanged.
+- Splitting the first or last segment stores two pins, not three: the part-before pin lies on
+  the stub line and is redundant. Middle segments store three.
+- Dragging a segment replaces every pin it realizes (duplicates included), not only the first.
+- Dragging a step into line removes its pins when the free neighbours land where the
+  automatic route puts them (verified on straight wires). On an S-shaped wire the router
+  re-centres the free segment between pins, so some collapses leave one pin; the path is
+  still correct, only not minimal in pins.
+- The split diamond is painted in `route-grips.ts` (slightly larger than the square) and landed
+  in the 7.2 commit together with the contract change.
+- The old test "First and last segments are not draggable" was inverted to the new behaviour.
+
+## Revision gates (7.5)
+
+- Power: default bench ran on battery (98%, throttled); the orthogonal bench failed twice on
+  battery (browser connection closed, then a hang of 20+ min, killed) and passed on AC power
+  (`pmset`: AC Power, 98%, charging). Looks like a Chrome/session flake, not the change.
+- lint clean, typecheck clean, `npm test` 130 files / 821 tests, `npm run test:browser`
+  39 files / 199 tests, `npm run build`, `npm run demo:build` (gzip 66.8 kB) ok.
+- `npm run bench:browser` default: 6 files, 10 tests passed (158 s, battery);
+  `BENCH_ROUTES=orthogonal`: 6 files, 10 tests passed (352 s, AC). Numbers not recorded.
+- `npm run bench:size` gzip: core 36.2 KiB (budget 75), view 46.8 KiB (budget 150),
+  advanced 27.5, react 46.8.
