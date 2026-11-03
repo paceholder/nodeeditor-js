@@ -17,7 +17,10 @@ import type {
   Viewport,
 } from "../../../core/index.js";
 import { DEFAULT_SIZE_LIMITS, rejectionOf } from "../../../core/index.js";
-import type { RouteEditorRegistry } from "../../render/registries/route-editor-registry.js";
+import type {
+  RouteEditContext,
+  RouteEditorRegistry,
+} from "../../render/registries/route-editor-registry.js";
 import type { ReadonlySelection } from "../selection/selection-model.js";
 import { evaluationOf, NO_MODEL_EVALUATION } from "./connect-evaluation.js";
 import { resolveToolOptions, type ToolOptions } from "./thresholds.js";
@@ -47,6 +50,8 @@ export interface ToolContextDeps {
   readonly chooserInstalled?: () => boolean;
   /** Route editors per connection kind (ROU-03b); omitted: none. */
   readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
+  /** Re-routes an entry through other constraints (ROU-03g); omitted: never. */
+  readonly reroute?: RouteEditContext["reroute"];
 }
 
 const NO_ROUTE_EDITORS: Pick<RouteEditorRegistry, "get"> = {
@@ -122,6 +127,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       options,
       chooserInstalled: deps.chooserInstalled?.() === true,
       routeEditors: deps.routeEditors ?? NO_ROUTE_EDITORS,
+      reroute: deps.reroute ?? (() => undefined),
     };
   };
 }

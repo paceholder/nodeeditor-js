@@ -131,13 +131,13 @@ describe("ROU-03b, ROU-03c route-edit tool: acceptance", () => {
     expect(routeOf(h, id)).toBeUndefined();
   });
 
-  it("ROU-03c First and last segments are not draggable", () => {
+  it("ROU-03c First and last segments are draggable too", () => {
     const { h } = setup({});
     h.down({ x: 80, y: 10 });
-    expect(h.router.activeTool).toBe("select-move");
+    expect(h.router.activeTool).toBe("route-edit");
     h.up({ x: 80, y: 10 });
     h.down({ x: 160, y: 90 });
-    expect(h.router.activeTool).toBe("select-move");
+    expect(h.router.activeTool).toBe("route-edit");
   });
 });
 

@@ -162,9 +162,11 @@ export type {
 export { createPainterRegistries } from "./render/registries/painters.js";
 export type {
   RouteCursor,
+  RouteEditContext,
   RouteEditor,
   RouteEditorRegistry,
   RouteHandle,
+  RouteView,
 } from "./render/registries/route-editor-registry.js";
 export { createRouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 export type { ResolvedStyle, StyleKey } from "./render/theme/resolve-style.js";

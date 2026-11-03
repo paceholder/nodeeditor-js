@@ -23,7 +23,10 @@ import type {
   ConnectionEvaluation,
   ToolPreview,
 } from "../../render/paint/previews/preview-types.js";
-import type { RouteEditorRegistry } from "../../render/registries/route-editor-registry.js";
+import type {
+  RouteEditContext,
+  RouteEditorRegistry,
+} from "../../render/registries/route-editor-registry.js";
 import type {
   ReadonlySelection,
   SelectionChange,
@@ -161,6 +164,8 @@ export interface ToolContext {
   readonly chooserInstalled: boolean;
   /** Route editor per connection kind (ROU-03b). */
   readonly routeEditors: Pick<RouteEditorRegistry, "get">;
+  /** Re-route a connection entry through other constraints (ROU-03g); none: undefined. */
+  reroute: RouteEditContext["reroute"];
 }
 
 export interface PressInfo {

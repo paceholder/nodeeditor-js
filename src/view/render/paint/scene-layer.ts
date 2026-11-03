@@ -107,7 +107,8 @@ function paintConnections(
     ctx.restore();
     if (selected) {
       const editor = deps.routeEditors?.get(e.record.kind);
-      if (editor) drawRouteGrips(ctx, e, editor, frame.theme, unit);
+      if (editor)
+        drawRouteGrips(ctx, e, editor, frame.theme, unit, frame.viewport.zoom);
     }
   }
 }

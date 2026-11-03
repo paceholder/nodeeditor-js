@@ -202,10 +202,22 @@ describe("ROU-03c, ROU-03d route editing in a mounted view", () => {
   it("ROU-03b Editor replaced: presses use the host editor", async () => {
     const { model, view, c1 } = await setup();
     const host: RouteEditor = {
-      handles: () => [{ id: "g", at: { x: 250, y: 175 }, pinned: false }],
+      handles: () => [
+        {
+          id: "g",
+          at: { x: 250, y: 175 },
+          pinned: false,
+          role: "move" as const,
+        },
+      ],
       hit: (_e, w, tol) =>
         Math.hypot(w.x - 250, w.y - 175) <= tol
-          ? { id: "g", at: { x: 250, y: 175 }, pinned: false }
+          ? {
+              id: "g",
+              at: { x: 250, y: 175 },
+              pinned: false,
+              role: "move" as const,
+            }
           : undefined,
       drag: (_e, _h, _s, w) => [V(w.x + 1000)],
       activate: () => undefined,

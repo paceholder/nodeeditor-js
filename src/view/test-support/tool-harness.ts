@@ -7,6 +7,7 @@ import {
   type Command,
   createGeometryScene,
   createGraphModel,
+  createRouteRegistry,
   type ExecuteResult,
   type GeometryScene,
   type GraphModel,
@@ -52,6 +53,7 @@ import {
   type ToolPreview,
   type ViewportOp,
 } from "../interact/tools/tool-types.js";
+import { rerouteEntry } from "../render/paint/previews/ghost-entries.js";
 import type { RouteEditorRegistry } from "../render/registries/route-editor-registry.js";
 
 export interface HarnessOptions {
@@ -129,10 +131,8 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     });
     if (r.status !== "accepted") throw new Error("harness fixture rejected");
   }
-  const scene = createGeometryScene(
-    model,
-    opts.routes ? { routes: opts.routes } : {},
-  );
+  const routes = opts.routes ?? createRouteRegistry();
+  const scene = createGeometryScene(model, { routes });
   const selection = createSelectionModel();
   const stopBinding = selection.bindToModel(model);
   let viewport: Viewport = opts.viewport ?? { zoom: 1, panX: 0, panY: 0 };
@@ -148,6 +148,8 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     ...(opts.options ? { options: opts.options } : {}),
     chooserInstalled: () => opts.chooser === true,
     ...(opts.routeEditors ? { routeEditors: opts.routeEditors } : {}),
+    reroute: (entry, route) =>
+      rerouteEntry(entry, route, { reader: model.reader, scene, routes }),
     ...(opts.hidePortsBelow !== undefined
       ? { hidePortsBelow: () => opts.hidePortsBelow ?? 0 }
       : {}),

@@ -9,6 +9,7 @@ import {
   type GraphReader,
   type HitCandidate,
   type Rejection,
+  type RouteRegistry,
   rejectionOf,
 } from "../core/index.js";
 import {
@@ -64,6 +65,7 @@ import type { FrameClock } from "./platform/frame-scheduler.js";
 import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
+import { rerouteEntry } from "./render/paint/previews/ghost-entries.js";
 import type { RouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 import {
   attachViewConnectionChoice,
@@ -93,6 +95,8 @@ export interface EditingDeps {
   /** `false` keeps selection and commands but attaches no DOM listeners. */
   readonly input: false | InputOptions;
   readonly routeEditors: Pick<RouteEditorRegistry, "get">;
+  /** Routers per connection kind; route editors re-route through them (ROU-03g). */
+  readonly routes: Pick<RouteRegistry, "get">;
   /** Current port-hiding zoom of the theme (LAY-04). */
   readonly hidePortsBelow: () => number;
 }
@@ -200,6 +204,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       hidePortsBelow: deps.hidePortsBelow,
       chooserInstalled: () => choices?.installed() === true,
       routeEditors: deps.routeEditors,
+      reroute: (entry, route) =>
+        rerouteEntry(entry, route, { reader, scene, routes: deps.routes }),
     });
     handles = editable
       ? createResizeHandles({
