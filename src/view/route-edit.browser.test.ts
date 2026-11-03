@@ -35,11 +35,13 @@ type Layer = "scene" | "interaction";
  */
 async function setup(
   editor: RouteEditor | false = createOrthogonalSegmentEditor(),
+  /** Position of node b; level with a (y = 100) gives a straight wire. */
+  b: readonly [number, number] = [400, 250],
 ) {
   const model = buildModel(
     [
       twoPortNode("a", 100, 100),
-      twoPortNode("b", 400, 250),
+      twoPortNode("b", b[0], b[1]),
       twoPortNode("c", 100, 400),
       twoPortNode("d", 400, 550),
     ],
@@ -75,10 +77,16 @@ async function setup(
   });
   cleanup(() => view.dispose());
   // Count 8 px grip squares drawn on either canvas.
-  const grips = { count: 0 };
+  const grips = { count: 0, diamonds: 0 };
   for (const canvas of [view.canvases.scene, view.canvases.interaction]) {
     const ctx = canvas.getContext("2d");
     if (!ctx) continue;
+    const close = ctx.closePath.bind(ctx);
+    // Diamond grips are the only closed paths the scene and route previews draw.
+    ctx.closePath = () => {
+      grips.diamonds++;
+      close();
+    };
     const rect = ctx.rect.bind(ctx);
     ctx.rect = (x: number, y: number, w: number, h: number) => {
       if (w === 8 && h === 8) grips.count++;
@@ -127,6 +135,67 @@ describe("ROU-03c, ROU-03d route editing in a mounted view", () => {
     await frames();
     expect(model.reader.getConnection(c1)?.route).toBeUndefined();
     expect(xs("scene", c1)).toContain(250);
+  });
+
+  it("ROU-03f a diamond is painted on a long segment of a selected wire", async () => {
+    const { view, c1, grips } = await setup();
+    expect(grips.diamonds).toBe(0);
+    view.selection.replace([`c:${c1}`]);
+    await frames();
+    expect(grips.diamonds).toBeGreaterThan(0);
+  });
+
+  it("ROU-03f, INT-08 dragging the diamond adds two bends in one history entry", async () => {
+    const { model, view, c1, xs } = await setup();
+    view.selection.replace([`c:${c1}`]);
+    await frames();
+    const changes: number[] = [];
+    model.on("change", (e) => changes.push(e.patch.ops.length));
+    // The diamond of the vertical middle segment is 16 px below its square (250, 175).
+    const m = mouse(view);
+    m.down(250, 191);
+    m.move(270, 191);
+    m.move(290, 191);
+    m.up(290, 191);
+    await frames();
+    expect(changes).toEqual([1]);
+    expect(model.historyState().undoLabel).toBe("Edit route");
+    expect(
+      (model.reader.getConnection(c1)?.route ?? []).length,
+    ).toBeGreaterThan(1);
+    // The part after the handle follows the pointer: a vertical run at x = 290.
+    expect(xs("scene", c1)).toContain(290);
+    model.undo();
+    await frames();
+    expect(model.reader.getConnection(c1)?.route).toBeUndefined();
+  });
+
+  it("ROU-03c Straight wire becomes editable: dragging its segment makes a step", async () => {
+    const { model, view, c1, xs } = await setup(undefined, [400, 100]);
+    view.selection.replace([`c:${c1}`]);
+    await frames();
+    expect(xs("scene", c1)).toEqual([]);
+    mouse(view).drag([250, 100], [250, 140]);
+    await frames();
+    expect(model.reader.getConnection(c1)?.route).toEqual([
+      { kind: "segment", orientation: "horizontal", at: 140 },
+    ]);
+    expect((xs("scene", c1) ?? []).length).toBe(2);
+  });
+
+  it("ROU-03g Drag back to the start adds no history entry", async () => {
+    const { model, view, c1 } = await setup();
+    view.selection.replace([`c:${c1}`]);
+    await frames();
+    const before = model.historyState().undoLabel;
+    const m = mouse(view);
+    m.down(250, 191);
+    m.move(290, 191);
+    m.move(250, 191);
+    m.up(250, 191);
+    await frames();
+    expect(model.reader.getConnection(c1)?.route).toBeUndefined();
+    expect(model.historyState().undoLabel).toBe(before);
   });
 
   it("ROU-03c Escape during the drag leaves the model unchanged", async () => {

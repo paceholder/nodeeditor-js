@@ -114,6 +114,55 @@ describe("ROU-03b, ROU-03c route-edit tool: drag", () => {
   });
 });
 
+describe("ROU-03f, ROU-03g, INT-08 route-edit tool: split and normalization", () => {
+  // The wire runs (40,10) (120,10) (120,90) (200,90); the diamond of the vertical middle
+  // segment sits 16 below its square: (120, 66).
+  it("ROU-03f a press on the diamond wins over the square and shows the move cursor", () => {
+    const { h } = setup({});
+    h.down({ x: 120, y: 66 });
+    expect(h.router.activeTool).toBe("route-edit");
+    expect(h.log.cursors.at(-1)).toBe("move");
+  });
+
+  it("ROU-03f, INT-08 dragging the diamond adds bends in one history entry", () => {
+    const { h, id } = setup({});
+    const before = h.model.reader.connections().length;
+    h.down({ x: 120, y: 66 });
+    h.move({ x: 150, y: 66 });
+    h.move({ x: 160, y: 66 });
+    h.up({ x: 160, y: 66 });
+    expect(h.log.commits).toHaveLength(1);
+    const route = routeOf(h, id) ?? [];
+    expect(route.length).toBeGreaterThanOrEqual(2);
+    expect(route.some((p) => p.orientation === "horizontal")).toBe(true);
+    expect(route.some((p) => p.at === 160)).toBe(true);
+    expect(h.model.reader.connections()).toHaveLength(before);
+    h.model.undo();
+    expect(routeOf(h, id)).toBeUndefined();
+  });
+
+  it("ROU-03c the first segment can be dragged: a step appears after the stub", () => {
+    const { h, id } = setup({});
+    h.down({ x: 80, y: 10 });
+    h.move({ x: 80, y: 30 });
+    h.move({ x: 80, y: 40 });
+    h.up({ x: 80, y: 40 });
+    expect(routeOf(h, id)).toEqual([
+      { kind: "segment", orientation: "horizontal", at: 40 },
+    ]);
+  });
+
+  it("ROU-03g Drag back to the start: no pin and no history entry", () => {
+    const { h, id } = setup({});
+    h.down({ x: 80, y: 10 });
+    h.move({ x: 80, y: 40 });
+    h.move({ x: 80, y: 10 });
+    h.up({ x: 80, y: 10 });
+    expect(h.log.commits).toEqual([]);
+    expect(routeOf(h, id)).toBeUndefined();
+  });
+});
+
 describe("ROU-03b, ROU-03c route-edit tool: acceptance", () => {
   it("ROU-03b an unselected wire is not accepted", () => {
     const { h } = setup({ select: false });
