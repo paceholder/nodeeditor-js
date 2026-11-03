@@ -266,6 +266,70 @@ describe("ROU-03c pin routing shapes", () => {
   });
 });
 
+describe("ROU-03c, ROU-03f, ROU-07 fully pinned staircases", () => {
+  it("ROU-03c ROU-03f an alternating pin list reproduces a staircase exactly, every pin realized", () => {
+    check(
+      A,
+      B,
+      [V(40), H(30), V(120)],
+      [
+        [0, 0],
+        [40, 0],
+        [40, 30],
+        [120, 30],
+        [120, 80],
+        [200, 80],
+      ],
+      [1, 2, 3],
+    );
+    check(
+      A,
+      B,
+      [V(40), H(-30), V(90), H(50), V(150)],
+      [
+        [0, 0],
+        [40, 0],
+        [40, -30],
+        [90, -30],
+        [90, 50],
+        [150, 50],
+        [150, 80],
+        [200, 80],
+      ],
+      [1, 2, 3, 4, 5],
+    );
+  });
+
+  it("ROU-03f ROU-04 a pin on the first segment away from the stub steps after the stub", () => {
+    const { forward } = both(A, B, [H(30)]);
+    const v = verticesOf(forward.path);
+    // The stub (0,0)-(20,0) is kept: the first vertex after it is on x >= 20.
+    expect(v[0]).toEqual(w(0, 0));
+    expect(v[1]?.y).toBe(0);
+    expect(v[1]?.x).toBeGreaterThanOrEqual(20);
+    expect(forward.realized?.[0]).toBeGreaterThan(0);
+    expect(forward.realized).not.toContain(-1);
+    expect(isAxisAligned(forward.path)).toBe(true);
+  });
+
+  it("ROU-03f ROU-04 a pin on the last segment away from the stub steps before the stub", () => {
+    const { forward } = both(A, B, [H(30), V(120), H(50)]);
+    const v = verticesOf(forward.path);
+    const last = v[v.length - 2] as Point<W>;
+    expect(v[v.length - 1]).toEqual(w(200, 80));
+    expect(last.y).toBe(80);
+    expect(last.x).toBeLessThanOrEqual(180);
+    expect(forward.realized).not.toContain(-1);
+  });
+
+  it("ROU-07 pins on the first and last segments are independent of end order", () => {
+    const { forward, back } = both(A, B, [H(30), V(120), H(50)]);
+    expect(verticesOf(back.path)).toEqual(
+      [...verticesOf(forward.path)].reverse(),
+    );
+  });
+});
+
 describe("ROU-03c, ROU-07, ROU-01c random pins", () => {
   it("1000 seeded inputs with 1 to 3 pins are deterministic, finite and axis-aligned, in either end order", () => {
     const rnd = seededRandom(7);
