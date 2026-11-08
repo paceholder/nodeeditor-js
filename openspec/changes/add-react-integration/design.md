@@ -102,7 +102,9 @@ names and no bundled CSS.
   confirms it and the overlay layer's wheel handling is adjusted if the first run fails.
 - Hover payload: entity kind, stable IDs and, for a node, its screen rectangle. The hit
   member of a composite connection is included only if it costs nothing once the picker
-  result is read (task 2.1); no host needs it. Hover delays stay in the host.
+  result is read (task 2.1); no host needs it. Outcome: the picker's connection candidate
+  already has an optional `member` (never set today), so the payload passes it through
+  when present at no cost. Hover delays stay in the host.
 - Hook test environment: browser mode with a real DOM, not a DOM emulation dependency.
   Server rendering tests run in the Node project with `react-dom/server`.
 

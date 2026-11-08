@@ -6,6 +6,7 @@ import {
 } from "../../../core/space/scene/scene-fixtures.js";
 import { cleanupScope, frames, makeHost } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
+import { viewRect } from "../../platform/view-rect.js";
 import { mouse, wheel } from "../input/input-test-support.js";
 
 const cleanup = cleanupScope();
@@ -213,17 +214,48 @@ describe("overlay placement and node rectangle", () => {
     }
   });
 
+  it("A corner placement pins the element's corner to the node's corner", async () => {
+    const { view } = setup(2);
+    const popover = box(40, 20);
+    view.overlay.attach(popover, {
+      kind: "node",
+      node: nodeId("a"),
+      placement: "bottom-right",
+    });
+    await frames();
+    const rect = view.nodeRect(nodeId("a"));
+    const at = popover.getBoundingClientRect();
+    expect(rect).toBeDefined();
+    if (!rect) return;
+    expect(at.right).toBeCloseTo(rect.right, 2);
+    expect(at.bottom).toBeCloseTo(rect.bottom, 2);
+  });
+
+  it("The node rectangle is DOMRect-shaped, so a popover library takes it as is", async () => {
+    const { view } = setup(1.5);
+    await frames();
+    const rect = view.nodeRect(nodeId("a"));
+    expect(rect).toBeDefined();
+    if (!rect) return;
+    expect(rect.left).toBe(rect.x);
+    expect(rect.top).toBe(rect.y);
+    expect(rect.right).toBeCloseTo(rect.x + rect.width, 9);
+    expect(rect.bottom).toBeCloseTo(rect.y + rect.height, 9);
+  });
+
   it("Node rectangle as a value: client pixels of the body, nothing for an absent node", async () => {
     const { model, host, view } = setup(1.5);
     await frames();
     const body = createGeometryScene(model).node(nodeId("a"))?.bodyBounds;
     const origin = host.getBoundingClientRect();
-    expect(view.nodeRect(nodeId("a"))).toEqual({
-      x: origin.left + 30 + (body?.x ?? 0) * 1.5,
-      y: origin.top + 20 + (body?.y ?? 0) * 1.5,
-      width: (body?.w ?? 0) * 1.5,
-      height: (body?.h ?? 0) * 1.5,
-    });
+    expect(view.nodeRect(nodeId("a"))).toEqual(
+      viewRect(
+        origin.left + 30 + (body?.x ?? 0) * 1.5,
+        origin.top + 20 + (body?.y ?? 0) * 1.5,
+        (body?.w ?? 0) * 1.5,
+        (body?.h ?? 0) * 1.5,
+      ),
+    );
     expect(view.nodeRect(nodeId("missing"))).toBeUndefined();
     model.deleteEntities({ nodes: [nodeId("a")] });
     expect(view.nodeRect(nodeId("a"))).toBeUndefined();

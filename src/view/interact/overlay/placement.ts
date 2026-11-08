@@ -10,13 +10,21 @@ import {
   worldToViewport,
 } from "../../../core/index.js";
 
+/**
+ * Four edges and the centre sit the element outside the node, centred on that edge (the
+ * centre sits it on the middle). Four corners pin the element's same corner to the node's
+ * corner, so the element lies inside the body; `"top-left"` is the default.
+ */
 export type OverlayPlacement =
   | "top-left"
   | "top"
-  | "bottom"
+  | "top-right"
   | "left"
+  | "center"
   | "right"
-  | "center";
+  | "bottom-left"
+  | "bottom"
+  | "bottom-right";
 
 export interface PlacementResult {
   /** Reference point in viewport pixels. */
@@ -28,7 +36,7 @@ export interface PlacementResult {
 
 /**
  * `offset` is a gap in CSS pixels that stays constant at any zoom. It separates the
- * element from the body for the four edge placements; "top-left" and "center" ignore it.
+ * element from the body for the four edge placements; corners and "center" ignore it.
  */
 export function placeAtNode(
   bounds: Rect<"world">,
@@ -44,6 +52,16 @@ export function placeAtNode(
   switch (placement) {
     case "top-left":
       return { at: topLeft, shiftX: 0, shiftY: 0 };
+    case "top-right":
+      return { at: { x: topLeft.x + w, y: topLeft.y }, shiftX: -1, shiftY: 0 };
+    case "bottom-left":
+      return { at: { x: topLeft.x, y: topLeft.y + h }, shiftX: 0, shiftY: -1 };
+    case "bottom-right":
+      return {
+        at: { x: topLeft.x + w, y: topLeft.y + h },
+        shiftX: -1,
+        shiftY: -1,
+      };
     case "top":
       return { at: { x: cx, y: topLeft.y - offset }, shiftX: -0.5, shiftY: -1 };
     case "bottom":
