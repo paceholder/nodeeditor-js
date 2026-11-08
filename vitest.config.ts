@@ -20,7 +20,10 @@ export default defineConfig({
       {
         test: {
           name: "browser",
-          include: ["src/view/**/*.browser.test.ts"],
+          include: [
+            "src/view/**/*.browser.test.ts",
+            "src/react/**/*.browser.test.ts",
+          ],
           browser: {
             enabled: true,
             headless: true,
