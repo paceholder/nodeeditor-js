@@ -110,7 +110,13 @@ export interface ViewOptions {
 }
 
 export interface ViewHandle {
-  readonly viewport: Pick<ViewportState, "get" | "set" | "zoomAt" | "panBy">;
+  readonly viewport: Pick<ViewportState, "get" | "set" | "zoomAt" | "panBy"> & {
+    /**
+     * Subscribe to viewport changes: at most one call per animation frame, after
+     * painting, and none when the viewport ended the frame where it started.
+     */
+    on(handler: (viewport: Viewport) => void): () => void;
+  };
   clientToWorld(
     clientX: number,
     clientY: number,

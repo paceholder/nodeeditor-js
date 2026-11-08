@@ -26,6 +26,7 @@ import {
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
+import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
 import { createAssetService } from "./render/assets/asset-service.js";
 import { createGestureBitmap } from "./render/paint/gesture-bitmap.js";
@@ -86,6 +87,10 @@ export function mountView(
     if (bitmap && layers.includes("scene")) bitmap.invalidate();
     scheduler.markDirty(...layers);
   };
+  const viewportNotifier = createViewportNotifier(
+    () => viewport.get(),
+    options.initialViewport ?? DEFAULT_VIEWPORT,
+  );
   const interaction = createInteractionLayer(() => markDirty("interaction"));
 
   const binding: ModelBinding | undefined = options.model
@@ -167,6 +172,7 @@ export function mountView(
     () => {
       stats.frameEnd();
       if (overlay.count > 0) overlay.layout();
+      viewportNotifier.flush();
     },
   );
   interaction.add(presence.painter);
@@ -207,6 +213,7 @@ export function mountView(
   const viewport = createViewportState(
     metrics,
     () => {
+      viewportNotifier.markChanged();
       // The only viewport-only scene reason: the next frame may reuse the bitmap.
       bitmap?.viewportChanged();
       scheduler.markDirty("background", "scene");
@@ -312,6 +319,7 @@ export function mountView(
       set: viewport.set,
       zoomAt: viewport.zoomAt,
       panBy: viewport.panBy,
+      on: viewportNotifier.on,
     },
     clientToWorld: viewport.clientToWorld,
     pick(clientX, clientY, opts) {
@@ -344,6 +352,7 @@ export function mountView(
       previews.dispose();
       binding?.dispose();
       scheduler.dispose();
+      viewportNotifier.clear();
       bitmap?.dispose();
       overlay.dispose();
       assets.dispose();
