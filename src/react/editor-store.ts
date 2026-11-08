@@ -4,6 +4,10 @@
  * and disappears. One store per provider; nothing is shared between providers.
  */
 import type { ViewHandle, ViewModel } from "../view/index.js";
+import {
+  createEntityDispatcher,
+  type EntityDispatcher,
+} from "./entity-dispatcher.js";
 
 export interface EditorSlot {
   readonly view: ViewHandle | null;
@@ -14,6 +18,8 @@ export interface EditorStore {
   get(): EditorSlot;
   set(slot: EditorSlot): void;
   subscribe(listener: () => void): () => void;
+  /** The dispatcher for the current model, shared by every entity hook; none without one. */
+  entities(): EntityDispatcher | undefined;
 }
 
 const EMPTY: EditorSlot = { view: null, model: undefined };
@@ -21,8 +27,20 @@ const EMPTY: EditorSlot = { view: null, model: undefined };
 export function createEditorStore(): EditorStore {
   let slot = EMPTY;
   const listeners = new Set<() => void>();
+  let dispatcher:
+    | { model: ViewModel; dispatcher: EntityDispatcher }
+    | undefined;
   return {
     get: () => slot,
+    entities() {
+      const model = slot.model;
+      if (!model) return undefined;
+      if (dispatcher?.model !== model) {
+        dispatcher?.dispatcher.dispose();
+        dispatcher = { model, dispatcher: createEntityDispatcher(model) };
+      }
+      return dispatcher.dispatcher;
+    },
     set(next) {
       if (next.view === slot.view && next.model === slot.model) return;
       slot = next;
