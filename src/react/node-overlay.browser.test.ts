@@ -10,6 +10,7 @@ import { type NodeId, nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
 import { frames } from "../view/browser-support.js";
 import type { ViewHandle } from "../view/index.js";
+import { key, mouse } from "../view/interact/input/input-test-support.js";
 import {
   EditorProvider,
   NodeEditor,
@@ -125,5 +126,44 @@ describe("node overlay", () => {
     expect(gone).toEqual(["node removed"]);
     // Only the external delete reached the model; the overlay submitted nothing.
     expect(changes).toBe(1);
+  });
+
+  it("Text field keeps its keys: Delete and a bound letter edit text only", async () => {
+    const { model, view } = await mount(
+      {},
+      createElement("input", { id: "field", defaultValue: "abc" }),
+    );
+    view.selection.replace(["n:a"]);
+    await frames();
+    const field = view.overlayElement.querySelector("#field") as HTMLElement;
+    field.focus();
+    const deleted = key(field, "Delete");
+    const letter = key(field, "x");
+    expect(deleted.defaultPrevented).toBe(false);
+    expect(letter.defaultPrevented).toBe(false);
+    expect(model.reader.getNode(nodeId("a"))).toBeDefined();
+    expect(view.selection.size).toBe(1);
+  });
+
+  it("a pointer press on the content starts no gesture", async () => {
+    const { model, view } = await mount(
+      {},
+      createElement("button", { id: "btn", type: "button" }, "go"),
+    );
+    await frames();
+    const before = view.viewport.get();
+    const btn = view.overlayElement.querySelector("#btn") as HTMLElement;
+    const m = mouse(view, btn);
+    m.down(110, 110);
+    m.move(160, 150);
+    m.up(160, 150);
+    await frames();
+    expect(view.viewport.get()).toEqual(before);
+    expect(view.selection.size).toBe(0);
+    expect(model.reader.getNode(nodeId("a"))?.position).toEqual(
+      buildModel([twoPortNode("a", 100, 100, { w: 60, h: 40 })]).reader.getNode(
+        nodeId("a"),
+      )?.position,
+    );
   });
 });
