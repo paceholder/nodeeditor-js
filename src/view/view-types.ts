@@ -19,6 +19,7 @@ import type { CommandRegistry } from "./interact/commands/command-registry.js";
 import type { KeyBinding, Platform } from "./interact/commands/keymap.js";
 import type { FitOptions } from "./interact/commands/view-fit.js";
 import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
+import type { HoverTarget } from "./interact/hover/hover-types.js";
 import type {
   OverlayAnchor,
   OverlayHandle,
@@ -152,6 +153,12 @@ export interface ViewHandle {
    * or while the container is not measurable.
    */
   nodeRect(id: NodeId): ViewRect | undefined;
+  /**
+   * The entity under the pointer, or null. It follows the `"hover"` event; it is
+   * view state only and never enters the model, a patch, a snapshot or history. Without
+   * editing input (`input: false`) nothing is tracked and it stays null.
+   */
+  readonly hover: { get(): HoverTarget | null };
   /** Painter registries, shared with the options when given. Changes repaint. */
   readonly painters: PainterRegistries;
   /** Geometry registrations, shared with the options when given. Changes repaint. */

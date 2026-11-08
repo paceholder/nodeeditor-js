@@ -53,9 +53,14 @@ export type {
   ViewEventMap,
 } from "./interact/context-menu/context-menu-types.js";
 export type {
+  HoverEvent,
+  HoverTarget,
+} from "./interact/hover/hover-types.js";
+export type {
   OverlayAnchor,
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";
+export type { OverlayPlacement } from "./interact/overlay/placement.js";
 export type { PresenceEntry } from "./interact/overlay/presence.js";
 export { createOrthogonalSegmentEditor } from "./interact/route-edit/orthogonal-segment-editor.js";
 export type {
@@ -108,7 +113,9 @@ export { mountView } from "./mount-view.js";
 export type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
 export type { ViewModel } from "./platform/model-binding.js";
 export type { RenderStats } from "./platform/render-stats.js";
+export type { ViewRect } from "./platform/view-rect.js";
 export type { ViewportState } from "./platform/viewport-state.js";
+export type { ZoomLimits } from "./platform/zoom-limits.js";
 export type {
   AssetService,
   AssetStats,

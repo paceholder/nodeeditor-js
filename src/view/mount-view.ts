@@ -10,6 +10,7 @@ import {
   createGeometryRegistry,
   createRouteRegistry,
   DEFAULT_VIEWPORT,
+  nodeId,
 } from "../core/index.js";
 import { createOverlayHost } from "./interact/overlay/overlay-host.js";
 import { createPresence } from "./interact/overlay/presence.js";
@@ -26,7 +27,7 @@ import {
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
-import { clientRectOf } from "./platform/view-rect.js";
+import { clientRectOf, type ViewRect } from "./platform/view-rect.js";
 import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
 import { resolveZoomLimits } from "./platform/zoom-limits.js";
@@ -237,6 +238,12 @@ export function mountView(
     zoomLimits,
   );
 
+  const handleNodeRect = (id: string): ViewRect | undefined => {
+    const body = scene?.node(nodeId(id))?.bodyBounds;
+    if (!body || !metrics.isMeasurable()) return undefined;
+    return clientRectOf(body, viewport.get(), metrics.clientRect());
+  };
+
   const editing: Editing = attachEditing({
     root: stack.root,
     overlay: stack.overlay,
@@ -249,6 +256,7 @@ export function mountView(
     preview: previews.current,
     interaction,
     clock,
+    nodeRect: (id) => handleNodeRect(id),
     setHovered(id) {
       if (id === hovered) return;
       hovered = id;
@@ -260,6 +268,9 @@ export function mountView(
     hidePortsBelow: () => theme.lodHidePortsBelow,
     zoomLimits,
   });
+
+  // The view moved under a resting pointer: the entity beneath it may have changed.
+  const offViewportHover = viewportNotifier.on(() => editing.refreshHover());
 
   const offPainters = [
     painters.nodes.onChange(() => markDirty("scene")),
@@ -336,11 +347,8 @@ export function mountView(
       on: viewportNotifier.on,
     },
     clientToWorld: viewport.clientToWorld,
-    nodeRect(id) {
-      const body = scene?.node(id)?.bodyBounds;
-      if (!body || !metrics.isMeasurable()) return undefined;
-      return clientRectOf(body, viewport.get(), metrics.clientRect());
-    },
+    nodeRect: handleNodeRect,
+    hover: { get: editing.hover },
     pick(clientX, clientY, opts) {
       const at = viewport.clientToWorld(clientX, clientY);
       if (!at.ok || !scene) return [];
@@ -364,6 +372,7 @@ export function mountView(
       if (disposed) return;
       disposed = true;
       for (const off of offPainters) off();
+      offViewportHover();
       // First: a gesture in flight is cancelled while everything it touches still exists.
       editing.dispose();
       for (const off of offSelection) off();

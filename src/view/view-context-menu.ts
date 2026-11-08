@@ -10,10 +10,7 @@ import {
   type ContextMenuInputDeps,
 } from "./interact/context-menu/context-menu-input.js";
 import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
-import {
-  createViewEvents,
-  type ViewEvents,
-} from "./interact/input/view-events.js";
+import type { ViewEvents } from "./interact/input/view-events.js";
 
 export interface ViewContextMenu {
   readonly on: ViewEvents<ViewEventMap>["on"];
@@ -22,8 +19,10 @@ export interface ViewContextMenu {
   dispose(): void;
 }
 
-export function createViewContextMenu(root: HTMLElement): ViewContextMenu {
-  const events = createViewEvents<ViewEventMap>();
+export function createViewContextMenu(
+  root: HTMLElement,
+  events: ViewEvents<ViewEventMap>,
+): ViewContextMenu {
   let input: ContextMenuInput | undefined;
   return {
     on: events.on,
@@ -38,7 +37,6 @@ export function createViewContextMenu(root: HTMLElement): ViewContextMenu {
     dispose() {
       input?.dispose();
       input = undefined;
-      events.clear();
     },
   };
 }

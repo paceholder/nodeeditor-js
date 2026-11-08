@@ -9,6 +9,7 @@ import type {
   Point,
   PortId,
 } from "../../../core/index.js";
+import type { HoverEvent } from "../hover/hover-types.js";
 import type { Modifiers } from "../tools/tool-types.js";
 
 /** What the menu was opened on: the topmost hit, or the canvas. */
@@ -44,4 +45,6 @@ export interface ContextMenuEvent {
 /** Events the view handle raises through `view.on`. */
 export interface ViewEventMap {
   readonly "context-menu": ContextMenuEvent;
+  /** The hovered entity changed. */
+  readonly hover: HoverEvent;
 }

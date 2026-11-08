@@ -5,11 +5,7 @@
  * hidden document, dispose) to a tool `cancel`. Attached during mount, removed on
  * dispose. Tools never see a DOM type.
  */
-import {
-  type HitCandidate,
-  type Point,
-  viewportToWorld,
-} from "../../../core/index.js";
+import { type Point, viewportToWorld } from "../../../core/index.js";
 import type { ToolRouter } from "../tools/tool-router.js";
 import {
   type CancelReason,
@@ -49,8 +45,15 @@ export interface DomInputDeps {
    * command (clipboard chords), so the key-down keeps its default (D8).
    */
   readonly onKey: (event: KeyboardEvent) => boolean | "native";
-  /** The topmost hit under an idle pointer, undefined when none. */
-  readonly onHover: (hit: HitCandidate | undefined) => void;
+  /**
+   * Pointer position reports for hover tracking: every mouse move over the root
+   * (also during a gesture), the pointer leaving, and a gesture ending.
+   */
+  readonly hover: {
+    move(clientX: number, clientY: number): void;
+    leave(): void;
+    gestureEnded(): void;
+  };
   /** A cursor that wins over the hit-based one for an idle pointer (resize handle). */
   readonly hoverCursor?: (world: Point<"world">) => CursorKind | undefined;
   /** Auto-pan during drags: the view's frame clock and CSS size. */
@@ -101,8 +104,12 @@ export function attachDomInput(
   const modifiers = (e: ModifierKeys) => modifiersOf(e, deps.platform);
 
   const send = (input: ToolInput) => {
+    const wasActive = router.activePointer !== undefined;
     const result = router.handle(input, deps.context());
     run(result.effects);
+    if (wasActive && router.activePointer === undefined) {
+      deps.hover.gestureEnded();
+    }
     return result;
   };
   const driver = deps.autoPan
@@ -149,6 +156,7 @@ export function attachDomInput(
 
   const onPointerMove = (e: PointerEvent): void => {
     track(e);
+    if (e.pointerType === "mouse") deps.hover.move(e.clientX, e.clientY);
     if (router.activePointer !== undefined) {
       pointer("pointer-move", e);
       return;
@@ -157,7 +165,6 @@ export function attachDomInput(
     const at = deps.coords(e.clientX, e.clientY);
     if (!at) return;
     const top = deps.context().pick(at.world)[0];
-    deps.onHover(top);
     setCursor(
       deps.hoverCursor?.(at.world) ??
         (top?.kind === "port" ? "crosshair" : "default"),
@@ -181,9 +188,7 @@ export function attachDomInput(
     if (e.pointerType === "mouse" || e.pointerType === "pen") {
       lastClient = undefined;
     }
-    if (router.activePointer === undefined && e.pointerType === "mouse") {
-      deps.onHover(undefined);
-    }
+    if (e.pointerType === "mouse") deps.hover.leave();
   };
 
   const onWheel = (e: WheelEvent): void => {
@@ -272,7 +277,6 @@ export function attachDomInput(
       }
       if (!hadTabIndex) root.removeAttribute("tabindex");
       root.style.cursor = "";
-      deps.onHover(undefined);
       captures.clear();
       lastClient = undefined;
     },

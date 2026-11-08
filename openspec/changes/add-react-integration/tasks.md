@@ -10,7 +10,7 @@
 ## 2. Hover (view/interact)
 
 - [x] 2.1 Implement the hover tracker (state, frame-coalesced pick, change detection, gesture suppression, leave and removed-entity handling, the level-of-detail ports rule) as a headless module with `hover-types.ts`; include the node's screen rectangle in the node payload and add a connection member only if the picker already returns it for free (record the outcome in the design); verify `hover-tracker.test.ts` named for hover event, hover state, hit result order and level of detail for enter, within, leave, burst, gesture, ports-hidden, removed entity
-- [ ] 2.2 Wire pointer move/leave in DOM input, add `"hover"` to `ViewEventMap`, expose `view.hover`, and feed `ViewState.isHovered` by default; verify `src/view/hover.browser.test.ts` in Chrome named for the hover event rule, the hover state rule and the gesture lifecycle and cancellation rule: one event on enter carrying the node's screen rectangle, none within, one on leave, none during a node drag, hovered flag seen by a test painter
+- [x] 2.2 Wire pointer move/leave in DOM input, add `"hover"` to `ViewEventMap`, expose `view.hover`, and feed `ViewState.isHovered` by default; verify `src/view/hover.browser.test.ts` in Chrome named for the hover event rule, the hover state rule and the gesture lifecycle and cancellation rule: one event on enter carrying the node's screen rectangle, none within, one on leave, none during a node drag, hovered flag seen by a test painter
 
 ## 3. React bindings (react)
 

@@ -7,7 +7,6 @@ import {
   err,
   type GeometryScene,
   type GraphReader,
-  type HitCandidate,
   type Rejection,
   type RouteRegistry,
   rejectionOf,
@@ -49,7 +48,14 @@ import {
   DEFAULT_FIT_MAX_ZOOM,
   type FitOptions,
 } from "./interact/commands/view-fit.js";
+import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
+import {
+  createHoverTracker,
+  type HoverTracker,
+} from "./interact/hover/hover-tracker.js";
+import type { HoverTarget } from "./interact/hover/hover-types.js";
 import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
+import { createViewEvents } from "./interact/input/view-events.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
 import { createResizeHandles } from "./interact/tools/resize-handles.js";
@@ -67,6 +73,7 @@ import { createToolRouter } from "./interact/tools/tool-router.js";
 import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock } from "./platform/frame-scheduler.js";
 import { removedIds, type ViewModel } from "./platform/model-binding.js";
+import type { ViewRect } from "./platform/view-rect.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { ResolvedZoomLimits } from "./platform/zoom-limits.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
@@ -97,6 +104,8 @@ export interface EditingDeps {
   /** The view's frame clock; auto-pan requests its frames here. */
   readonly clock: FrameClock;
   readonly setHovered: (id: string | undefined) => void;
+  /** The node's body bounds in client pixels; used by hover events. */
+  readonly nodeRect: (id: string) => ViewRect | undefined;
   /** `false` keeps selection and commands but attaches no DOM listeners. */
   readonly input: false | InputOptions;
   readonly routeEditors: Pick<RouteEditorRegistry, "get">;
@@ -112,6 +121,10 @@ export interface Editing {
   readonly commands: CommandRegistry;
   readonly clipboard: ViewClipboard;
   readonly on: ViewContextMenu["on"];
+  /** The hovered entity, or null. Always null without editing input. */
+  hover(): HoverTarget | null;
+  /** Recompute the hover from the last pointer position (the view moved under it). */
+  refreshHover(): void;
   /** Replace or remove the connection chooser; cancels a pending choice. */
   readonly setConnectionChooser: ViewConnectionChoice["setChooser"];
   toolOptions(): ToolOptions;
@@ -135,9 +148,10 @@ const UNBOUND_VIEW: ViewCommands = {
   reveal: noModel,
 };
 
-function hoverId(hit: HitCandidate | undefined): string | undefined {
-  if (!hit) return undefined;
-  return hit.kind === "connection" ? hit.connectionId : hit.nodeId;
+/** The ID painters see as hovered: a port counts as its node. */
+function hoverId(target: HoverTarget | null): string | undefined {
+  if (!target) return undefined;
+  return target.kind === "connection" ? target.connection : target.node;
 }
 
 export function attachEditing(deps: EditingDeps): Editing {
@@ -172,7 +186,9 @@ export function attachEditing(deps: EditingDeps): Editing {
     view,
   }));
   const offs: Array<() => void> = [];
-  const menu = createViewContextMenu(deps.root);
+  const events = createViewEvents<ViewEventMap>();
+  const menu = createViewContextMenu(deps.root, events);
+  let hover: HoverTracker | undefined;
   let input: DomInput | undefined;
   let choices: ViewConnectionChoice | undefined;
   let bridge: ClipboardEvents | undefined;
@@ -268,7 +284,11 @@ export function attachEditing(deps: EditingDeps): Editing {
         commands.run(resolved.command, resolved.args);
         return true;
       },
-      onHover: (hit) => deps.setHovered(hoverId(hit)),
+      hover: {
+        move: (x, y) => hover?.move(x, y),
+        leave: () => hover?.leave(),
+        gestureEnded: () => hover?.gestureEnded(),
+      },
       hoverCursor: (world) =>
         live?.cursorAt(world) ?? routeCursorAt(world, context()),
       autoPan: { clock: deps.clock, size: deps.size },
@@ -279,6 +299,19 @@ export function attachEditing(deps: EditingDeps): Editing {
         overlay: deps.overlay,
       });
     }
+    hover = createHoverTracker({
+      pickAt(clientX, clientY) {
+        const world = viewport.clientToWorld(clientX, clientY);
+        return world.ok ? context().pick(world.value) : [];
+      },
+      nodeRect: deps.nodeRect,
+      gesture: () => router.activePointer !== undefined,
+      clock: deps.clock,
+      emit(event) {
+        deps.setHovered(hoverId(event.target));
+        events.emit("hover", event);
+      },
+    });
     const dom = input;
     choices = attachViewConnectionChoice(deps.root, {
       model,
@@ -298,8 +331,15 @@ export function attachEditing(deps: EditingDeps): Editing {
       cancelGesture: dom.cancelGesture,
     });
     offs.push(
-      model.on("change", (e) => dom.entitiesRemoved(removedIds(e.patch.ops))),
-      model.on("reset", () => dom.modelReset()),
+      model.on("change", (e) => {
+        const removed = removedIds(e.patch.ops);
+        dom.entitiesRemoved(removed);
+        hover?.entitiesRemoved(removed);
+      }),
+      model.on("reset", () => {
+        dom.modelReset();
+        hover?.modelReset();
+      }),
     );
   }
 
@@ -307,6 +347,8 @@ export function attachEditing(deps: EditingDeps): Editing {
     commands,
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     on: menu.on,
+    hover: () => hover?.current() ?? null,
+    refreshHover: () => hover?.refresh(),
     setConnectionChooser: (chooser) => choices?.setChooser(chooser),
     toolOptions: () => resolveToolOptions(toolOptions),
     setToolOptions(patch) {
@@ -317,6 +359,9 @@ export function attachEditing(deps: EditingDeps): Editing {
     dispose() {
       for (const off of offs.splice(0)) off();
       menu.dispose();
+      hover?.dispose();
+      hover = undefined;
+      events.clear();
       choices?.dispose();
       bridge?.dispose();
       bridge = undefined;
