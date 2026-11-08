@@ -58,7 +58,11 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
       chooser: input?.chooseConnection,
     };
     store.set({ view, model: current.model });
+    const offLock = view.on("lock", (e) =>
+      latest.current.onLockedChange?.(e.locked),
+    );
     return () => {
+      offLock();
       store.set({ view: null, model: undefined });
       view.dispose();
     };
@@ -82,6 +86,14 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     applied.current.toolOptions = toolOptions;
     view.setToolOptions(toolOptions);
   }, [store, toolOptions]);
+
+  const { locked } = props;
+  useEffect(() => {
+    const view = store.get().view;
+    if (view && locked !== undefined && view.locked !== locked) {
+      view.setLocked(locked);
+    }
+  }, [store, locked]);
 
   const chooser = input?.chooseConnection;
   useEffect(() => {

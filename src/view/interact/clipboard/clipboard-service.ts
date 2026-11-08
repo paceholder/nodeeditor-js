@@ -19,6 +19,7 @@ import {
   parseFragmentText,
   rejectionOf,
 } from "../../../core/index.js";
+import { LOCKED, VIEW_LOCKED } from "../lock/view-lock.js";
 import { connectionKey, nodeKey } from "../selection/selection-model.js";
 import type {
   ClipboardEventMap,
@@ -105,7 +106,10 @@ export function createClipboardService(
     });
   }
 
+  const isLocked = (): boolean => deps.locked?.() === true;
+
   function commit(command: Command): PasteOutcome {
+    if (isLocked()) return err(VIEW_LOCKED);
     if (!model) return err(NO_MODEL);
     return executeAndSelect(model, command, (created) =>
       selection.replace([
@@ -116,6 +120,7 @@ export function createClipboardService(
   }
 
   function pasteText(text: string, at?: Placement): PasteOutcome {
+    if (isLocked()) return err(VIEW_LOCKED);
     if (!model) return err(NO_MODEL);
     const parsed = parseFragmentText(text, parseOptions);
     if (!parsed.ok) {
@@ -150,6 +155,7 @@ export function createClipboardService(
       return r;
     },
     cut(sink) {
+      if (isLocked()) return err(VIEW_LOCKED);
       if (!model) return err(NO_MODEL);
       const r = extract();
       if (!r.ok) return r;
@@ -212,6 +218,7 @@ export function createClipboardService(
     },
     buffer: () => buffer,
     canPaste(text) {
+      if (isLocked()) return LOCKED;
       if (!model) return { available: false, reason: NO_MODEL };
       const source = text ?? buffer;
       if (source === undefined) return { available: false, reason: EMPTY };
@@ -234,6 +241,7 @@ export function createClipboardService(
       });
     },
     canDuplicate() {
+      if (isLocked()) return LOCKED;
       if (!model) return { available: false, reason: NO_MODEL };
       const nodes = selection.nodeIds();
       if (nodes.length === 0) {

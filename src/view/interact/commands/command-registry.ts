@@ -14,6 +14,7 @@ import {
   rejectionOf,
   type SubmitResult,
 } from "../../../core/index.js";
+import { VIEW_LOCKED } from "../lock/view-lock.js";
 import type { SelectionModel } from "../selection/selection-model.js";
 import type { EditableModel } from "./editable-model.js";
 import type { ViewCommands } from "./view-commands.js";
@@ -53,6 +54,11 @@ export interface EditorCommand<A = void> {
   readonly id: string;
   /** Localizable key, never a translated string. */
   readonly labelKey: string;
+  /**
+   * True for commands that work while the view is locked (selection, view and copy
+   * commands). Any other command is refused with the lock reason.
+   */
+  readonly viewOnly?: boolean;
   availability(args: A, ctx: CommandContext): Availability;
   run(args: A, ctx: CommandContext): CommandOutcome;
 }
@@ -76,6 +82,7 @@ const unknownCommand = (id: string): Rejection =>
 
 export function createCommandRegistry(
   context: () => CommandContext,
+  locked: () => boolean = () => false,
 ): CommandRegistry {
   // Args are erased at the registry boundary; each command validates its own.
   const commands = new Map<string, EditorCommand<unknown>>();
@@ -90,6 +97,7 @@ export function createCommandRegistry(
     run(id, args) {
       const command = commands.get(id);
       if (!command) return err(unknownCommand(id));
+      if (locked() && !command.viewOnly) return err(VIEW_LOCKED);
       const ctx = context();
       const availability = command.availability(args, ctx);
       return availability.available
@@ -98,9 +106,10 @@ export function createCommandRegistry(
     },
     availability(id, args) {
       const command = commands.get(id);
-      return command
-        ? command.availability(args, context())
-        : { available: false, reason: unknownCommand(id) };
+      if (!command) return { available: false, reason: unknownCommand(id) };
+      return locked() && !command.viewOnly
+        ? { available: false, reason: VIEW_LOCKED }
+        : command.availability(args, context());
     },
     list: () =>
       [...commands.values()].map(({ id, labelKey }) => ({ id, labelKey })),

@@ -25,10 +25,12 @@ disposing in cleanup. Strict Mode's setup, cleanup, setup yields one live view a
 of listeners because cleanup disposes fully and the second setup mounts a fresh view.
 The handle is held in state exposed through the provider; hooks tolerate "not yet
 mounted" by returning inert defaults. Options that have runtime setters (`theme` via
-`setTheme`, `input.toolOptions` via `setToolOptions`) are applied in effects without
-remount. Options without setters (`model`, `geometry`, `routes`, `painters`, `input`
-tool list, `initialViewport`, `initialFit`, `zoomLimits`) are compared by identity and a
-change remounts the view; the docs say to memoize them. Alternative considered: keeping
+`setTheme`, `locked` via `setLocked`, `input.toolOptions` via `setToolOptions`) are applied
+in effects without remount. Options without setters (`model`, `geometry`, `routes`,
+`painters`, `input` tool list) are compared by identity and a change remounts the view; the
+docs say to memoize them. Every option is classified in one total map typed over the
+view's option keys, so adding an option forces a decision (update, remount or read once).
+Lock changes made inside the editor reach the host through `onLockedChange`. Alternative considered: keeping
 the view alive and diffing every option; rejected, it would need setters the view
 deliberately lacks.
 

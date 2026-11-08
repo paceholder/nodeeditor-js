@@ -4,9 +4,11 @@
  * viewport. `mountView` owns the lifetime; this module owns nothing global.
  */
 import {
+  type Command,
   err,
   type GeometryScene,
   type GraphReader,
+  type PlanResult,
   type Rejection,
   type RouteRegistry,
   rejectionOf,
@@ -56,6 +58,11 @@ import {
 import type { HoverTarget } from "./interact/hover/hover-types.js";
 import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
 import { createViewEvents } from "./interact/input/view-events.js";
+import {
+  createViewLock,
+  LOCKED,
+  VIEW_LOCKED,
+} from "./interact/lock/view-lock.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
 import { createResizeHandles } from "./interact/tools/resize-handles.js";
@@ -115,12 +122,17 @@ export interface EditingDeps {
   readonly hidePortsBelow: () => number;
   /** The view's zoom range; wheel zoom and fit stay inside it. */
   readonly zoomLimits: ResolvedZoomLimits;
+  /** Start locked. */
+  readonly locked: boolean;
 }
 
 export interface Editing {
   readonly commands: CommandRegistry;
   readonly clipboard: ViewClipboard;
   readonly on: ViewContextMenu["on"];
+  /** The view lock: editing gestures and commands are refused while it is on. */
+  locked(): boolean;
+  setLocked(locked: boolean): void;
   /** The hovered entity, or null. Always null without editing input. */
   hover(): HoverTarget | null;
   /** Recompute the hover from the last pointer position (the view moved under it). */
@@ -156,6 +168,7 @@ function hoverId(target: HoverTarget | null): string | undefined {
 
 export function attachEditing(deps: EditingDeps): Editing {
   const { model, scene, selection, viewport } = deps;
+  const lock = createViewLock(deps.locked);
   const editable: EditableModel | undefined =
     model && isEditable(model) ? model : undefined;
   const reader: GraphReader | undefined = model?.reader;
@@ -179,12 +192,10 @@ export function attachEditing(deps: EditingDeps): Editing {
         })
       : UNBOUND_VIEW;
   const view = fitWith({});
-  const commands = createCommandRegistry(() => ({
-    model: editable,
-    reader,
-    selection,
-    view,
-  }));
+  const commands = createCommandRegistry(
+    () => ({ model: editable, reader, selection, view }),
+    lock.get,
+  );
   const offs: Array<() => void> = [];
   const events = createViewEvents<ViewEventMap>();
   const menu = createViewContextMenu(deps.root, events);
@@ -199,6 +210,7 @@ export function attachEditing(deps: EditingDeps): Editing {
         reader,
         model: editable,
         selection,
+        locked: lock.get,
         pointer: () => input?.pointerWorld(),
         system:
           clipOptions?.system === false
@@ -220,13 +232,19 @@ export function attachEditing(deps: EditingDeps): Editing {
     const keymap = createKeymap(platform, options.keymap ?? DEFAULT_KEYMAP);
     const router = createToolRouter(options.tools ?? defaultToolSlots());
     const sizeLimits = sizeLimitsOf(model);
-    const can = editable
+    const probe = editable
       ? capabilityProbe({
           reader,
           can: (command) => editable.can(command),
           ...(sizeLimits ? { sizeLimits } : {}),
         })
       : () => ({ available: false, reason: NO_MODEL });
+    // While locked no editing action is available, so no tool starts an edit.
+    const can: typeof probe = (action, id) =>
+      lock.get() ? LOCKED : probe(action, id);
+    const commit = (command: Command): void => {
+      if (!lock.get()) void editable?.execute(command);
+    };
     const context = createToolContext({
       reader,
       scene,
@@ -234,12 +252,21 @@ export function attachEditing(deps: EditingDeps): Editing {
       viewport: viewport.get,
       can,
       ...(sizeLimits ? { sizeLimits } : {}),
-      ...(editable ? { plan: editable.plan } : {}),
+      ...(editable
+        ? {
+            plan: (command: Command): PlanResult =>
+              lock.get()
+                ? { kind: "rejected", error: VIEW_LOCKED }
+                : editable.plan(command),
+          }
+        : {}),
       options: () => toolOptions,
       hidePortsBelow: deps.hidePortsBelow,
       zoomRange: deps.zoomLimits,
       chooserInstalled: () => choices?.installed() === true,
-      routeEditors: deps.routeEditors,
+      routeEditors: {
+        get: (kind) => (lock.get() ? undefined : deps.routeEditors.get(kind)),
+      },
       reroute: (entry, route) =>
         rerouteEntry(entry, route, { reader, scene, routes: deps.routes }),
     });
@@ -262,7 +289,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       platform,
       host: {
         preview: deps.setPreview,
-        commit: (command) => void editable?.execute(command),
+        commit,
         choose: (release) => choices?.open(release),
         selection,
         viewport(op) {
@@ -317,7 +344,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       model,
       overlay: deps.overlay,
       viewport,
-      commit: (command) => void editable?.execute(command),
+      commit,
       clearPreview: () => deps.setPreview(null),
       chooser: options.chooseConnection,
     });
@@ -347,6 +374,14 @@ export function attachEditing(deps: EditingDeps): Editing {
     commands,
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     on: menu.on,
+    locked: lock.get,
+    setLocked(next) {
+      if (!lock.set(next)) return;
+      // An open gesture ends with the lock: nothing it was about to do may commit.
+      input?.cancelGesture("escape");
+      deps.setPreview(null);
+      events.emit("lock", { locked: next });
+    },
     hover: () => hover?.current() ?? null,
     refreshHover: () => hover?.refresh(),
     setConnectionChooser: (chooser) => choices?.setChooser(chooser),

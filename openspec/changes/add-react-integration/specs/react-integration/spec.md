@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Provider, mount component, and hooks
-The react entry point SHALL provide a mounting component, a provider, and hooks for instance access, selection, viewport, command availability, history state, hover, and entity-level subscriptions by node or connection ID, so inspectors and palettes can be built as ordinary React components. The mounting component SHALL create exactly one view on mount and dispose it on unmount; options with a runtime setter SHALL update without remounting, and other option changes SHALL remount cleanly. Hook snapshots SHALL be referentially stable while their value is unchanged.
+The react entry point SHALL provide a mounting component, a provider, and hooks for instance access, selection, viewport, command availability, history state, hover, and entity-level subscriptions by node or connection ID, so inspectors and palettes can be built as ordinary React components. The mounting component SHALL create exactly one view on mount and dispose it on unmount; options with a runtime setter, including the view lock, SHALL update without remounting, and other option changes SHALL remount cleanly. Every mount option SHALL be classified explicitly, so a new option cannot be added without deciding whether a change updates, remounts or is ignored. The component SHALL report lock changes made inside the editor to the host through a callback. Hook snapshots SHALL be referentially stable while their value is unchanged.
 
 #### Scenario: Inspector follows selection
 - **WHEN** an inspector component uses the selection hook and the user selects a node
@@ -18,6 +18,10 @@ The react entry point SHALL provide a mounting component, a provider, and hooks 
 #### Scenario: Theme update without remount
 - **WHEN** the theme prop changes while the editor is mounted
 - **THEN** the view is repainted with the new theme and the same view instance stays mounted
+
+#### Scenario: Lock prop after mount
+- **WHEN** the lock prop changes from false to true on a mounted editor
+- **THEN** the same view instance becomes locked without a remount, and a lock change made on the view reaches the host's lock callback
 
 #### Scenario: Remount on a non-settable option
 - **WHEN** the geometry registry prop changes identity

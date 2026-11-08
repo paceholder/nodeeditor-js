@@ -12,4 +12,5 @@ export { useHistory } from "./use-history.js";
 export { useHover } from "./use-hover.js";
 export type { SelectionSnapshot } from "./use-selection.js";
 export { useSelection } from "./use-selection.js";
+export { useViewLocked } from "./use-view-locked.js";
 export { useViewport } from "./use-viewport.js";

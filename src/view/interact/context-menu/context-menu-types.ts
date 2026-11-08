@@ -47,4 +47,6 @@ export interface ViewEventMap {
   readonly "context-menu": ContextMenuEvent;
   /** The hovered entity changed. */
   readonly hover: HoverEvent;
+  /** The view lock changed. */
+  readonly lock: { readonly locked: boolean };
 }

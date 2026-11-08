@@ -102,6 +102,13 @@ export interface ViewOptions {
    */
   readonly zoomLimits?: ZoomLimits;
   /**
+   * Start with the view locked. While locked, editing gestures and commands are
+   * unavailable with a "view locked" reason; pan, zoom, fit, selection, inspection and
+   * hover keep working. The lock is view state: it never reaches the model, history or a
+   * snapshot, and it does not relax what the model's own permissions refuse.
+   */
+  readonly locked?: boolean;
+  /**
    * Fit the content once, after the container is first measurable. `true` uses
    * the default padding and cap. Ignored when `initialViewport` is given.
    */
@@ -159,6 +166,10 @@ export interface ViewHandle {
    * editing input (`input: false`) nothing is tracked and it stays null.
    */
   readonly hover: { get(): HoverTarget | null };
+  /** Whether the view is locked. Changes raise `"lock"`. */
+  readonly locked: boolean;
+  /** Lock or unlock editing in this view; a no-op when the state is unchanged. */
+  setLocked(locked: boolean): void;
   /** Painter registries, shared with the options when given. Changes repaint. */
   readonly painters: PainterRegistries;
   /** Geometry registrations, shared with the options when given. Changes repaint. */

@@ -160,7 +160,7 @@ function history(direction: "undo" | "redo"): EditorCommand {
   };
 }
 
-/** A command without arguments. */
+/** A selection or view command without arguments; it works while the view is locked. */
 function simple(
   id: string,
   availability: (ctx: CommandContext) => Availability,
@@ -169,6 +169,7 @@ function simple(
   return {
     id,
     labelKey: `command.${id}`,
+    viewOnly: true,
     availability: (_args, ctx) => availability(ctx),
     run: (_args, ctx) => run(ctx),
   };
@@ -237,6 +238,7 @@ export function registerBuiltinCommands(
   registry.register({
     id: COMMAND_IDS.reveal,
     labelKey: `command.${COMMAND_IDS.reveal}`,
+    viewOnly: true,
     availability: () => OK,
     run: (id: NodeId | ConnectionId, { view }) => view.reveal(id),
   });

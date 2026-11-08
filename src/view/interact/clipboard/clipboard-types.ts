@@ -93,6 +93,8 @@ export interface ClipboardServiceDeps {
   /** Absent for a read-only view: copy works, everything else is refused. */
   readonly model: EditableModel | undefined;
   readonly selection: SelectionModel;
+  /** True while the view is locked: copy still works, paste, cut and duplicate are refused. */
+  readonly locked?: () => boolean;
   /** World position of the pointer while it is over the view. */
   readonly pointer: () => Vec2 | undefined;
   readonly system: SystemClipboard | undefined;

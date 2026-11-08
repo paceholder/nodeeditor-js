@@ -267,6 +267,7 @@ export function mountView(
     routes,
     hidePortsBelow: () => theme.lodHidePortsBelow,
     zoomLimits,
+    locked: options.locked === true,
   });
 
   // The view moved under a resting pointer: the entity beneath it may have changed.
@@ -349,6 +350,10 @@ export function mountView(
     clientToWorld: viewport.clientToWorld,
     nodeRect: handleNodeRect,
     hover: { get: editing.hover },
+    get locked() {
+      return editing.locked();
+    },
+    setLocked: editing.setLocked,
     pick(clientX, clientY, opts) {
       const at = viewport.clientToWorld(clientX, clientY);
       if (!at.ok || !scene) return [];

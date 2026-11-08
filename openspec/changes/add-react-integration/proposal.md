@@ -37,6 +37,10 @@ content inside nodes, which remains scheduled later.
 - **Initial fit, zoom limits, controls (new the initial fit and zoom limits rule).** `initialFit` and
   `zoomLimits` mount options (with `FitOptions` padding), and an optional unstyled React
   control set (zoom in, zoom out, fit) built on the command registry.
+- **View lock (new the view lock rule).** A view-local lock (`locked` option, `view.locked`,
+  `view.setLocked`, a change event) that refuses editing while pan, zoom, fit and selection
+  keep working, a `useViewLocked()` hook, and the lock button of the controls. The mount
+  component applies the `locked` prop live and reports changes through `onLockedChange`.
 - Extends the React example under `examples/` next to `plain-js`; updates
   `docs/architecture.md` and adds `docs/guide-react.md`.
 
@@ -45,7 +49,7 @@ content inside nodes, which remains scheduled later.
 - Implements: the provider, mount component, and hooks rule, the subscription granularity rule, the Strict Mode and remount safety rule and the server rendering safety rule (already specified); the rule that React is a peer dependency and the DOM overlay slot rule,
   the input scoping rule, the two-phase hit-testing rule, the hit result identity and order rule, the level of detail rule and the gesture lifecycle and cancellation rule are relied on and re-verified.
 - Modifies: the provider, mount component, and hooks rule (adds history and hover hooks to the list).
-- Adds: the hover event rule and the hover state rule (interaction), the overlay placement rule (canvas-view), the initial fit and zoom limits rule (canvas-view),
+- Adds: the hover event rule and the hover state rule (interaction), the overlay placement rule, the initial fit and zoom limits rule and the view lock rule (canvas-view),
   the anchored node overlay rule and the view controls rule (react-integration).
 
 ### Out of scope
