@@ -32,7 +32,11 @@ export type {
   CommandRegistry,
   EditorCommand,
 } from "./interact/commands/command-registry.js";
-export type { EditableModel } from "./interact/commands/editable-model.js";
+export type {
+  EditableModel,
+  HistoryModel,
+} from "./interact/commands/editable-model.js";
+export { hasHistory } from "./interact/commands/editable-model.js";
 export type {
   KeyBinding,
   KeyLike,

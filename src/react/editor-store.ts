@@ -27,22 +27,22 @@ const EMPTY: EditorSlot = { view: null, model: undefined };
 export function createEditorStore(): EditorStore {
   let slot = EMPTY;
   const listeners = new Set<() => void>();
-  let dispatcher:
-    | { model: ViewModel; dispatcher: EntityDispatcher }
-    | undefined;
+  // Created and disposed here, never while a component renders. It belongs to a model, not
+  // to a view: a remount that keeps the model passes through an empty slot, and hooks
+  // already subscribed must keep their dispatcher. It only listens to the model while a
+  // hook is subscribed, so keeping it across the empty slot holds nothing open.
+  let dispatcher: EntityDispatcher | undefined;
+  let dispatcherModel: ViewModel | undefined;
   return {
     get: () => slot,
-    entities() {
-      const model = slot.model;
-      if (!model) return undefined;
-      if (dispatcher?.model !== model) {
-        dispatcher?.dispatcher.dispose();
-        dispatcher = { model, dispatcher: createEntityDispatcher(model) };
-      }
-      return dispatcher.dispatcher;
-    },
+    entities: () => (slot.model ? dispatcher : undefined),
     set(next) {
       if (next.view === slot.view && next.model === slot.model) return;
+      if (next.model && next.model !== dispatcherModel) {
+        dispatcher?.dispose();
+        dispatcher = createEntityDispatcher(next.model);
+        dispatcherModel = next.model;
+      }
       slot = next;
       for (const l of [...listeners]) l();
     },

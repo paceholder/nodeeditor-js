@@ -2,6 +2,7 @@
 import { act, createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  createGeometryRegistry,
   createGraphModel,
   exportSnapshot,
   type GraphModel,
@@ -129,5 +130,28 @@ describe("entity hooks", () => {
       r.container.querySelector(`[data-node="${id}"]`)?.textContent;
     expect(text("n1")).toBe("60,0");
     expect(text("n2")).toBe("absent");
+  });
+
+  it("hooks keep following the model after a remount that keeps it (new geometry registry)", async () => {
+    const m = bigModel(3);
+    const tree = (geometry: ReturnType<typeof createGeometryRegistry>) =>
+      createElement(
+        EditorProvider,
+        null,
+        createElement(NodeEditor, { model: m, geometry }),
+        createElement(NodeProbe, { id: "n1" }),
+      );
+    const r = await renderReact(tree(createGeometryRegistry()));
+    rendered.push(r);
+    await frames();
+    // A different geometry registry remounts the view; the model stays the same.
+    await r.rerender(tree(createGeometryRegistry()));
+    await frames();
+    await act(async () => {
+      move(m, "n1", 7);
+    });
+    expect(r.container.querySelector('[data-node="n1"]')?.textContent).toBe(
+      "7,0",
+    );
   });
 });

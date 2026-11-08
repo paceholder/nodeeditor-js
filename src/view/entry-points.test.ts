@@ -14,6 +14,7 @@ const ENTRIES = {
   core: "src/core/index.ts",
   view: "src/view/index.ts",
   advanced: "src/view/advanced.ts",
+  react: "src/react/index.ts",
 } as const;
 type Entry = keyof typeof ENTRIES;
 
@@ -71,6 +72,15 @@ describe("one import path per public name", () => {
     expect(NAMES.core.size).toBeGreaterThan(0);
     expect(shared(NAMES.core, NAMES.view)).toEqual([]);
     expect(shared(NAMES.core, NAMES.advanced)).toEqual([]);
+  });
+});
+
+describe("the react entry holds only its own names", () => {
+  it("re-exports no name of core, view or view/advanced", () => {
+    expect(NAMES.react.size).toBeGreaterThan(0);
+    expect(shared(NAMES.core, NAMES.react)).toEqual([]);
+    expect(shared(NAMES.view, NAMES.react)).toEqual([]);
+    expect(shared(NAMES.advanced, NAMES.react)).toEqual([]);
   });
 });
 

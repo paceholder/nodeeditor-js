@@ -12,6 +12,13 @@ export type EditableModel = ViewModel &
     "plan" | "execute" | "can" | "undo" | "redo" | "historyState"
   >;
 
+/** A model that reports undo and redo state; the history hook needs nothing more. */
+export type HistoryModel = ViewModel & Pick<GraphModel, "historyState">;
+
+export function hasHistory(model: ViewModel): model is HistoryModel {
+  return typeof (model as Partial<HistoryModel>).historyState === "function";
+}
+
 export function isEditable(model: ViewModel): model is EditableModel {
   const m = model as Partial<EditableModel>;
   return (
