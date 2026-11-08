@@ -28,6 +28,7 @@ import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
 import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
+import { resolveZoomLimits } from "./platform/zoom-limits.js";
 import { createAssetService } from "./render/assets/asset-service.js";
 import { createGestureBitmap } from "./render/paint/gesture-bitmap.js";
 import { createInteractionLayer } from "./render/paint/interaction-layer.js";
@@ -56,6 +57,7 @@ export function mountView(
 ): ViewHandle {
   const win = container.ownerDocument.defaultView;
   if (!win) throw new Error("mountView needs an attached document");
+  const zoomLimits = resolveZoomLimits(options.zoomLimits);
   const stack = createLayerStack(container);
   let disposed = false;
   let backing = { width: 0, height: 0, dpr: 0 };
@@ -222,6 +224,7 @@ export function mountView(
         scheduler.markDirty("interaction");
     },
     options.initialViewport ?? DEFAULT_VIEWPORT,
+    zoomLimits,
   );
 
   const editing: Editing = attachEditing({
@@ -245,6 +248,7 @@ export function mountView(
     routeEditors,
     routes,
     hidePortsBelow: () => theme.lodHidePortsBelow,
+    zoomLimits,
   });
 
   const offPainters = [

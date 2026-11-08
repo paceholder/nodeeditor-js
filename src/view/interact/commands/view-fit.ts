@@ -6,6 +6,8 @@ export interface FitOptions {
   readonly paddingPx?: number;
   /** Fit never zooms in past this. Default 2. */
   readonly maxZoom?: number;
+  /** Fit never zooms out past this (the view's zoom limit). Default: none. */
+  readonly minZoom?: number;
 }
 
 export const DEFAULT_PADDING_PX = 40;
@@ -25,7 +27,7 @@ function zoomFor(bounds: Rect<"world">, size: Size, opts: FitOptions): number {
     bounds.h > 0 ? availH / bounds.h : Number.POSITIVE_INFINITY,
   );
   const capped = Math.min(fit, opts.maxZoom ?? DEFAULT_FIT_MAX_ZOOM);
-  const clamped = clampZoom(capped);
+  const clamped = clampZoom(Math.max(capped, opts.minZoom ?? 0));
   return clamped.ok ? clamped.value : 1;
 }
 

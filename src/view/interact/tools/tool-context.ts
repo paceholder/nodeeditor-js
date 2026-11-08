@@ -16,7 +16,12 @@ import type {
   Size,
   Viewport,
 } from "../../../core/index.js";
-import { DEFAULT_SIZE_LIMITS, rejectionOf } from "../../../core/index.js";
+import {
+  DEFAULT_SIZE_LIMITS,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  rejectionOf,
+} from "../../../core/index.js";
 import type {
   RouteEditContext,
   RouteEditorRegistry,
@@ -46,6 +51,8 @@ export interface ToolContextDeps {
    * then skip ports, so a press there selects, moves or pans. Omitted: ports always count.
    */
   readonly hidePortsBelow?: () => number;
+  /** The view's zoom range; omitted: the absolute bounds. */
+  readonly zoomRange?: { readonly min: number; readonly max: number };
   /** Whether a host connection chooser is installed; omitted: none. */
   readonly chooserInstalled?: () => boolean;
   /** Route editors per connection kind; omitted: none. */
@@ -121,6 +128,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       selection: deps.selection,
       viewport,
       zoom: viewport.zoom,
+      zoomRange: deps.zoomRange ?? { min: MIN_ZOOM, max: MAX_ZOOM },
       can: deps.can,
       sizeLimits,
       evaluateConnection,

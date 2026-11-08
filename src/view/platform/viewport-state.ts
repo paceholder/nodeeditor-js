@@ -20,6 +20,11 @@ import {
   zoomAt,
 } from "../../core/index.js";
 import type { ContainerMetrics } from "./dom/container-metrics.js";
+import {
+  ABSOLUTE_ZOOM_LIMITS,
+  clampToLimits,
+  type ResolvedZoomLimits,
+} from "./zoom-limits.js";
 
 export interface ViewportState {
   get(): Viewport;
@@ -43,6 +48,7 @@ export function createViewportState(
   metrics: Pick<ContainerMetrics, "clientRect" | "isMeasurable">,
   onChange: () => void,
   initial: Viewport = DEFAULT_VIEWPORT,
+  limits: ResolvedZoomLimits = ABSOLUTE_ZOOM_LIMITS,
 ): ViewportState {
   let current = initial;
 
@@ -58,14 +64,22 @@ export function createViewportState(
 
   const state: ViewportState = {
     get: () => current,
-    set: (v) => commit(createViewport(v.zoom, v.panX, v.panY)),
+    set: (v) =>
+      commit(
+        createViewport(
+          Number.isFinite(v.zoom) ? clampToLimits(v.zoom, limits) : v.zoom,
+          v.panX,
+          v.panY,
+        ),
+      ),
     zoomAt(anchor, factor) {
       if (!Number.isFinite(factor) || factor <= 0) {
         return err(rejectionOf("non-finite", "Zoom factor must be positive"));
       }
       const target = clampZoom(current.zoom * factor);
       if (!target.ok) return target;
-      return commit(zoomAt(current, target.value, anchor));
+      const zoom = clampToLimits(target.value, limits);
+      return commit(zoomAt(current, zoom, anchor));
     },
     panBy: (dx, dy) =>
       commit(

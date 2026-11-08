@@ -45,6 +45,7 @@ import {
   type ViewCommandOutcome,
   type ViewCommands,
 } from "./interact/commands/view-commands.js";
+import { DEFAULT_FIT_MAX_ZOOM } from "./interact/commands/view-fit.js";
 import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
@@ -64,6 +65,7 @@ import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock } from "./platform/frame-scheduler.js";
 import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
+import type { ResolvedZoomLimits } from "./platform/zoom-limits.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import { rerouteEntry } from "./render/paint/previews/ghost-entries.js";
 import type { RouteEditorRegistry } from "./render/registries/route-editor-registry.js";
@@ -99,6 +101,8 @@ export interface EditingDeps {
   readonly routes: Pick<RouteRegistry, "get">;
   /** Current port-hiding zoom of the theme. */
   readonly hidePortsBelow: () => number;
+  /** The view's zoom range; wheel zoom and fit stay inside it. */
+  readonly zoomLimits: ResolvedZoomLimits;
 }
 
 export interface Editing {
@@ -144,6 +148,10 @@ export function attachEditing(deps: EditingDeps): Editing {
           selection,
           viewport: { get: viewport.get, set: viewport.set },
           size: deps.size,
+          options: {
+            minZoom: deps.zoomLimits.min,
+            maxZoom: Math.min(DEFAULT_FIT_MAX_ZOOM, deps.zoomLimits.max),
+          },
         })
       : UNBOUND_VIEW;
   const commands = createCommandRegistry(() => ({
@@ -202,6 +210,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       ...(editable ? { plan: editable.plan } : {}),
       options: () => toolOptions,
       hidePortsBelow: deps.hidePortsBelow,
+      zoomRange: deps.zoomLimits,
       chooserInstalled: () => choices?.installed() === true,
       routeEditors: deps.routeEditors,
       reroute: (entry, route) =>

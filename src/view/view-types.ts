@@ -30,6 +30,7 @@ import type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
 import type { ViewModel } from "./platform/model-binding.js";
 import type { RenderStats } from "./platform/render-stats.js";
 import type { ViewportState } from "./platform/viewport-state.js";
+import type { ZoomLimits } from "./platform/zoom-limits.js";
 import type { AssetService } from "./render/assets/asset-service.js";
 import type { AssetOptions } from "./render/assets/asset-types.js";
 import type { GestureBitmapOptions } from "./render/paint/gesture-bitmap.js";
@@ -90,6 +91,12 @@ export interface ViewOptions {
   /** Selection/hover/hidden state; the selection model is the intended source. */
   readonly viewState?: ViewState;
   readonly initialViewport?: Viewport;
+  /**
+   * Zoom range of this view, inside the absolute bounds of the core viewport.
+   * Wheel and pinch zoom, `viewport.zoomAt`, `viewport.set` and the fit commands stay
+   * inside it; fit never zooms in past `max`.
+   */
+  readonly zoomLimits?: ZoomLimits;
   /**
    * Input handling: default tools and keymap when omitted, none with `false`. Editing
    * needs a model with the command API (a `GraphModel` fits); a read-only model still

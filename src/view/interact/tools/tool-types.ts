@@ -151,6 +151,8 @@ export interface ToolContext {
   readonly selection: ReadonlySelection;
   readonly viewport: Viewport;
   readonly zoom: number;
+  /** Zoom range the view allows; wheel zoom stays inside it. */
+  readonly zoomRange: { readonly min: number; readonly max: number };
   can(action: CapabilityAction, id: NodeId): Availability;
   /** Size limits a resize of the node must respect; defaults when unknown. */
   sizeLimits(id: NodeId): ResolvedSizeLimits;
