@@ -1,5 +1,5 @@
 /** Command availability hook: a toolbar button follows a command's state and reason. */
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { Availability } from "../core/index.js";
 import { useEditorSlot } from "./editor-context.js";
 import { onModelChange } from "./model-subscription.js";
@@ -14,7 +14,7 @@ const UNAVAILABLE: Availability = {
   },
 };
 
-const same = (a: Availability, b: Availability): boolean => {
+const sameAvailability = (a: Availability, b: Availability): boolean => {
   if (a.available || b.available) return a.available === b.available;
   return (
     a.reason.code === b.reason.code &&
@@ -24,22 +24,21 @@ const same = (a: Availability, b: Availability): boolean => {
 };
 
 /**
- * Whether the command can run now, re-read on every selection, model and history change.
- * The result keeps its identity while availability and reason are unchanged.
+ * Whether the command can run now, re-read on every selection, model, history and lock
+ * change. The result keeps its identity while availability and reason are unchanged.
  */
 export function useCommandAvailability(
   id: string,
   args?: unknown,
 ): Availability {
   const { view, model } = useEditorSlot();
-  const latest = useRef({ id, args });
-  latest.current = { id, args };
   const subscribe = useMemo(
     () =>
       view
         ? (notify: () => void) => {
             const offs = [
               view.selection.on(() => notify()),
+              view.on("lock", () => notify()),
               onModelChange(model, notify),
             ];
             return () => {
@@ -50,12 +49,8 @@ export function useCommandAvailability(
     [view, model],
   );
   const read = useMemo(
-    () =>
-      view
-        ? () =>
-            view.commands.availability(latest.current.id, latest.current.args)
-        : undefined,
-    [view],
+    () => (view ? () => view.commands.availability(id, args) : undefined),
+    [view, id, args],
   );
-  return useExternalValue(subscribe, read, same, UNAVAILABLE);
+  return useExternalValue(subscribe, read, sameAvailability, UNAVAILABLE);
 }

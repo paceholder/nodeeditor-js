@@ -34,3 +34,43 @@ a warning fires once when the view remounts on three consecutive renders.
 (or became `undefined`) never went back to the default. Both view calls take
 `{ replace: true }`, which applies the patch to the defaults as at mount, and the React
 component uses it. Imperative calls keep merging.
+
+### Command hooks (review finding 4)
+
+`useCommandAvailability` ignored the lock, so a toolbar button stayed enabled after the
+view was locked and its click was refused without feedback. The hook now also listens to
+the lock. It also wrote a ref during render; the id and arguments are now plain
+dependencies. `useCommand(id, args)` returns availability, reason and `run` together,
+which is what every toolbar button builds by hand; the example toolbar uses it.
+
+### Children, onReady and the shared slot (review finding 5)
+
+Without a provider, `ViewControls` and `NodeOverlay` rendered nothing and the handle could
+not be reached. `NodeEditor` now accepts children (inside its own store) and an `onReady`
+callback. When one editor unmounted it cleared the slot even if another editor had taken
+it; the cleanup now clears only its own view, and a development warning says when a second
+editor mounts into a provider that already has one. Several editors in one provider still
+share one slot (the newest wins); the guide tells hosts to use one provider per editor.
+
+### Node overlay notification (review finding 6)
+
+`NodeOverlay` took "the editor has no model" for "the node was removed" and called
+`onNodeGone` when the editor merely unmounted or its model was replaced. It now watches one
+(model, node) pair and reports only a removal from the model being shown. The callback lost
+its reason argument: the type had a single value, so it carried nothing; `NodeGoneReason`
+is gone from the public API.
+
+### History guard and dispatcher lifetime (review finding 11)
+
+`useHistory` repeated the model check with a cast; the view now exports a `hasHistory`
+type guard and the hook uses it. The per-model entity dispatcher was created, and the
+previous one disposed, inside a `useMemo` while rendering. That is a side effect in render:
+a render that React discards could dispose the dispatcher the live tree depends on. The
+store now creates and disposes the dispatcher when the model in the slot changes.
+
+### Selection snapshot (review finding 7)
+
+`useSelection` returned the view's internal selection keys (`"n:<id>"`), and the example
+inspector parsed the prefix. The hook now returns `{ nodes, connections, primary }` with
+real IDs, and `primary` carries its kind (`{ kind: "node" | "connection", id }`). The key
+encoding stays private to the view.

@@ -1,15 +1,19 @@
 ## MODIFIED Requirements
 
 ### Requirement: Provider, mount component, and hooks
-The react entry point SHALL provide a mounting component, a provider, and hooks for instance access, selection, viewport, command availability, history state, hover, and entity-level subscriptions by node or connection ID, so inspectors and palettes can be built as ordinary React components. The mounting component SHALL create exactly one view on mount and dispose it on unmount; options with a runtime setter, including the view lock, SHALL update without remounting, and other option changes SHALL remount cleanly. The theme and tool-option props SHALL describe the whole value, so a dropped key returns to its default. Every mount option SHALL be classified explicitly, so a new option cannot be added without deciding whether a change updates, remounts or is ignored. The component SHALL report lock changes made inside the editor to the host through a callback. Hook snapshots SHALL be referentially stable while their value is unchanged.
+The react entry point SHALL provide a mounting component, a provider, and hooks for instance access, selection, viewport, command availability (also as a single hook that returns availability, the reason and a run function), history state, hover, and entity-level subscriptions by node or connection ID, so inspectors and palettes can be built as ordinary React components. The mounting component SHALL create exactly one view on mount and dispose it on unmount; options with a runtime setter, including the view lock, SHALL update without remounting, and other option changes SHALL remount cleanly. The theme and tool-option props SHALL describe the whole value, so a dropped key returns to its default. Every mount option SHALL be classified explicitly, so a new option cannot be added without deciding whether a change updates, remounts or is ignored. The component SHALL report lock changes made inside the editor to the host through a callback, SHALL give the host the view handle when one is mounted, and SHALL accept child components that read the editor it renders, so controls and overlays work without a separate provider. An editor that unmounts SHALL clear the shared view slot only when the slot is its own. Hook snapshots SHALL be referentially stable while their value is unchanged.
 
 #### Scenario: Inspector follows selection
 - **WHEN** an inspector component uses the selection hook and the user selects a node
-- **THEN** the inspector re-renders with that node's ID
+- **THEN** the inspector re-renders with that node's ID and the kind of the primary selection, without any encoded key
 
 #### Scenario: Command availability hook
 - **WHEN** a toolbar button uses the command availability hook for delete and the selection becomes empty
 - **THEN** the hook reports delete as unavailable with its reason
+
+#### Scenario: Availability follows the view lock
+- **WHEN** a toolbar button uses the command hook for delete with a node selected and the view is then locked
+- **THEN** the button becomes unavailable with the lock reason, and available again when the view is unlocked
 
 #### Scenario: History hook
 - **WHEN** a toolbar uses the history hook and an edit is committed, then undone
@@ -35,6 +39,14 @@ The react entry point SHALL provide a mounting component, a provider, and hooks 
 - **WHEN** a theme prop with a colour override changes to one without it, or is removed
 - **THEN** the same view returns to the default for that value, and no earlier override remains
 
+#### Scenario: Children without a provider
+- **WHEN** the controls panel and an anchored overlay are passed as children of the mount component with no provider above it
+- **THEN** both render for that editor
+
+#### Scenario: Older editor unmounts
+- **WHEN** two editors share a provider and the one that mounted first unmounts
+- **THEN** the hooks still report the remaining editor's view
+
 #### Scenario: Remount on a non-settable option
 - **WHEN** the geometry registry prop changes identity
 - **THEN** the old view is disposed and a new one is mounted, and the old view leaves no listener behind
@@ -42,7 +54,7 @@ The react entry point SHALL provide a mounting component, a provider, and hooks 
 ## ADDED Requirements
 
 ### Requirement: Anchored node overlay
-The react entry point SHALL provide a component or hook that portals React children into one overlay slot anchored to one node, using the placement options of the overlay placement rule. It SHALL attach on mount, detach on unmount, hide while the node is absent from the model, and call an optional callback with the reason when the node disappears. Host React context SHALL be available inside the content. It is intended for a handful of nodes at a time; the integration SHALL NOT mount React content per node for the whole graph (the React content inside nodes rule is separate).
+The react entry point SHALL provide a component or hook that portals React children into one overlay slot anchored to one node, using the placement options of the overlay placement rule. It SHALL attach on mount, detach on unmount, hide while the node is absent from the model, and call an optional callback when the node is removed from the model being shown; unmounting the editor or replacing its model SHALL NOT count as a removal. Host React context SHALL be available inside the content. It is intended for a handful of nodes at a time; the integration SHALL NOT mount React content per node for the whole graph (the React content inside nodes rule is separate).
 
 #### Scenario: Context inside the overlay
 - **WHEN** the anchored overlay renders a component that reads a host context value
@@ -62,7 +74,11 @@ The react entry point SHALL provide a component or hook that portals React child
 
 #### Scenario: Anchored node removed
 - **WHEN** the anchored node is deleted by an external change
-- **THEN** the overlay hides, the callback receives a "node removed" reason, and nothing is submitted for the stale ID
+- **THEN** the overlay hides, the callback is called once, and nothing is submitted for the stale ID
+
+#### Scenario: Editor unmounted or model replaced
+- **WHEN** the editor unmounts, or its model is replaced by one without the node, while the overlay stays mounted
+- **THEN** the callback is not called
 
 ### Requirement: View controls
 The react entry point SHALL provide an optional, compact controls panel with zoom in, zoom out, fit-to-content, and a lock toggle. It SHALL render plain buttons with stable class names and no required stylesheet, SHALL default to a bottom-left corner placement over the view, and hosts MAY restyle, reposition, omit single buttons, or replace it. Fit SHALL run the registered fit command; the buttons SHALL reflect command availability. The lock toggle SHALL switch the view's lock state and show it as pressed or released.

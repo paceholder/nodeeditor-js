@@ -24,6 +24,7 @@ function Probe(props: { react: ReactEntry; seen: unknown[] }): null {
     react.useHover(),
     react.useCommandAvailability("edit.delete"),
     react.useNode("n1" as never),
+    react.useCommand("edit.delete"),
   );
   return null;
 }
@@ -61,6 +62,14 @@ describe("react entry in Node", () => {
       // An inert container: one element, no canvas, nothing mounted.
       expect(html).toContain('class="editor"');
       expect(html).not.toContain("<canvas");
+      const withChild = renderToString(
+        createElement(
+          react.NodeEditor,
+          { className: "editor" },
+          createElement("i", { id: "child" }),
+        ),
+      );
+      expect(withChild).toContain('id="child"');
       expect(reads).toEqual([]);
     } finally {
       for (const name of GLOBALS) {
@@ -82,11 +91,22 @@ describe("react entry in Node", () => {
       ),
     );
     expect(seen[0]).toBeNull();
-    expect(seen[1]).toEqual({ keys: [], primary: undefined });
+    expect(seen[1]).toEqual({
+      nodes: [],
+      connections: [],
+      primary: undefined,
+    });
     expect(seen[2]).toEqual({ zoom: 1, panX: 0, panY: 0 });
     expect(seen[3]).toEqual({ canUndo: false, canRedo: false });
     expect(seen[4]).toBeNull();
     expect(seen[5]).toMatchObject({ available: false });
     expect(seen[6]).toBeUndefined();
+    expect(seen[7]).toMatchObject({
+      available: false,
+      reason: expect.anything(),
+    });
+    expect(String((seen[7] as { run(): { ok: boolean } }).run().ok)).toBe(
+      "false",
+    );
   });
 });

@@ -109,9 +109,9 @@ describe("node overlay", () => {
   });
 
   it("Anchored node removed: hides, reports once, submits nothing", async () => {
-    const gone: string[] = [];
+    const gone: true[] = [];
     const { model, view } = await mount({
-      onNodeGone: (reason) => gone.push(reason),
+      onNodeGone: () => gone.push(true),
     });
     await frames();
     const slot = view.overlayElement.firstElementChild as HTMLElement;
@@ -123,7 +123,7 @@ describe("node overlay", () => {
     model.deleteEntities({ nodes: [nodeId("a")] });
     await frames();
     expect(slot.style.display).toBe("none");
-    expect(gone).toEqual(["node removed"]);
+    expect(gone).toHaveLength(1);
     // Only the external delete reached the model; the overlay submitted nothing.
     expect(changes).toBe(1);
   });

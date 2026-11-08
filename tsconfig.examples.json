@@ -5,7 +5,8 @@
     "paths": {
       "nodeeditor-js": ["./src/core/index.ts"],
       "nodeeditor-js/view": ["./src/view/index.ts"],
-      "nodeeditor-js/view/advanced": ["./src/view/advanced.ts"]
+      "nodeeditor-js/view/advanced": ["./src/view/advanced.ts"],
+      "nodeeditor-js/react": ["./src/react/index.ts"]
     }
   },
   "include": ["examples"],

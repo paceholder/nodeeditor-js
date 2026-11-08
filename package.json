@@ -47,6 +47,8 @@
     "bench:browser": "npm run build && node scripts/keep-awake.mjs vitest run --config bench/vitest.bench.config.ts --project \"browser*\"",
     "bench:size": "node scripts/bundle-size.mjs",
     "bench:baseline": "node scripts/baseline.mjs",
+    "demo:react": "vite --config examples/react/vite.config.ts",
+    "demo:react:build": "vite build --config examples/react/vite.config.ts",
     "demo:perf": "vite --config examples/perf/vite.config.ts",
     "demo:perf:build": "vite build --config examples/perf/vite.config.ts"
   },

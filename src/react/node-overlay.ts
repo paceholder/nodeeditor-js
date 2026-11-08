@@ -11,10 +11,8 @@ import type {
   OverlayHandle,
   OverlayPlacement,
 } from "../view/index.js";
-import { useEditor } from "./editor-context.js";
+import { useEditor, useEditorSlot } from "./editor-context.js";
 import { useNode } from "./use-entity.js";
-
-export type NodeGoneReason = "node removed";
 
 export interface NodeOverlayProps {
   readonly node: NodeId;
@@ -24,8 +22,11 @@ export interface NodeOverlayProps {
   readonly offset?: number;
   /** Scale the content with zoom instead of keeping its size. */
   readonly scale?: boolean;
-  /** Called once when the anchored node disappears from the model. */
-  readonly onNodeGone?: (reason: NodeGoneReason) => void;
+  /**
+   * Called once when the anchored node is removed from the model while the editor shows
+   * it. Unmounting the editor or swapping its model is not a removal.
+   */
+  readonly onNodeGone?: () => void;
   readonly children?: ReactNode;
 }
 
@@ -70,20 +71,26 @@ export function NodeOverlay(props: NodeOverlayProps): ReactNode {
     handle.current?.setAnchor(anchor.current);
   }, [node, placement, offset, scale]);
 
+  const { model } = useEditorSlot();
   const present = useNode(node) !== undefined;
-  const wasPresent = useRef(false);
+  const watched = useRef<{ model: unknown; node: NodeId; present: boolean }>({
+    model: undefined,
+    node,
+    present: false,
+  });
   const onGone = useRef(props.onNodeGone);
   useEffect(() => {
     onGone.current = props.onNodeGone;
   });
   useEffect(() => {
-    if (present) {
-      wasPresent.current = true;
-    } else if (wasPresent.current) {
-      wasPresent.current = false;
-      onGone.current?.("node removed");
-    }
-  }, [present]);
+    const was = watched.current;
+    // A new model, a new node or no editor at all starts the watch over: only a removal
+    // from the model being shown counts as the node going away.
+    const sameWatch =
+      model !== undefined && was.model === model && was.node === node;
+    watched.current = { model, node, present: model !== undefined && present };
+    if (sameWatch && was.present && !present) onGone.current?.();
+  }, [model, node, present]);
 
   return slot ? createPortal(props.children, slot) : null;
 }

@@ -44,11 +44,11 @@ function Grab(): null {
 }
 
 function Inspector(): ReactNode {
-  const { primary, keys } = useSelection();
+  const { primary, nodes, connections } = useSelection();
   return createElement(
     "p",
     { id: "out" },
-    `${primary ?? "none"}/${keys.length}`,
+    `${primary ? `${primary.kind}:${primary.id}` : "none"}/${nodes.length}+${connections.length}`,
   );
 }
 
@@ -113,11 +113,21 @@ async function mount(m: ReturnType<typeof model>, ...siblings: ReactNode[]) {
 describe("React hooks", () => {
   it("Inspector follows selection", async () => {
     const { view, text } = await mount(model(), createElement(Inspector));
-    expect(text()).toBe("none/0");
+    expect(text()).toBe("none/0+0");
     await act(async () => void view.selection.replace(["n:a"]));
-    expect(text()).toBe("n:a/1");
+    expect(text()).toBe("node:a/1+0");
     await act(async () => void view.selection.clear());
-    expect(text()).toBe("none/0");
+    expect(text()).toBe("none/0+0");
+  });
+
+  it("Selection reports connections with their kind, no encoded keys", async () => {
+    const linked = buildModel(
+      [twoPortNode("a", 100, 100), twoPortNode("b", 300, 100)],
+      [["c1", "a", "aR", "b", "bL"]],
+    );
+    const { view, text } = await mount(linked, createElement(Inspector));
+    await act(async () => void view.selection.replace(["n:a", "c:c1"]));
+    expect(text()).toBe("connection:c1/1+1");
   });
 
   it("Command availability hook", async () => {

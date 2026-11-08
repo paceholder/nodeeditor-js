@@ -37,8 +37,8 @@ deliberately lacks.
 ### D2. Hooks are `useSyncExternalStore` over narrow subscribe functions
 Each hook has a `subscribe` and a cached `getSnapshot` that returns the same object while
 the underlying value is equal:
-- selection: `selection.on`, snapshot `{ keys, primary }` taken from the event (already
-  immutable arrays);
+- selection: `selection.on`, snapshot `{ nodes, connections, primary }` with real IDs and the primary
+  entity's kind; the view's internal key encoding does not reach the host;
 - viewport: `ViewportState` has no event today, so the view gains a coalesced
   `viewport` change notification (at most once per animation frame, never per pointer
   sample); the hook subscribes to it;
@@ -75,7 +75,7 @@ value (undefined when absent), so floating-UI style libraries can use it as a vi
 reference element. The React `NodeOverlay` creates a host element, calls `overlay.attach`
 in an effect, renders children with `createPortal` into that element, and disposes on
 unmount. The overlay hides while the node is absent (existing behavior) and focus stability close
-semantics are exposed as an `onNodeGone` callback. Host React context passes through
+semantics are exposed as an `onNodeGone` callback without arguments, called only for a removal from the model being shown (not when the editor unmounts or its model is replaced). Host React context passes through
 portals; no extra work except a test.
 
 ### D5. Initial fit and zoom limits are mount options

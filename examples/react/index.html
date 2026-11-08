@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>nodeeditor-js React demo</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1e2024; }
+      body { font: 12px/1.5 system-ui, sans-serif; color: #aeb6c4; }
+      #root { position: fixed; inset: 0; }
+      .app { display: grid; grid-template: "bar bar" auto "editor side" 1fr / 1fr 240px; height: 100%; }
+      .toolbar { grid-area: bar; display: flex; gap: 6px; padding: 6px 10px; background: #2b2f36; }
+      .editor { grid-area: editor; position: relative; }
+      .inspector { grid-area: side; padding: 10px; background: #2b2f36; overflow: auto; }
+      .inspector h2 { margin: 0 0 6px; font-size: 13px; color: #e6e9ef; }
+      button { font: inherit; }
+      .hover-popover {
+        padding: 4px 8px; background: #2b2f36; border: 1px solid #4a505c; border-radius: 4px;
+        color: #e6e9ef; white-space: nowrap; pointer-events: none;
+      }
+      .nodeeditor-controls button { cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
