@@ -6,11 +6,12 @@
  * - `live`: applied to the mounted view when the value changes.
  * - `remount`: has no runtime setter, so a change of identity mounts a fresh view; the
  *   docs ask hosts to memoize those values.
- * - `initial`: read once at mount and ignored afterwards.
+ * - `initial`: read once at mount and ignored afterwards, like a `defaultValue`, so an
+ *   inline object never costs the view.
  * - `nested`: `input` is split further, see `remountKeys`.
  */
-import type { CSSProperties } from "react";
-import type { InputOptions, ViewOptions } from "../view/index.js";
+import type { CSSProperties, ReactNode } from "react";
+import type { InputOptions, ViewHandle, ViewOptions } from "../view/index.js";
 
 export type OptionKind = "live" | "remount" | "initial" | "nested";
 
@@ -26,9 +27,9 @@ export const OPTION_KIND: { readonly [K in keyof ViewOptions]-?: OptionKind } =
     viewState: "remount",
     gestureBitmap: "remount",
     frameClock: "remount",
-    initialViewport: "remount",
-    zoomLimits: "remount",
-    initialFit: "remount",
+    initialViewport: "initial",
+    initialFit: "initial",
+    zoomLimits: "live",
     theme: "live",
     locked: "live",
     input: "nested",
@@ -42,11 +43,25 @@ export interface NodeEditorProps extends ViewOptions {
   readonly className?: string;
   readonly style?: CSSProperties;
   /**
-   * Called when the view's lock changes, whoever changed it: the `locked` prop, the lock
-   * button of `ViewControls`, or `view.setLocked`. Keep the lock in state and pass it
-   * back through `locked` to make it fully controlled.
+   * Without a `locked` prop the view owns the flag and this is called on every change, by
+   * the lock button of `ViewControls` or `view.setLocked`; the flag survives a remount.
+   * With a `locked` prop the prop is the truth: a press of the lock button or a
+   * `view.setLocked` call is reported here as an attempt and the view stays at the prop
+   * until the host passes a new value. Keep the lock in state and update it from here.
    */
   readonly onLockedChange?: (locked: boolean) => void;
+  /**
+   * Called with the view each time one is mounted (again after a remount). For code that
+   * needs the handle but sits outside a provider; elsewhere `useEditor()` is simpler.
+   */
+  readonly onReady?: (view: ViewHandle) => void;
+  /**
+   * Components that read this editor through the hooks, such as `ViewControls` and
+   * `NodeOverlay`; they work without an `EditorProvider`. They render next to the
+   * container, not inside it, so give them no layout of their own unless they position
+   * themselves (the controls and overlays render into the view's overlay layer).
+   */
+  readonly children?: ReactNode;
 }
 
 /** Values whose identity decides a remount, in a fixed order. */

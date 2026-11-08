@@ -221,9 +221,13 @@ export interface ViewHandle {
   toolOptions(): ToolOptions;
   /**
    * Change tool options from the next input event on, for example `{ gridStep: undefined }`
-   * to turn snapping off or `{ emptyDrag: "marquee" }`. Keys merge with earlier patches.
+   * to turn snapping off or `{ emptyDrag: "marquee" }`. Keys merge with earlier patches;
+   * with `replace` the patch becomes the whole set of overrides, as at mount.
    */
-  setToolOptions(patch: Partial<ToolOptions>): void;
+  setToolOptions(
+    patch: Partial<ToolOptions>,
+    opts?: { readonly replace?: boolean },
+  ): void;
   /** Replace remote cursors/selections; repaints the interaction layer only. */
   setPresence(entries: readonly PresenceEntry[]): void;
   /** The view's asset service: diagnostics, retry, resolver replacement. */
@@ -231,12 +235,22 @@ export interface ViewHandle {
     AssetService,
     "status" | "diagnostics" | "retry" | "setResolver" | "stats"
   >;
+  /** The zoom range in effect, inside the absolute bounds of the core viewport. */
+  zoomLimits(): { readonly min: number; readonly max: number };
+  /**
+   * Replace the zoom limits; no argument restores the absolute bounds. Wheel,
+   * pinch, programmatic zoom and fit follow from the next call on, and a zoom outside the
+   * new range is pulled back inside it (the viewport notifies). Throws for unusable limits.
+   */
+  setZoomLimits(limits?: ZoomLimits): void;
   theme(): ThemeTokens;
   /**
    * Patch the theme; repaints background and scene, never touches geometry. Override
-   * tables merge per key, and a key set to `undefined` removes that override.
+   * tables merge per key, and a key set to `undefined` removes that override. With
+   * `replace` the patch is applied to the default theme instead, as at mount, so earlier
+   * patches no longer count.
    */
-  setTheme(theme: ThemeInput): void;
+  setTheme(theme: ThemeInput, opts?: { readonly replace?: boolean }): void;
   /** Mark layers for repaint on the next frame. */
   invalidate(...layers: readonly LayerName[]): void;
   /** Cheap counters and timings for debugging and benchmarks. */

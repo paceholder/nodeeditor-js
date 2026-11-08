@@ -29,6 +29,27 @@ export function resolveZoomLimits(limits?: ZoomLimits): ResolvedZoomLimits {
   return { min: Math.max(min, MIN_ZOOM), max: Math.min(max, MAX_ZOOM) };
 }
 
+/** Zoom limits that can change while the view is mounted; readers see the current pair. */
+export interface ZoomLimitsHolder extends ResolvedZoomLimits {
+  /** Replace the limits; no argument restores the absolute bounds. Throws for unusable limits. */
+  set(limits?: ZoomLimits): void;
+}
+
+export function createZoomLimits(initial?: ZoomLimits): ZoomLimitsHolder {
+  let current = resolveZoomLimits(initial);
+  return {
+    get min() {
+      return current.min;
+    },
+    get max() {
+      return current.max;
+    },
+    set(limits) {
+      current = resolveZoomLimits(limits);
+    },
+  };
+}
+
 export const clampToLimits = (
   zoom: number,
   limits: ResolvedZoomLimits,

@@ -204,4 +204,18 @@ describe("basic editing", () => {
     pointer.drag([225, 165], [231, 170], {}, 6);
     expect(pos()).toEqual({ x: 226, y: 165 });
   });
+
+  it("setToolOptions with replace makes the patch the whole set of overrides", async () => {
+    const { view } = await setup();
+    const base = view.toolOptions().emptyDrag;
+    view.setToolOptions({ gridStep: 20, emptyDrag: "marquee" });
+    view.setToolOptions({ gridStep: 10 });
+    expect(view.toolOptions()).toMatchObject({
+      gridStep: 10,
+      emptyDrag: "marquee",
+    });
+    view.setToolOptions({ gridStep: 5 }, { replace: true });
+    expect(view.toolOptions().gridStep).toBe(5);
+    expect(view.toolOptions().emptyDrag).toBe(base);
+  });
 });

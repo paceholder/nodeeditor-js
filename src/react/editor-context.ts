@@ -27,6 +27,14 @@ export function EditorProvider(props: { children?: ReactNode }): ReactNode {
   );
 }
 
+/** Makes `store` the nearest store for `children`; used by the mount component. */
+export function provideStore(
+  store: EditorStore,
+  children: ReactNode,
+): ReactNode {
+  return createElement(EditorContext.Provider, { value: store }, children);
+}
+
 /** The nearest provider's store, or null outside any provider. */
 export function useEditorStore(): EditorStore | null {
   return useContext(EditorContext);

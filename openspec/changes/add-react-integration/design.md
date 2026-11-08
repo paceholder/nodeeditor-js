@@ -82,7 +82,10 @@ portals; no extra work except a test.
 `initialFit?: FitOptions | true` runs fit once, after the first measurable layout (not at
 import or before size is known) and only if `initialViewport` is not given. `zoomLimits`
 `{ min, max }` is stored per view and consulted by wheel, pinch, `zoomAt`, `set`, and fit
-(the fit `maxZoom` is capped by it). Core `clampZoom` keeps its absolute bounds as an outer
+(the fit `maxZoom` is capped by it); `view.setZoomLimits` replaces it at runtime and pulls a
+zoom outside the new range back in, so the React prop is live and compared by value.
+`initialFit` and `initialViewport` are read once at mount; the React props ignore later
+changes, as a `defaultValue` does. Core `clampZoom` keeps its absolute bounds as an outer
 guard. Controls (`ViewControls`, a small panel anchored bottom-left by default) are four buttons: zoom in, zoom out, fit and lock. Lock calls the view-level lock (see D6). Fit: fit runs the existing `view.fitAll`
 command through the registry; zoom in and out call `viewport.zoomAt` at the view
 centre with a configurable factor, because no zoom command exists (adding one is left

@@ -120,7 +120,7 @@ export interface EditingDeps {
   readonly routes: Pick<RouteRegistry, "get">;
   /** Current port-hiding zoom of the theme. */
   readonly hidePortsBelow: () => number;
-  /** The view's zoom range; wheel zoom and fit stay inside it. */
+  /** The view's zoom range, read on every use because it can change at runtime. */
   readonly zoomLimits: ResolvedZoomLimits;
   /** Start locked. */
   readonly locked: boolean;
@@ -140,7 +140,10 @@ export interface Editing {
   /** Replace or remove the connection chooser; cancels a pending choice. */
   readonly setConnectionChooser: ViewConnectionChoice["setChooser"];
   toolOptions(): ToolOptions;
-  setToolOptions(patch: Partial<ToolOptions>): void;
+  setToolOptions(
+    patch: Partial<ToolOptions>,
+    opts?: { readonly replace?: boolean },
+  ): void;
   /** Fit all content once with the given padding and cap. */
   fitAll(opts: FitOptions): ViewCommandOutcome;
   /** True while something on the interaction layer is drawn in world space. */
@@ -191,9 +194,17 @@ export function attachEditing(deps: EditingDeps): Editing {
           },
         })
       : UNBOUND_VIEW;
-  const view = fitWith({});
+  // The fit commands carry the zoom range they were built with: rebuilt when it changes.
+  let fitCommands = { min: NaN, max: NaN, commands: UNBOUND_VIEW };
+  const currentView = (): ViewCommands => {
+    const { min, max } = deps.zoomLimits;
+    if (fitCommands.min !== min || fitCommands.max !== max) {
+      fitCommands = { min, max, commands: fitWith({}) };
+    }
+    return fitCommands.commands;
+  };
   const commands = createCommandRegistry(
-    () => ({ model: editable, reader, selection, view }),
+    () => ({ model: editable, reader, selection, view: currentView() }),
     lock.get,
   );
   const offs: Array<() => void> = [];
@@ -386,8 +397,8 @@ export function attachEditing(deps: EditingDeps): Editing {
     refreshHover: () => hover?.refresh(),
     setConnectionChooser: (chooser) => choices?.setChooser(chooser),
     toolOptions: () => resolveToolOptions(toolOptions),
-    setToolOptions(patch) {
-      toolOptions = { ...toolOptions, ...patch };
+    setToolOptions(patch, opts) {
+      toolOptions = opts?.replace ? { ...patch } : { ...toolOptions, ...patch };
     },
     fitAll: (opts) => fitWith(opts).fitAll(),
     interactionFollowsViewport: () => handles?.visible() === true,

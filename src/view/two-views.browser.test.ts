@@ -4,6 +4,7 @@ import { cleanupScope, frames, makeHost, pixelAt } from "./browser-support.js";
 import { mountView } from "./mount-view.js";
 import { boxNodePainter } from "./render/registries/fallback-painters.js";
 import { createPainterRegistries } from "./render/registries/painters.js";
+import { DEFAULT_THEME } from "./render/theme/tokens.js";
 
 const cleanup = cleanupScope();
 
@@ -53,6 +54,20 @@ describe("themes", () => {
     await frames();
     expect(pixelAt(view.canvases.scene, 100, 75)).toEqual([0, 0, 255, 255]);
     expect(view.geometryStats()).toEqual(before);
+  });
+
+  it("setTheme with replace starts from the default theme, not from earlier patches", async () => {
+    const view = mountView(makeHost(200, 150), {
+      model: buildModel([twoPortNode("a", 100, 75)]),
+      theme: { background: "#102030" },
+    });
+    cleanup(() => view.dispose());
+    view.setTheme({ nodeFill: "#0000ff" });
+    expect(view.theme().background).toBe("#102030");
+    expect(view.theme().nodeFill).toBe("#0000ff");
+    view.setTheme({ background: "#445566" }, { replace: true });
+    expect(view.theme().background).toBe("#445566");
+    expect(view.theme().nodeFill).toBe(DEFAULT_THEME.nodeFill);
   });
 
   it("per-entity override changes one node only", async () => {

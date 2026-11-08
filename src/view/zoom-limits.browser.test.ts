@@ -46,4 +46,33 @@ describe("view zoom limits", () => {
     view.commands.run("view.fitAll");
     expect(view.viewport.get().zoom).toBe(0.1);
   });
+
+  it("limits can change at runtime: wheel, set and fit follow, and a zoom outside is pulled in", async () => {
+    const view = mounted([twoPortNode("a", 100, 100, { w: 20, h: 20 })]);
+    await frames();
+    view.viewport.set({ zoom: 1.5, panX: 0, panY: 0 });
+    await frames();
+    let notified = 0;
+    view.viewport.on(() => notified++);
+    view.setZoomLimits({ min: 0.5, max: 1 });
+    expect(view.zoomLimits()).toEqual({ min: 0.5, max: 1 });
+    expect(view.viewport.get().zoom).toBe(1);
+    await frames();
+    expect(notified).toBe(1);
+    for (let i = 0; i < 40; i++) wheel(view, 100, 100, -400);
+    expect(view.viewport.get().zoom).toBe(1);
+    view.commands.run("view.fitAll");
+    expect(view.viewport.get().zoom).toBeLessThanOrEqual(1);
+    view.setZoomLimits({ min: 0.25, max: 4 });
+    view.viewport.set({ zoom: 3, panX: 0, panY: 0 });
+    expect(view.viewport.get().zoom).toBe(3);
+    view.setZoomLimits();
+    expect(view.zoomLimits().max).toBeGreaterThanOrEqual(4);
+  });
+
+  it("unusable limits throw and leave the old ones in place", async () => {
+    const view = mounted([twoPortNode("a", 100, 100)]);
+    expect(() => view.setZoomLimits({ min: 2, max: 1 })).toThrow(RangeError);
+    expect(view.zoomLimits()).toEqual({ min: 0.1, max: 2 });
+  });
 });

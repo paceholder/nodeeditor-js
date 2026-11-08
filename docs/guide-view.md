@@ -629,6 +629,11 @@ view.setTheme({
 view.setTheme({ typeOverrides: { pump: undefined } });
 ```
 
+To state the whole theme at once, pass `{ replace: true }`: the patch is then applied to the
+default theme, as at mount, and earlier patches no longer count. `setToolOptions(patch,
+{ replace: true })` likewise makes the patch the whole set of tool overrides. The React
+component uses these two forms for its `theme` and `input.toolOptions` props.
+
 Style values are in the units named in `tokens.ts`: with `screenSpaceLines: true` (the
 default) line widths and port radii are CSS pixels and stay constant on screen at any zoom;
 set it to `false` to let them scale with the graph.
@@ -1019,7 +1024,9 @@ per second.
 
 Two mount options shape the viewport. `zoomLimits: { min, max }` narrows the supported zoom
 range for this view: wheel and pinch, `zoomAt`, `set` and the fit commands stay inside it, and
-fit never zooms in past `max`. `initialFit: true` (or `{ paddingPx, maxZoom }`) fits the
+fit never zooms in past `max`. `view.setZoomLimits(limits)` changes the range later (no argument
+restores the absolute bounds) and pulls a zoom that is now outside back inside;
+`view.zoomLimits()` reads it. `initialFit: true` (or `{ paddingPx, maxZoom }`) fits the
 content once, after the container is first measurable; it is skipped when you pass an
 `initialViewport`.
 

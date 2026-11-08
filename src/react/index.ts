@@ -14,3 +14,9 @@ export type { SelectionSnapshot } from "./use-selection.js";
 export { useSelection } from "./use-selection.js";
 export { useViewLocked } from "./use-view-locked.js";
 export { useViewport } from "./use-viewport.js";
+export type {
+  ControlsButton,
+  ControlsCorner,
+  ViewControlsProps,
+} from "./view-controls.js";
+export { ViewControls } from "./view-controls.js";

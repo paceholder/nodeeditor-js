@@ -30,7 +30,7 @@ import { createStatsRecorder } from "./platform/render-stats.js";
 import { clientRectOf, type ViewRect } from "./platform/view-rect.js";
 import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
-import { resolveZoomLimits } from "./platform/zoom-limits.js";
+import { createZoomLimits } from "./platform/zoom-limits.js";
 import { createAssetService } from "./render/assets/asset-service.js";
 import { createGestureBitmap } from "./render/paint/gesture-bitmap.js";
 import { createInteractionLayer } from "./render/paint/interaction-layer.js";
@@ -59,7 +59,7 @@ export function mountView(
 ): ViewHandle {
   const win = container.ownerDocument.defaultView;
   if (!win) throw new Error("mountView needs an attached document");
-  const zoomLimits = resolveZoomLimits(options.zoomLimits);
+  const zoomLimits = createZoomLimits(options.zoomLimits);
   const stack = createLayerStack(container);
   let disposed = false;
   let backing = { width: 0, height: 0, dpr: 0 };
@@ -335,9 +335,18 @@ export function mountView(
       presence.set(entries);
       interaction.invalidate();
     },
+    zoomLimits: () => ({ min: zoomLimits.min, max: zoomLimits.max }),
+    setZoomLimits(limits) {
+      zoomLimits.set(limits);
+      // A zoom now outside the range is pulled back in; `set` clamps and notifies.
+      const current = viewport.get();
+      if (current.zoom < zoomLimits.min || current.zoom > zoomLimits.max) {
+        viewport.set(current);
+      }
+    },
     theme: () => theme,
-    setTheme(patch) {
-      theme = mergeTheme(theme, patch);
+    setTheme(patch, opts) {
+      theme = mergeTheme(opts?.replace ? DEFAULT_THEME : theme, patch);
       markDirty("background", "scene");
     },
     viewport: {

@@ -1,22 +1,26 @@
 ## ADDED Requirements
 
 ### Requirement: Overlay placement and node rectangle
-A node overlay anchor SHALL accept a placement relative to the node's body bounds (top-left default, above, below, left, right, centred) with a pixel offset, and the view SHALL report a node's on-screen rectangle as a plain value so host popover libraries can use it as a reference. Overlay content SHALL stay aligned during pan, zoom, and node moves. The wheel over overlay content SHALL NOT zoom the canvas, and the wheel over empty overlay area SHALL still zoom it; pointer presses on overlay content SHALL start no canvas gesture.
+A node overlay anchor SHALL accept a placement relative to the node's body bounds (top-left default; above, below, left and right outside the body and centred on that edge; the other three corners pinning the element's same corner to the node's corner; centred) with a pixel offset, and the view SHALL report a node's on-screen rectangle as a plain value shaped like a `DOMRect` (position, size and the four edges) so host popover libraries can use it as a reference without an adapter. Overlay content SHALL stay aligned during pan, zoom, and node moves. The wheel over overlay content SHALL NOT zoom the canvas, and the wheel over empty overlay area SHALL still zoom it; pointer presses on overlay content SHALL start no canvas gesture.
 
 #### Scenario: Placement above a node
 - **WHEN** an element is attached to a node with the "above" placement and the view is zoomed
 - **THEN** the element stays centred above the body bounds at the offset distance
 
+#### Scenario: Corner placement
+- **WHEN** an element is attached to a node with the bottom-right placement
+- **THEN** the element's bottom-right corner sits on the body's bottom-right corner
+
 #### Scenario: Node rectangle as a value
 - **WHEN** a host asks for the rectangle of a node
-- **THEN** it receives the client-space rectangle of the body bounds, and nothing for an absent node
+- **THEN** it receives the client-space rectangle of the body bounds with its four edges as well as its position and size, and nothing for an absent node
 
 #### Scenario: Wheel over overlay content
 - **WHEN** the pointer is over an attached element and the wheel turns
 - **THEN** the canvas does not zoom; over the empty part of the overlay layer the same wheel zooms
 
 ### Requirement: Initial fit and zoom limits
-The view SHALL accept an initial fit option (with padding and maximum fit zoom) that fits the content once, after the container is first measurable, unless an initial viewport is given. The view SHALL accept per-view minimum and maximum zoom, honoured by wheel and pinch zoom, programmatic zoom, and fit commands, within the absolute bounds of the core viewport.
+The view SHALL accept an initial fit option (with padding and maximum fit zoom) that fits the content once, after the container is first measurable, unless an initial viewport is given. The view SHALL accept per-view minimum and maximum zoom, honoured by wheel and pinch zoom, programmatic zoom, and fit commands, within the absolute bounds of the core viewport. The limits SHALL be changeable at runtime, and a zoom outside the new range SHALL be pulled back inside it.
 
 #### Scenario: Fit on first load
 - **WHEN** a view is mounted with a model of nodes spread beyond the container and an initial fit
@@ -25,6 +29,10 @@ The view SHALL accept an initial fit option (with padding and maximum fit zoom) 
 #### Scenario: Zoom limits
 - **WHEN** the limits are 0.1 and 2 and the user wheel-zooms far in and far out
 - **THEN** the zoom never leaves that range, and fit never zooms in past the maximum
+
+#### Scenario: Limits change at runtime
+- **WHEN** the limits change from 0.1 to 2 into 0.5 to 1 while the zoom is 1.5
+- **THEN** the zoom becomes 1, one viewport notification is raised, and later wheel and fit stay inside the new range
 
 ### Requirement: View lock
 A view SHALL have a view-local lock state, settable at mount and at runtime, observable by the host. While locked, editing gestures and editing commands SHALL be unavailable with a stated reason; pan, zoom, fit, selection, inspection and hover SHALL keep working. The lock SHALL NOT relax adapter permissions, SHALL NOT produce history entries, and SHALL NOT be serialized.
