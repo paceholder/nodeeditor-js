@@ -16,6 +16,7 @@ import type { ClipboardOptions } from "./interact/clipboard/clipboard-types.js";
 import type { ViewClipboard } from "./interact/clipboard/view-clipboard.js";
 import type { CommandRegistry } from "./interact/commands/command-registry.js";
 import type { KeyBinding, Platform } from "./interact/commands/keymap.js";
+import type { FitOptions } from "./interact/commands/view-fit.js";
 import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
 import type {
   OverlayAnchor,
@@ -97,6 +98,11 @@ export interface ViewOptions {
    * inside it; fit never zooms in past `max`.
    */
   readonly zoomLimits?: ZoomLimits;
+  /**
+   * Fit the content once, after the container is first measurable. `true` uses
+   * the default padding and cap. Ignored when `initialViewport` is given.
+   */
+  readonly initialFit?: FitOptions | true;
   /**
    * Input handling: default tools and keymap when omitted, none with `false`. Editing
    * needs a model with the command API (a `GraphModel` fits); a read-only model still

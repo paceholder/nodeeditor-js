@@ -198,6 +198,10 @@ export function mountView(
   });
   const dirtyAll = (): void => markDirty("background", "scene", "interaction");
 
+  // Runs on the first measurable layout, once, unless the host chose the viewport.
+  let pendingInitialFit = options.initialViewport
+    ? undefined
+    : options.initialFit;
   const metrics: ContainerMetrics = observeContainer(stack.root, () => {
     if (!metrics.isMeasurable()) return;
     const { width, height } = metrics.size();
@@ -209,6 +213,11 @@ export function mountView(
     ) {
       backing = { width, height, dpr };
       stack.resize(width, height, dpr);
+    }
+    if (pendingInitialFit) {
+      const fit = pendingInitialFit;
+      pendingInitialFit = undefined;
+      editing.fitAll(fit === true ? {} : fit);
     }
     dirtyAll();
   });

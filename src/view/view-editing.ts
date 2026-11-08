@@ -45,7 +45,10 @@ import {
   type ViewCommandOutcome,
   type ViewCommands,
 } from "./interact/commands/view-commands.js";
-import { DEFAULT_FIT_MAX_ZOOM } from "./interact/commands/view-fit.js";
+import {
+  DEFAULT_FIT_MAX_ZOOM,
+  type FitOptions,
+} from "./interact/commands/view-fit.js";
 import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
@@ -113,6 +116,8 @@ export interface Editing {
   readonly setConnectionChooser: ViewConnectionChoice["setChooser"];
   toolOptions(): ToolOptions;
   setToolOptions(patch: Partial<ToolOptions>): void;
+  /** Fit all content once with the given padding and cap. */
+  fitAll(opts: FitOptions): ViewCommandOutcome;
   /** True while something on the interaction layer is drawn in world space. */
   interactionFollowsViewport(): boolean;
   dispose(): void;
@@ -140,7 +145,8 @@ export function attachEditing(deps: EditingDeps): Editing {
   const editable: EditableModel | undefined =
     model && isEditable(model) ? model : undefined;
   const reader: GraphReader | undefined = model?.reader;
-  const view =
+  // Fit stays inside the view's zoom limits.
+  const fitWith = (opts: FitOptions): ViewCommands =>
     reader && scene
       ? createViewCommands({
           reader,
@@ -149,11 +155,16 @@ export function attachEditing(deps: EditingDeps): Editing {
           viewport: { get: viewport.get, set: viewport.set },
           size: deps.size,
           options: {
+            ...opts,
             minZoom: deps.zoomLimits.min,
-            maxZoom: Math.min(DEFAULT_FIT_MAX_ZOOM, deps.zoomLimits.max),
+            maxZoom: Math.min(
+              opts.maxZoom ?? DEFAULT_FIT_MAX_ZOOM,
+              deps.zoomLimits.max,
+            ),
           },
         })
       : UNBOUND_VIEW;
+  const view = fitWith({});
   const commands = createCommandRegistry(() => ({
     model: editable,
     reader,
@@ -301,6 +312,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     setToolOptions(patch) {
       toolOptions = { ...toolOptions, ...patch };
     },
+    fitAll: (opts) => fitWith(opts).fitAll(),
     interactionFollowsViewport: () => handles?.visible() === true,
     dispose() {
       for (const off of offs.splice(0)) off();
