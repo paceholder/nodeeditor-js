@@ -5,7 +5,12 @@ import {
   buildModel,
   twoPortNode,
 } from "../../../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "../../browser-support.js";
+import {
+  cleanupScope,
+  frames,
+  makeHost,
+  selNode,
+} from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
 import { key, mouse, wheel } from "./input-test-support.js";
 
@@ -38,7 +43,7 @@ const has = (m: ReturnType<typeof editor>["model"], id: string) =>
 describe("input scope", () => {
   it("Delete inside an overlay text field edits text and deletes no nodes", async () => {
     const { model, view } = editor();
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     const field = document.createElement("input");
     field.style.cssText = "pointer-events:auto;width:80px;";
     view.overlay.attach(field, { kind: "node", node: nodeId("a") });
@@ -54,7 +59,7 @@ describe("input scope", () => {
 
   it("Escape leaves a menu: keys on overlay content run no graph shortcut", async () => {
     const { model, view } = editor();
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     const button = document.createElement("button");
     button.textContent = "Delete";
     button.style.cssText = "pointer-events:auto;";
@@ -65,7 +70,7 @@ describe("input scope", () => {
     const del = key(button, "Delete");
     expect(esc.defaultPrevented).toBe(false);
     expect(del.defaultPrevented).toBe(false);
-    expect(view.selection.keys()).toEqual(["n:a"]);
+    expect(view.selection.nodes()).toEqual([selNode("a").id]);
     expect(has(model, "a")).toBe(true);
     // A copy with focus on the button is the page's, not a graph copy.
     const data = new DataTransfer();
@@ -93,7 +98,7 @@ describe("input scope", () => {
 
   it("Enter during IME composition fires no graph shortcut", () => {
     const { model, view } = editor();
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     key(view.element, "Enter", { composing: true });
     expect(has(model, "a")).toBe(true);
     key(view.element, "Enter");
@@ -103,8 +108,8 @@ describe("input scope", () => {
   it("two mounted editors only react to the focused one", () => {
     const one = editor();
     const two = editor();
-    one.view.selection.replace(["n:a"]);
-    two.view.selection.replace(["n:a"]);
+    one.view.selection.replace([selNode("a")]);
+    two.view.selection.replace([selNode("a")]);
     two.view.element.focus();
     // Keyboard events go to the focused element only, as in a real browser.
     key(document.activeElement ?? document.body, "Delete");

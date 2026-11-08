@@ -99,6 +99,8 @@ export interface ClipboardServiceDeps {
   readonly pointer: () => Vec2 | undefined;
   readonly system: SystemClipboard | undefined;
   readonly options?: ClipboardOptions;
+  /** Called after the in-app buffer is filled (paste becomes available). */
+  readonly bufferChanged?: () => void;
   readonly codecs?: PayloadCodecRegistry;
   readonly limits?: Partial<SnapshotLimits>;
 }

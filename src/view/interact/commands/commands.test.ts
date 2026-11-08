@@ -161,6 +161,19 @@ describe("builtin commands", () => {
     expect(h.model.reader.revision()).toBe(rev);
   });
 
+  it("zoom commands are view commands: they move the viewport only and are unavailable at a limit", () => {
+    const { h, commands, viewport } = setup(trio());
+    const rev = h.model.reader.revision();
+    expect(commands.availability(COMMAND_IDS.zoomIn).available).toBe(true);
+    expect(commands.run(COMMAND_IDS.zoomIn, { factor: 2 }).ok).toBe(true);
+    expect(viewport().zoom).toBe(2);
+    expect(commands.run(COMMAND_IDS.zoomOut).ok).toBe(true);
+    expect(viewport().zoom).toBeCloseTo(1.6, 9);
+    expect(h.model.reader.revision()).toBe(rev);
+    expect(commands.run(COMMAND_IDS.zoomIn, { factor: 1e6 }).ok).toBe(true);
+    expect(commands.availability(COMMAND_IDS.zoomIn).available).toBe(false);
+  });
+
   it("an unknown command ID is a result, not a throw", () => {
     const { commands } = setup(trio());
     const r = commands.run("no.such.command");

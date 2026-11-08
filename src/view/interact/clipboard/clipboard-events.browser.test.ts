@@ -1,9 +1,7 @@
 /// <reference types="@vitest/browser-playwright" />
 import { describe, expect, it } from "vitest";
-import { nodeId } from "../../../core/index.js";
-import { cleanupScope, makeHost } from "../../browser-support.js";
+import { cleanupScope, makeHost, selNode } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
-import { nodeKey } from "../selection/selection-model.js";
 import { clipboardModel } from "./clipboard-fixtures.js";
 
 const cleanup = cleanupScope();
@@ -56,7 +54,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 describe("native clipboard events", () => {
   it("a copy event writes the fragment; a paste event pastes it", () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a")), nodeKey(nodeId("b"))]);
+    view.selection.replace([selNode("a"), selNode("b")]);
     const copy = clip(view.element, "copy");
     expect(copy.event.defaultPrevented).toBe(true);
     const text = copy.data.getData("text/plain");
@@ -64,13 +62,13 @@ describe("native clipboard events", () => {
     const paste = clip(view.element, "paste", text);
     expect(paste.event.defaultPrevented).toBe(true);
     expect(model.reader.nodes()).toHaveLength(4);
-    expect(view.selection.nodeIds()).toHaveLength(2);
-    expect(view.selection.connectionIds()).toHaveLength(1);
+    expect(view.selection.nodes()).toHaveLength(2);
+    expect(view.selection.connections()).toHaveLength(1);
   });
 
   it("a paste event with foreign text pastes nothing and reports why", () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a"))]);
+    view.selection.replace([selNode("a")]);
     clip(view.element, "copy");
     const reasons: string[] = [];
     view.clipboard.on("paste", (o) => {
@@ -83,7 +81,7 @@ describe("native clipboard events", () => {
 
   it("a cut event removes the selection in one entry", () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a")), nodeKey(nodeId("b"))]);
+    view.selection.replace([selNode("a"), selNode("b")]);
     const cut = clip(view.element, "cut");
     expect(cut.data.getData("text/plain")).toContain("nodeeditor-js/fragment");
     expect(model.reader.nodes()).toHaveLength(0);
@@ -92,7 +90,7 @@ describe("native clipboard events", () => {
 
   it("a copy from a focused overlay text field leaves the graph alone", () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a"))]);
+    view.selection.replace([selNode("a")]);
     const field = document.createElement("input");
     field.value = "label";
     const handle = view.overlay.attach(field, {
@@ -111,7 +109,7 @@ describe("native clipboard events", () => {
 
   it("events while focus is elsewhere are ignored", () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a"))]);
+    view.selection.replace([selNode("a")]);
     view.element.blur();
     const copy = clip(document.body, "copy");
     expect(copy.event.defaultPrevented).toBe(false);
@@ -120,7 +118,7 @@ describe("native clipboard events", () => {
 
   it("a paste chord alone pastes nothing; its event pastes once", async () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a"))]);
+    view.selection.replace([selNode("a")]);
     const text = clip(view.element, "copy").data.getData("text/plain");
     chord(view.element, "v");
     await sleep(50);

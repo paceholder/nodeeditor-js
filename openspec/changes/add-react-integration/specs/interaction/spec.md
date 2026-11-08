@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Hover event
-The view SHALL raise a `"hover"` event through `view.on` when the entity under the pointer changes. The payload SHALL be plain data by stable IDs: the entity kind (node, port, connection), its IDs, and for a node its screen rectangle in client coordinates, or a leave form when no entity is under the pointer. Detection SHALL reuse geometric picking and the spatial index, never pixel lookups. The event SHALL fire at most once per animation frame and only when the hovered entity changes. It SHALL NOT fire during a gesture (drag, marquee, pan, connection drag) and SHALL respect the level-of-detail rule that hides ports when zoomed out. A connection's hit member MAY be included when the picker already returns it. Delays (for example a one-second tooltip delay) and popover content stay in the host.
+The view SHALL raise a `"hover"` event through `view.on` when the entity under the pointer changes. The payload SHALL be plain data by stable IDs: the entity kind (node, port, connection), its IDs, and for a node its screen rectangle in client coordinates, or a leave form when no entity is under the pointer. Detection SHALL reuse geometric picking and the spatial index, never pixel lookups. The event SHALL fire at most once per animation frame and only when the hovered entity changes. It SHALL NOT fire during a gesture (drag, marquee, pan, connection drag) and SHALL respect the level-of-detail rule that hides ports when zoomed out. A connection's hit member MAY be included when the picker already returns it. Delays (for example a one-second tooltip delay) and popover content stay in the host. The pointer moving over host content in the overlay layer SHALL NOT change the hover: it neither picks the entity beneath the content nor ends the current hover.
 
 #### Scenario: Enter, move within, leave
 - **WHEN** the pointer moves onto a node, moves within it, and then leaves it
@@ -10,6 +10,10 @@ The view SHALL raise a `"hover"` event through `view.on` when the entity under t
 #### Scenario: Node rectangle in the payload
 - **WHEN** the pointer enters a node
 - **THEN** the event carries the node's ID and its screen rectangle, so a host can place a popover without a second query
+
+#### Scenario: Overlay content does not change the hover
+- **WHEN** a node is hovered and the pointer moves onto host content in the overlay layer that sits over another node
+- **THEN** the first node stays hovered, the other is not hovered, and no event is raised
 
 #### Scenario: Drag raises none
 - **WHEN** the user drags a node across other nodes

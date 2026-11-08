@@ -30,7 +30,7 @@ content inside nodes, which remains scheduled later.
   during gestures, level-of-detail aware, fed by the existing hit-testing. `view.hover`
   also feeds `ViewState.isHovered` by default. A React hook exposes it.
 - **Anchored overlay (new the overlay placement rule).** Overlay placement relative to a node's body
-  bounds (corners, above, below, centred) and the node's on-screen rectangle as a value; a
+  bounds (corners, top, bottom, left, right, centred) and the node's on-screen rectangle as a value; a
   React component/hook that portals children into one overlay slot for one node, with
   input isolation and host React context preserved. Documented as meant for a handful of
   nodes, not per-node mounting for the whole graph.
@@ -50,7 +50,7 @@ content inside nodes, which remains scheduled later.
   the input scoping rule, the two-phase hit-testing rule, the hit result identity and order rule, the level of detail rule and the gesture lifecycle and cancellation rule are relied on and re-verified.
 - Modifies: the provider, mount component, and hooks rule (adds history and hover hooks to the list).
 - Adds: the hover event rule and the hover state rule (interaction), the overlay placement rule, the initial fit and zoom limits rule and the view lock rule (canvas-view),
-  the anchored node overlay rule and the view controls rule (react-integration).
+  the anchored node overlay rule, the view controls rule and the one event channel rule (react-integration).
 
 ### Out of scope
 

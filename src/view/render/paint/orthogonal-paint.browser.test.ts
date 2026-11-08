@@ -14,6 +14,7 @@ import {
   frames,
   makeHost,
   pixelAt,
+  selConn,
 } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
 import { createConnectionPainter } from "../presets/connection-painter.js";
@@ -103,7 +104,7 @@ describe("painting orthogonal connections", () => {
   it("the selection outline follows the polyline", async () => {
     const { view, alpha } = await mount(orthogonal());
     expect(alpha(252, 175)).toBe(0);
-    view.selection.replace(["c:c1"]);
+    view.selection.replace([selConn("c1")]);
     await frames();
     expect(alpha(252, 175)).toBeGreaterThan(0);
     expect(alpha(185, 102)).toBeGreaterThan(0);

@@ -166,6 +166,58 @@ describe("initial and live options", () => {
     expect(first?.disposed).toBe(false);
   });
 
+  it("an inline theme with unchanged contents does not repaint, a changed one does", async () => {
+    const m = model();
+    const seen: Seen = { view: null };
+    const r = await renderReact(
+      tree({ model: m, theme: { background: "#112233" } }, seen),
+    );
+    rendered.push(r);
+    await frames();
+    const view = seen.view as ViewHandle;
+    const setTheme = vi.spyOn(view, "setTheme");
+    // A new object with the same contents on every render.
+    await r.rerender(
+      tree({ model: m, theme: { background: "#112233" } }, seen),
+    );
+    await r.rerender(
+      tree({ model: m, theme: { background: "#112233" } }, seen),
+    );
+    expect(setTheme).not.toHaveBeenCalled();
+    await r.rerender(
+      tree({ model: m, theme: { background: "#445566" } }, seen),
+    );
+    expect(setTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it("an unusable zoomLimits prop warns and is ignored, on a live view and at mount", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const m = model();
+      const seen: Seen = { view: null };
+      // Mounting with min above max must not throw out of the mount effect.
+      const r = await renderReact(
+        tree({ model: m, zoomLimits: { min: 3, max: 1 } }, seen),
+      );
+      rendered.push(r);
+      await frames();
+      expect(seen.view?.zoomLimits().max).toBeGreaterThan(1);
+      expect(warn).toHaveBeenCalled();
+      await r.rerender(
+        tree({ model: m, zoomLimits: { min: 0.5, max: 2 } }, seen),
+      );
+      expect(seen.view?.zoomLimits()).toEqual({ min: 0.5, max: 2 });
+      // A transient bad value on a live view keeps the previous limits.
+      await r.rerender(
+        tree({ model: m, zoomLimits: { min: 2, max: 0.5 } }, seen),
+      );
+      expect(seen.view?.zoomLimits()).toEqual({ min: 0.5, max: 2 });
+      expect(seen.view?.disposed).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("zoom limits update the live view, even as an inline object", async () => {
     const m = model();
     const seen: Seen = { view: null };

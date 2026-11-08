@@ -24,8 +24,8 @@ const sameAvailability = (a: Availability, b: Availability): boolean => {
 };
 
 /**
- * Whether the command can run now, re-read on every selection, model, history and lock
- * change. The result keeps its identity while availability and reason are unchanged.
+ * Whether the command can run now, re-read on every selection, model, history, lock, viewport and
+ * availability change. The result keeps its identity while availability and reason are unchanged.
  */
 export function useCommandAvailability(
   id: string,
@@ -37,8 +37,12 @@ export function useCommandAvailability(
       view
         ? (notify: () => void) => {
             const offs = [
-              view.selection.on(() => notify()),
+              view.on("selection", () => notify()),
               view.on("lock", () => notify()),
+              // Zoom commands depend on where the viewport is (unavailable at a limit).
+              view.on("viewport", () => notify()),
+              // Commands registered or removed, a filled clipboard, moved zoom limits.
+              view.on("availability", () => notify()),
               onModelChange(model, notify),
             ];
             return () => {

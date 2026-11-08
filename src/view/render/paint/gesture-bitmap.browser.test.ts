@@ -12,6 +12,7 @@ import {
   frames,
   makeHost,
   pixelAt,
+  selNode,
 } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
 import type { FrameClock } from "../../platform/frame-scheduler.js";
@@ -226,7 +227,7 @@ describe("gesture bitmap reuse", () => {
           ]);
           break;
         case "selection":
-          view.selection.replace(["n:n0_0"]);
+          view.selection.replace([selNode("n0_0")]);
           break;
         case "theme":
           view.setTheme({ nodeFill: "#405060" });

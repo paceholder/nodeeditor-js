@@ -36,4 +36,4 @@
 
 ## Traceability
 
-Every MUST above is linked to a test naming its rule: the React provider and hooks, subscription granularity, Strict Mode safety, server rendering safety, the anchored node overlay and view controls (tasks 3 and 4), hover event and hover state (task 2), overlay placement (tasks 1.4, 4.3), initial fit and zoom limits (tasks 1.2, 1.3, 4.4), view lock (tasks 4.4, 4.5).
+Every MUST above is linked to a test naming its rule: the React provider and hooks, subscription granularity, Strict Mode safety, server rendering safety, the anchored node overlay and view controls (tasks 3 and 4), the one event channel (event channel and generic hook), hover event and hover state (task 2), overlay placement (tasks 1.4, 4.3), initial fit and zoom limits (tasks 1.2, 1.3, 4.4), view lock (tasks 4.4, 4.5).

@@ -25,7 +25,15 @@ The react entry point SHALL provide a mounting component, a provider, and hooks 
 
 #### Scenario: Lock prop after mount
 - **WHEN** the lock prop changes from false to true on a mounted editor
-- **THEN** the same view instance becomes locked without a remount, and a lock change made on the view reaches the host's lock callback
+- **THEN** the same view instance becomes locked without a remount
+
+#### Scenario: Lock owned by the view
+- **WHEN** the editor has no lock prop and the lock changes through the lock button or the view's API, and the view is later remounted
+- **THEN** every change reaches the host's lock callback, and the new view starts in the same state
+
+#### Scenario: Lock controlled by the prop
+- **WHEN** the editor has a lock prop and the lock button is pressed or the view's API asks for a different state
+- **THEN** the host's lock callback receives the requested state as an attempt and the view stays at the prop until the host passes a new value, which locks or unlocks it without a second callback
 
 #### Scenario: Initial and inline options
 - **WHEN** an initial-viewport or initial-fit prop changes, or the zoom limits are passed as a new object with the same values, on a mounted editor
@@ -81,7 +89,7 @@ The react entry point SHALL provide a component or hook that portals React child
 - **THEN** the callback is not called
 
 ### Requirement: View controls
-The react entry point SHALL provide an optional, compact controls panel with zoom in, zoom out, fit-to-content, and a lock toggle. It SHALL render plain buttons with stable class names and no required stylesheet, SHALL default to a bottom-left corner placement over the view, and hosts MAY restyle, reposition, omit single buttons, or replace it. Fit SHALL run the registered fit command; the buttons SHALL reflect command availability. The lock toggle SHALL switch the view's lock state and show it as pressed or released.
+The react entry point SHALL provide an optional, compact controls panel with zoom in, zoom out, fit-to-content, and a lock toggle. It SHALL render plain buttons with stable class names and no required stylesheet, SHALL default to a bottom-left corner placement over the view, and hosts MAY restyle, reposition, omit single buttons, replace the icons, add buttons of their own as children, or replace it. The icons SHALL be inline vector graphics rather than text glyphs, and the lock icon SHALL differ between the locked and unlocked states. Fit, zoom in and zoom out SHALL run the registered view commands, so the buttons reflect command availability; zoom in SHALL be unavailable at the maximum zoom and zoom out at the minimum, and the zoom commands SHALL keep working while the view is locked. The lock toggle SHALL switch the view's lock state and show it as pressed or released.
 
 #### Scenario: Fit button
 - **WHEN** the user presses the fit control with nodes outside the visible area
@@ -91,6 +99,33 @@ The react entry point SHALL provide an optional, compact controls panel with zoo
 - **WHEN** the user presses the lock control
 - **THEN** the view becomes locked, the control shows the pressed state, and pressing it again restores editing
 
+#### Scenario: Zoom buttons follow the limits
+- **WHEN** the zoom reaches the configured maximum, by the button or by the zoom command
+- **THEN** the zoom-in button is disabled with the reason "Already at the maximum zoom", and the zoom-out button stays enabled
+
+#### Scenario: Host button
+- **WHEN** a host passes a button of its own as a child of the panel
+- **THEN** it appears after the built-in buttons in the same panel and works like them
+
 #### Scenario: Zoom limits respected
 - **WHEN** the zoom control is pressed repeatedly at the configured maximum zoom
 - **THEN** the zoom stays at the maximum
+
+### Requirement: One event channel and a generic state hook
+The view SHALL announce every piece of view state a host can follow through the single `view.on` channel: `"viewport"` (at most once per animation frame, after painting), `"selection"` (the node IDs, the connection IDs and the primary entity), `"hover"`, `"lock"` and `"availability"` (raised when a command is registered or removed, the clipboard buffer is filled, or the zoom limits move, which change what a command can do without any other event). There SHALL be no second subscription style on the viewport or the selection. The react entry point SHALL export one generic hook that reads any value from the mounted view and re-renders when a named event fires and the value differs, and the built-in selection, viewport, hover and lock hooks SHALL be written with it. The selection hook SHALL report the selected node IDs, the selected connection IDs and the primary entity with its kind, and SHALL NOT expose the view's internal selection keys. The view's own selection handle and its event SHALL speak the same language: the handle reads and changes the selection by entity (kind and ID), and the `"selection"` event carries the same value as the hook.
+
+#### Scenario: Selection through the event channel
+- **WHEN** a host subscribes to `"selection"` and the selection is replaced, extended, then replaced with the same keys
+- **THEN** it hears two events carrying the node IDs, connection IDs and the primary entity, and nothing for the repeat
+
+#### Scenario: Host-defined state
+- **WHEN** a component reads the selection size and the lock flag with the generic hook, naming the `"selection"` and `"lock"` events
+- **THEN** it re-renders when either changes and shows the new values, and not otherwise
+
+#### Scenario: Availability follows every trigger
+- **WHEN** a toolbar button reads a command's availability and then a command is registered, something is copied, or the zoom limits are set to the current zoom
+- **THEN** the button reflects the new state without any selection, model or viewport change
+
+#### Scenario: Hook unmounted from a view
+- **WHEN** the generic hook runs before an editor is mounted or during server rendering
+- **THEN** it returns the fallback value it was given

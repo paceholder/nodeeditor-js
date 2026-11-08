@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { connectionId, nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, makeHost } from "./browser-support.js";
+import { cleanupScope, makeHost, selConn, selNode } from "./browser-support.js";
 import type { ContextMenuEvent } from "./interact/context-menu/context-menu-types.js";
 import {
   contextMenu,
@@ -33,13 +33,13 @@ function setup(opts: { listen?: boolean; platform?: "mac" | "other" } = {}) {
   return { model, view, events };
 }
 
-const A = "n:a";
-const B = "n:b";
+const A = selNode("a");
+const B = selNode("b");
 
 describe("keyboard invocation", () => {
   it("Keyboard menu key: the primary connection, at its bounds, selection kept, one event", () => {
     const { view, events } = setup();
-    view.selection.replace(["c:c1"]);
+    view.selection.replace([selConn("c1")]);
     view.element.focus();
     const e = key(view.element, "ContextMenu");
     expect(e.defaultPrevented).toBe(true);
@@ -55,7 +55,7 @@ describe("keyboard invocation", () => {
     expect(events[0]?.invocation).toBe("keyboard");
     expect(events[0]?.hits).toEqual([]);
     expect(events[0]?.world.x).toBeCloseTo(200);
-    expect(view.selection.keys()).toEqual(["c:c1"]);
+    expect(view.selection.connections()).toEqual([connectionId("c1")]);
   });
 
   it("Context actions from the keyboard: Shift+F10 on a selected node", async () => {
@@ -86,13 +86,13 @@ describe("touch long-press", () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.invocation).toBe("touch");
     expect(events[0]?.target).toEqual({ kind: "node", node: nodeId("b") });
-    expect(view.selection.keys()).toEqual([B]);
+    expect(view.selection.nodes()).toEqual([B.id]);
     // Chrome on Android also sends a native contextmenu for the touch.
     expect(t.native(300, 100).defaultPrevented).toBe(true);
     t.move(340, 100);
     t.up(340, 100);
     expect(events).toHaveLength(1);
-    expect(view.selection.keys()).toEqual([B]);
+    expect(view.selection.nodes()).toEqual([B.id]);
     expect(model.reader.revision()).toBe(rev);
   });
 
@@ -117,6 +117,6 @@ describe("touch long-press", () => {
     await sleep(120);
     t.up(300, 100);
     expect(events).toEqual([]);
-    expect(view.selection.keys()).toEqual([B]);
+    expect(view.selection.nodes()).toEqual([B.id]);
   });
 });

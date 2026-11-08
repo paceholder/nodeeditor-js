@@ -74,7 +74,7 @@ function command<A>(
     id,
     labelKey: `command.${id}`,
     // Copying reads the graph, so it keeps working while the view is locked.
-    viewOnly: id === CLIPBOARD_COMMAND_IDS.copy,
+    allowWhenLocked: id === CLIPBOARD_COMMAND_IDS.copy,
     availability,
     run: (args) => run(args),
   };

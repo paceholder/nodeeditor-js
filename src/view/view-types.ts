@@ -25,7 +25,7 @@ import type {
   OverlayHandle,
 } from "./interact/overlay/overlay-host.js";
 import type { PresenceEntry } from "./interact/overlay/presence.js";
-import type { SelectionModel } from "./interact/selection/selection-model.js";
+import type { ViewSelection } from "./interact/selection/view-selection.js";
 import type { ToolOptions } from "./interact/tools/thresholds.js";
 import type { ToolSlot } from "./interact/tools/tool-router.js";
 import type { ToolPreview } from "./interact/tools/tool-types.js";
@@ -133,13 +133,8 @@ export interface ViewOptions {
 }
 
 export interface ViewHandle {
-  readonly viewport: Pick<ViewportState, "get" | "set" | "zoomAt" | "panBy"> & {
-    /**
-     * Subscribe to viewport changes: at most one call per animation frame, after
-     * painting, and none when the viewport ended the frame where it started.
-     */
-    on(handler: (viewport: Viewport) => void): () => void;
-  };
+  /** Read and move the viewport. Changes raise `"viewport"`. */
+  readonly viewport: Pick<ViewportState, "get" | "set" | "zoomAt" | "panBy">;
   clientToWorld(
     clientX: number,
     clientY: number,
@@ -192,9 +187,9 @@ export interface ViewHandle {
   setToolPreview(preview: ToolPreview | null): void;
   /**
    * This view's selection. Entities that leave the model drop out of it, and
-   * changes repaint the scene layer.
+   * changes repaint the scene layer and raise `"selection"`.
    */
-  readonly selection: Omit<SelectionModel, "dispose" | "bindToModel">;
+  readonly selection: ViewSelection;
   /** Editor commands under stable IDs: the API, shortcuts and menus share them. */
   readonly commands: Pick<
     CommandRegistry,
@@ -207,7 +202,8 @@ export interface ViewHandle {
    */
   readonly clipboard: ViewClipboard;
   /**
-   * Subscribe to view events; returns the unsubscribe function. `"context-menu"` fires on
+   * Subscribe to view events (`"viewport"`, `"selection"`, `"hover"`, `"lock"`,
+   * `"context-menu"`); returns the unsubscribe function. `"context-menu"` fires on
    * a right-click, a touch long-press, or the menu key / Shift+F10. While any
    * listener is registered the browser's own context menu is suppressed.
    */

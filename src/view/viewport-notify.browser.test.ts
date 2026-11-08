@@ -16,7 +16,7 @@ describe("viewport notification", () => {
     const view = setup();
     await frames();
     const seen: Array<{ panX: number }> = [];
-    view.viewport.on((v) => seen.push(v));
+    view.on("viewport", (v) => seen.push(v));
     for (let i = 1; i <= 100; i++) view.viewport.panBy(1, 0);
     await frames();
     expect(seen).toHaveLength(1);
@@ -27,7 +27,7 @@ describe("viewport notification", () => {
     const view = setup();
     await frames();
     let calls = 0;
-    view.viewport.on(() => calls++);
+    view.on("viewport", () => calls++);
     view.viewport.set(view.viewport.get());
     view.viewport.panBy(5, 0);
     view.viewport.panBy(-5, 0);
@@ -39,7 +39,7 @@ describe("viewport notification", () => {
     const view = setup();
     await frames();
     let calls = 0;
-    const off = view.viewport.on(() => calls++);
+    const off = view.on("viewport", () => calls++);
     view.viewport.panBy(1, 0);
     await frames();
     expect(calls).toBe(1);

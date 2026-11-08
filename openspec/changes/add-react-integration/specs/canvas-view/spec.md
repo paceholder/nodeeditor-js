@@ -4,7 +4,7 @@
 A node overlay anchor SHALL accept a placement relative to the node's body bounds (top-left default; above, below, left and right outside the body and centred on that edge; the other three corners pinning the element's same corner to the node's corner; centred) with a pixel offset, and the view SHALL report a node's on-screen rectangle as a plain value shaped like a `DOMRect` (position, size and the four edges) so host popover libraries can use it as a reference without an adapter. Overlay content SHALL stay aligned during pan, zoom, and node moves. The wheel over overlay content SHALL NOT zoom the canvas, and the wheel over empty overlay area SHALL still zoom it; pointer presses on overlay content SHALL start no canvas gesture.
 
 #### Scenario: Placement above a node
-- **WHEN** an element is attached to a node with the "above" placement and the view is zoomed
+- **WHEN** an element is attached to a node with the "top" placement and the view is zoomed
 - **THEN** the element stays centred above the body bounds at the offset distance
 
 #### Scenario: Corner placement
@@ -44,3 +44,7 @@ A view SHALL have a view-local lock state, settable at mount and at runtime, obs
 #### Scenario: Unlock restores editing
 - **WHEN** the view is unlocked again
 - **THEN** editing gestures and commands behave as before
+
+#### Scenario: Locking ends a gesture, unlocking ends none
+- **WHEN** the view is locked while a gesture is open, or unlocked while a pan or selection drag is open
+- **THEN** the locked case ends the gesture without committing, and the unlocked case lets the open gesture carry on

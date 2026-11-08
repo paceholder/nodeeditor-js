@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { connectionId, nodeId, portId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "./browser-support.js";
+import { cleanupScope, frames, makeHost, selNode } from "./browser-support.js";
 import type { ContextMenuEvent } from "./interact/context-menu/context-menu-types.js";
 import {
   clientOf,
@@ -35,8 +35,8 @@ function setup(opts: { listen?: boolean; platform?: "mac" | "other" } = {}) {
   return { model, view, events };
 }
 
-const A = "n:a";
-const B = "n:b";
+const A = selNode("a");
+const B = selNode("b");
 
 describe("context-menu event from the pointer", () => {
   it("Right-click an unselected node: it becomes the selection, no browser menu", () => {
@@ -44,7 +44,7 @@ describe("context-menu event from the pointer", () => {
     view.selection.replace([A]);
     const e = contextMenu(view, 300, 100);
     expect(e.defaultPrevented).toBe(true);
-    expect(view.selection.keys()).toEqual([B]);
+    expect(view.selection.nodes()).toEqual([B.id]);
     expect(events).toHaveLength(1);
     expect(events[0]?.target).toEqual({ kind: "node", node: nodeId("b") });
     expect(events[0]?.selection).toEqual({
@@ -58,7 +58,7 @@ describe("context-menu event from the pointer", () => {
     const { view, events } = setup();
     view.selection.replace([A, B]);
     contextMenu(view, 300, 100, { shiftKey: true });
-    expect(view.selection.keys()).toEqual([A, B]);
+    expect(view.selection.nodes()).toEqual([A.id, B.id]);
     expect(events[0]?.modifiers.shift).toBe(true);
   });
 
@@ -79,7 +79,7 @@ describe("context-menu event from the pointer", () => {
     expect(e?.world).toEqual({ x: 120, y: 100 });
     expect(e?.viewport).toEqual({ x: 120, y: 100 });
     expect(e?.client).toEqual(clientOf(view, 120, 100));
-    expect(view.selection.keys()).toEqual([A]);
+    expect(view.selection.nodes()).toEqual([A.id]);
   });
 
   it("Right-click a connection selects it", () => {
@@ -89,7 +89,7 @@ describe("context-menu event from the pointer", () => {
       kind: "connection",
       connection: connectionId("c1"),
     });
-    expect(view.selection.keys()).toEqual(["c:c1"]);
+    expect(view.selection.connections()).toEqual([connectionId("c1")]);
   });
 
   it("Right-click empty canvas leaves the selection", () => {
@@ -98,7 +98,7 @@ describe("context-menu event from the pointer", () => {
     contextMenu(view, 250, 250);
     expect(events[0]?.target).toEqual({ kind: "canvas" });
     expect(events[0]?.world).toEqual({ x: 250, y: 250 });
-    expect(view.selection.keys()).toEqual([A]);
+    expect(view.selection.nodes()).toEqual([A.id]);
   });
 
   it("No listener keeps the browser menu and the selection", () => {
@@ -106,7 +106,7 @@ describe("context-menu event from the pointer", () => {
     view.selection.replace([A]);
     const e = contextMenu(view, 300, 100);
     expect(e.defaultPrevented).toBe(false);
-    expect(view.selection.keys()).toEqual([A]);
+    expect(view.selection.nodes()).toEqual([A.id]);
   });
 
   it("Context menu outside the tool: unsubscribing restores the browser menu", () => {
@@ -146,7 +146,7 @@ describe("context-menu scoping and gestures", () => {
     m.up(140, 100, { ctrl: true });
     expect(events).toHaveLength(1);
     expect(events[0]?.target).toEqual({ kind: "node", node: nodeId("a") });
-    expect(view.selection.keys()).toEqual([A, B]);
+    expect(view.selection.nodes()).toEqual([A.id, B.id]);
     expect(model.reader.revision()).toBe(rev);
   });
 

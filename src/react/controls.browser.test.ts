@@ -3,9 +3,10 @@ import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { rejectionOf } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { frames } from "../view/browser-support.js";
+import { frames, selNode } from "../view/browser-support.js";
 import type { ViewHandle } from "../view/index.js";
 import {
+  ControlsButton,
   EditorProvider,
   NodeEditor,
   type NodeEditorProps,
@@ -133,6 +134,92 @@ describe("view controls", () => {
     expect(view.viewport.get().zoom).toBeCloseTo(0.5, 5);
   });
 
+  it("the zoom buttons run the view's zoom commands and disable at the limits", async () => {
+    const { view, button, press } = await mount(
+      {},
+      { zoomLimits: { min: 0.5, max: 2 } },
+    );
+    expect(button("zoom-in")?.disabled).toBe(false);
+    await act(
+      async () => void view.commands.run("view.zoomIn", { factor: 100 }),
+    );
+    await frames();
+    expect(view.viewport.get().zoom).toBe(2);
+    expect(button("zoom-in")?.disabled).toBe(true);
+    expect(button("zoom-in")?.title).toBe("Already at the maximum zoom");
+    expect(button("zoom-out")?.disabled).toBe(false);
+    await press("zoom-out");
+    expect(view.viewport.get().zoom).toBeCloseTo(1.6, 9);
+    expect(button("zoom-in")?.disabled).toBe(false);
+    await act(
+      async () => void view.commands.run("view.zoomOut", { factor: 100 }),
+    );
+    await frames();
+    expect(button("zoom-out")?.disabled).toBe(true);
+  });
+
+  it("the zoom buttons work while the view is locked", async () => {
+    const { view, press } = await mount();
+    await press("lock");
+    const before = view.viewport.get().zoom;
+    await press("zoom-in");
+    expect(view.viewport.get().zoom).toBeGreaterThan(before);
+  });
+
+  it("icons are inline SVG, and the lock icon follows the state", async () => {
+    const { button, press } = await mount();
+    const shape = () =>
+      button("lock")?.querySelector("svg path:last-child")?.getAttribute("d");
+    for (const name of ["zoom-in", "zoom-out", "fit", "lock"]) {
+      expect(button(name)?.querySelector("svg")).not.toBeNull();
+      expect(button(name)?.textContent).toBe("");
+    }
+    const open = shape();
+    await press("lock");
+    expect(shape()).not.toBe(open);
+    await press("lock");
+    expect(shape()).toBe(open);
+  });
+
+  it("icons can be replaced", async () => {
+    const { button, press } = await mount({
+      icons: {
+        zoomIn: createElement("i", { className: "mine" }, "in"),
+        locked: createElement("i", { className: "mine" }, "L"),
+        unlocked: createElement("i", { className: "mine" }, "U"),
+      },
+    });
+    expect(button("zoom-in")?.querySelector("i.mine")?.textContent).toBe("in");
+    expect(button("lock")?.textContent).toBe("U");
+    await press("lock");
+    expect(button("lock")?.textContent).toBe("L");
+    expect(button("fit")?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("a host adds its own button as a child of the panel", async () => {
+    let pressed = 0;
+    const { view, press } = await mount({
+      children: createElement(
+        ControlsButton,
+        {
+          label: "Snap to grid",
+          className: "nodeeditor-controls__snap",
+          onClick: () => pressed++,
+        },
+        "#",
+      ),
+    });
+    const panel = view.overlayElement.querySelector(".nodeeditor-controls");
+    const own = panel?.querySelector(
+      ".nodeeditor-controls__snap",
+    ) as HTMLButtonElement;
+    expect(own.getAttribute("aria-label")).toBe("Snap to grid");
+    expect(own.type).toBe("button");
+    expect(panel?.lastElementChild).toBe(own);
+    await press("snap");
+    expect(pressed).toBe(1);
+  });
+
   it("a button is disabled with the reason when its command is unavailable", async () => {
     const { view, button } = await mount();
     expect(button("fit")?.disabled).toBe(false);
@@ -146,7 +233,7 @@ describe("view controls", () => {
         }),
         run: () => ({ ok: true, value: { changed: false } }),
       });
-      view.selection.replace(["n:a"]);
+      view.selection.replace([selNode("a")]);
     });
     await frames();
     expect(button("fit")?.disabled).toBe(true);

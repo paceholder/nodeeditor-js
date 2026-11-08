@@ -50,6 +50,10 @@ import {
   DEFAULT_FIT_MAX_ZOOM,
   type FitOptions,
 } from "./interact/commands/view-fit.js";
+import {
+  createZoomCommands,
+  type ZoomCommands,
+} from "./interact/commands/zoom-commands.js";
 import type { ViewEventMap } from "./interact/context-menu/context-menu-types.js";
 import {
   createHoverTracker,
@@ -57,7 +61,10 @@ import {
 } from "./interact/hover/hover-tracker.js";
 import type { HoverTarget } from "./interact/hover/hover-types.js";
 import { attachDomInput, type DomInput } from "./interact/input/dom-input.js";
-import { createViewEvents } from "./interact/input/view-events.js";
+import {
+  createViewEvents,
+  type ViewEvents,
+} from "./interact/input/view-events.js";
 import {
   createViewLock,
   LOCKED,
@@ -130,6 +137,8 @@ export interface Editing {
   readonly commands: CommandRegistry;
   readonly clipboard: ViewClipboard;
   readonly on: ViewContextMenu["on"];
+  /** Raise a view event for the mount code that owns its source (viewport, selection). */
+  readonly emit: ViewEvents<ViewEventMap>["emit"];
   /** The view lock: editing gestures and commands are refused while it is on. */
   locked(): boolean;
   setLocked(locked: boolean): void;
@@ -156,7 +165,8 @@ const NO_MODEL: Rejection = rejectionOf(
   "The view has no model",
 );
 const noModel = (): ViewCommandOutcome => err(NO_MODEL);
-const UNBOUND_VIEW: ViewCommands = {
+/** Fit and reveal need a model; zooming does not, so it is added where the view is built. */
+const UNBOUND_VIEW: Omit<ViewCommands, keyof ZoomCommands> = {
   fitAll: noModel,
   fitSelection: noModel,
   resetView: noModel,
@@ -176,6 +186,10 @@ export function attachEditing(deps: EditingDeps): Editing {
     model && isEditable(model) ? model : undefined;
   const reader: GraphReader | undefined = model?.reader;
   // Fit stays inside the view's zoom limits.
+  const zoomLimits = (): { min: number; max: number } => ({
+    min: deps.zoomLimits.min,
+    max: deps.zoomLimits.max,
+  });
   const fitWith = (opts: FitOptions): ViewCommands =>
     reader && scene
       ? createViewCommands({
@@ -184,6 +198,7 @@ export function attachEditing(deps: EditingDeps): Editing {
           selection,
           viewport: { get: viewport.get, set: viewport.set },
           size: deps.size,
+          zoomLimits,
           options: {
             ...opts,
             minZoom: deps.zoomLimits.min,
@@ -193,9 +208,16 @@ export function attachEditing(deps: EditingDeps): Editing {
             ),
           },
         })
-      : UNBOUND_VIEW;
+      : {
+          ...UNBOUND_VIEW,
+          ...createZoomCommands({
+            viewport: { get: viewport.get, set: viewport.set },
+            size: deps.size,
+            limits: zoomLimits,
+          }),
+        };
   // The fit commands carry the zoom range they were built with: rebuilt when it changes.
-  let fitCommands = { min: NaN, max: NaN, commands: UNBOUND_VIEW };
+  let fitCommands = { min: NaN, max: NaN, commands: fitWith({}) };
   const currentView = (): ViewCommands => {
     const { min, max } = deps.zoomLimits;
     if (fitCommands.min !== min || fitCommands.max !== max) {
@@ -206,6 +228,7 @@ export function attachEditing(deps: EditingDeps): Editing {
   const commands = createCommandRegistry(
     () => ({ model: editable, reader, selection, view: currentView() }),
     lock.get,
+    () => events.emit("availability", { cause: "commands" }),
   );
   const offs: Array<() => void> = [];
   const events = createViewEvents<ViewEventMap>();
@@ -222,6 +245,8 @@ export function attachEditing(deps: EditingDeps): Editing {
         model: editable,
         selection,
         locked: lock.get,
+        bufferChanged: () =>
+          events.emit("availability", { cause: "clipboard" }),
         pointer: () => input?.pointerWorld(),
         system:
           clipOptions?.system === false
@@ -250,12 +275,12 @@ export function attachEditing(deps: EditingDeps): Editing {
           ...(sizeLimits ? { sizeLimits } : {}),
         })
       : () => ({ available: false, reason: NO_MODEL });
-    // While locked no editing action is available, so no tool starts an edit.
+    // While locked no editing action is available and no edit can be planned, so no tool
+    // starts or finishes one; locking also ends gestures and cancels a pending choice, so
+    // nothing planned earlier arrives late.
     const can: typeof probe = (action, id) =>
       lock.get() ? LOCKED : probe(action, id);
-    const commit = (command: Command): void => {
-      if (!lock.get()) void editable?.execute(command);
-    };
+    const commit = (command: Command): void => void editable?.execute(command);
     const context = createToolContext({
       reader,
       scene,
@@ -385,12 +410,17 @@ export function attachEditing(deps: EditingDeps): Editing {
     commands,
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     on: menu.on,
+    emit: events.emit,
     locked: lock.get,
     setLocked(next) {
       if (!lock.set(next)) return;
-      // An open gesture ends with the lock: nothing it was about to do may commit.
-      input?.cancelGesture("escape");
-      deps.setPreview(null);
+      if (next) {
+        // An open gesture ends with the lock: nothing it was about to do may commit.
+        // Unlocking cancels nothing, so a pan or marquee in progress carries on.
+        input?.cancelGesture("escape");
+        choices?.cancel();
+        deps.setPreview(null);
+      }
       events.emit("lock", { locked: next });
     },
     hover: () => hover?.current() ?? null,

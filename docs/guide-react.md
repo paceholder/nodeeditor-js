@@ -91,22 +91,27 @@ which usually means a remount option is created anew on every render.
 `theme` and `input.toolOptions` are replaced, not patched, when they change: a key you drop
 is back at its default, and removing the prop restores the default theme or tool options.
 The imperative `view.setTheme(patch)` and `view.setToolOptions(patch)` still merge. The
-component compares these props by identity, so memoize them if they are large.
+component compares these props by value (plain data, entry by entry; functions by
+identity), so an inline object costs nothing while its contents are unchanged.
 
-### The lock is a live prop
+### The lock: uncontrolled or controlled
 
-`locked` is applied whenever it changes, with no remount. The lock can also change from
-inside the editor (the lock button of `ViewControls`) or through `view.setLocked`.
-`onLockedChange(locked)` reports every change, whoever made it. To keep the lock fully
-under the host's control, hold it in state and pass both:
+Without a `locked` prop the view owns the flag. The lock button of `ViewControls` and
+`view.setLocked` change it, `onLockedChange(locked)` reports every change, and a remount
+(a new geometry registry, say) starts the new view in the same state.
+
+With a `locked` prop the prop is the truth, like a controlled input. It is applied whenever
+it changes, with no remount. A press of the lock button or a `view.setLocked` call is
+reported to `onLockedChange` as an attempt, and the view stays at the prop until the host
+passes a new value. So a host that accepts the change keeps the lock in state:
 
 ```tsx
 const [locked, setLocked] = useState(false);
 <NodeEditor model={model} locked={locked} onLockedChange={setLocked} />
 ```
 
-Without `onLockedChange`, the prop sets the lock at mount and whenever it changes, and a
-press of the lock button changes the view until the prop changes again.
+and a host that must never let the user unlock (a read-only viewer) passes `locked` alone,
+or leaves the lock button out with `<ViewControls buttons={{ lock: false }} />`.
 
 ## 2. Reading editor state
 
@@ -119,15 +124,37 @@ the same object while nothing it reports has changed, so it can sit in a depende
 | `useViewport()` | the pan and zoom | the viewport changes, at most once per frame |
 | `useHover()` | the hovered node, port or connection, or `null` | the hovered entity changes |
 | `useViewLocked()` | `boolean` | the lock changes |
-| `useCommand(id, args?)` | `{ available, reason, run }` for one button | the answer changes, including through the view lock |
-| `useCommandAvailability(id, args?)` | whether the command can run now, with the reason if not | selection, model, history or lock changes alter the answer |
+| `useCommand(id, args?)` | `{ available, reason, run }` for one button | the answer changes: selection, model, history, lock, viewport or availability events |
+| `useCommandAvailability(id, args?)` | whether the command can run now, with the reason if not | selection, model, history, lock, viewport or availability events alter the answer |
 | `useHistory()` | `canUndo`, `canRedo` and labels | the history state changes |
 | `useNode(id)` | the node's record, or `undefined` while absent | a committed change touched that node |
 | `useConnection(id)` | the connection's record, or `undefined` | a committed change touched that connection |
+| `useEditorState(read, events, { fallback, isEqual? })` | any value you read from the view | one of the named view events fires and the value differs |
+
+`useEditorState` is what the selection, viewport, hover and lock hooks are written with.
+Use it for state of your own: `read` gets the view handle, `events` names what to follow
+(`"viewport"`, `"selection"`, `"hover"`, `"lock"` or `"availability"`; the same events you get from `view.on`),
+and `fallback` is the value before an editor is mounted and on the server. `read` and
+`events` can be written inline; the subscription follows the event names. `isEqual` defaults
+to a shallow comparison, so a `read` that builds a new object or array on every call (as
+below) does not loop and does not re-render while its entries are unchanged. Pass your own
+`isEqual` for a deeper value.
+
+```tsx
+function SelectionBadge() {
+  const { count, locked } = useEditorState(
+    (view) => ({ count: view.selection.size, locked: view.locked }),
+    ["selection", "lock"],
+    { fallback: { count: 0, locked: false } },
+  );
+  return <span>{count} selected{locked ? " (locked)" : ""}</span>;
+}
+```
 
 `primary` is `{ kind: "node" | "connection", id }`, or `undefined` for an empty selection. The hook
-never shows the view's own key strings; they appear only when you set the selection
-through `view.selection`.
+returns the same value as `view.selection.state()` and the `"selection"` event; the view's
+own key strings do not appear anywhere on the host's side. To change the selection from
+React, call `view.selection.replace([{ kind: "node", id }])` on the handle from `useEditor()`.
 
 ### Subscription granularity
 
@@ -139,7 +166,9 @@ The goal is that a busy editor does not make the whole application render.
   frame, however many pan samples arrive.
 - **A node hook wakes only for its node.** `useNode(id)` subscribes to one entity through
   one dispatcher per provider. Dragging node A re-renders a component showing node B zero
-  times. The dispatcher listens to the model only while some entity hook is registered.
+  times. The dispatcher belongs to the model, so a remount that keeps the model (a new geometry
+  registry, say) keeps the hooks subscribed. It listens to the model only while some entity
+  hook is registered.
   A model `reset` wakes every entity hook, because everything may have changed.
 - **Coarse hooks are coarse on purpose.** `useSelection` re-renders on every selection
   change, `useHistory` on every history change. Keep such components small, and put the
@@ -167,7 +196,8 @@ function NodeDetails({ id }: { id: NodeId }) {
 
 `useCommand(id, args?)` is what a toolbar button needs: `available`, the `reason` while it
 cannot run, and a `run()` that executes it. The IDs are in `COMMAND_IDS` from
-`nodeeditor-js/view`. The answer follows selection, model, history and the view lock, and
+`nodeeditor-js/view`. The answer follows selection, model, history, the view lock, the viewport and the
+`"availability"` event, and
 the object keeps its identity while it is unchanged.
 
 ```tsx
@@ -210,7 +240,7 @@ the view and follows the node through pan, zoom and node moves.
 | Prop | Meaning |
 | --- | --- |
 | `node` | The anchored node. |
-| `placement` | Where the content sits relative to the node's body, such as `"top"` or `"top-left"` (the default). |
+| `placement` | Where the content sits relative to the node's body, one of nine: the edges, the centre or a corner, `"top-left"` by default. |
 | `offset` | Gap in CSS pixels for the edge placements. |
 | `scale` | Scale the content with zoom instead of keeping its size. |
 | `onNodeGone` | Called once when the node is removed from the model the editor shows. |
@@ -237,7 +267,10 @@ application's to implement.
 `<ViewControls />` is a small optional panel of plain buttons: zoom in, zoom out, fit to
 content and a lock toggle. It sits in the bottom-left corner of the view by default and
 carries no stylesheet. Buttons have stable class names (`nodeeditor-controls`,
-`nodeeditor-controls__zoom-in`, and so on) for styling.
+`nodeeditor-controls__zoom-in`, and so on) for styling, and inline SVG icons that follow
+`currentColor`; the lock icon is open or closed to match the state. The zoom and fit
+buttons run the view's commands (`view.zoomIn`, `view.zoomOut`, `view.fitAll`), so zoom in
+is disabled at the maximum zoom and zoom out at the minimum, with the reason as tooltip.
 
 ```tsx
 <ViewControls corner="bottom-right" buttons={{ lock: false }} zoomFactor={1.5} />
@@ -249,14 +282,32 @@ carries no stylesheet. Buttons have stable class names (`nodeeditor-controls`,
 | `buttons` | Set `zoomIn`, `zoomOut`, `fit` or `lock` to `false` to leave a button out. |
 | `zoomFactor` | Zoom factor of one press. Default 1.25. |
 | `labels` | Accessible names and tooltips, for localization. |
+| `icons` | Replace an icon: `zoomIn`, `zoomOut`, `fit`, `locked` or `unlocked`, each any React element. |
+| `children` | Buttons of your own, after the built-in ones (see below). |
 | `className`, `style` | Restyle the panel. |
 
 The panel is drawn in the overlay layer, so a press or a wheel turn on it never reaches
-the canvas. An application that wants different controls builds them with
-`useViewLocked`, `useCommandAvailability` and `view.viewport.zoomAt`.
+the canvas. To add a button, pass `ControlsButton` as a child; it is a plain `button`
+with the panel's class, an accessible `label`, `disabled`, `title` and, for a toggle,
+`pressed`:
+
+```tsx
+<ViewControls>
+  <ControlsButton label="Snap to grid" pressed={snap} onClick={() => setSnap(!snap)}>
+    #
+  </ControlsButton>
+</ViewControls>
+```
+
+An application that wants entirely different controls builds them with `useCommand`
+(`useCommand("view.zoomIn")` gives `{ available, reason, run }`), `useViewLocked` and
+`view.setLocked`.
 
 `zoomLimits` bounds wheel, pinch, button and fit zoom and is a live prop: it is compared by
-its `min` and `max`, so an inline object is fine and a change updates the mounted view.
+its `min` and `max`, so an inline object is fine and a change updates the mounted view. A
+value the view cannot use (a `min` above the `max`, say) is ignored with a development
+warning and the previous limits stay, so a transient bad value from state cannot unmount
+the tree.
 `initialFit` fits the content once when the view first has a size and is skipped when
 `initialViewport` is given. Both `initialFit` and `initialViewport` are read at
 mount and ignored afterwards, like a `defaultValue`; to move the view later, use
@@ -267,12 +318,12 @@ mount and ignored afterwards, like a `defaultValue`; to move the view later, use
 A locked view refuses editing and keeps viewing. While locked, move, resize, connect,
 route editing, delete, paste, cut and duplicate do nothing and report the reason "The
 view is locked". Selection, copy, fit, reset, pan, zoom and hover keep working. Locking
-ends a gesture in progress. Start locked with the `locked` mount option, or change it with
+ends a gesture in progress; unlocking ends none, so a pan under way carries on. Start locked with the `locked` mount option, or change it with
 `view.setLocked(value)`; `view.locked` reads it and `useViewLocked()` follows it.
 
 The lock belongs to the view, not the model. It never enters history or a snapshot, and
 code that edits the model directly is not blocked. A command a host registers is refused
-while the view is locked unless it is marked as a view-only command. A toolbar built on
+while the view is locked unless it is registered with `allowWhenLocked: true`, as selection, view and copy commands are. A toolbar built on
 `useHistory` still shows undo as enabled while locked, because the history belongs to the
 model; the undo command itself is refused.
 

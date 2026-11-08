@@ -19,15 +19,13 @@ import {
   unionRects,
   type Viewport,
 } from "../../../core/index.js";
+import {
+  ABSOLUTE_ZOOM_LIMITS,
+  type ResolvedZoomLimits,
+} from "../../platform/zoom-limits.js";
 import type { ReadonlySelection } from "../selection/selection-model.js";
 import { type FitOptions, fitViewport, revealViewport } from "./view-fit.js";
-
-export const VIEW_COMMAND_IDS = {
-  fitAll: "view.fitAll",
-  fitSelection: "view.fitSelection",
-  resetView: "view.resetView",
-  reveal: "view.reveal",
-} as const;
+import { createZoomCommands, type ZoomCommands } from "./zoom-commands.js";
 
 /** `changed: false` is the successful no-op (empty graph, nothing selected, already visible). */
 export type ViewCommandOutcome = Result<
@@ -46,9 +44,11 @@ export interface ViewCommandDeps {
   /** CSS size of the view. */
   readonly size: () => { readonly width: number; readonly height: number };
   readonly options?: FitOptions;
+  /** The view's zoom range for the zoom commands, read on each call. Default: absolute. */
+  readonly zoomLimits?: () => ResolvedZoomLimits;
 }
 
-export interface ViewCommands {
+export interface ViewCommands extends ZoomCommands {
   fitAll(): ViewCommandOutcome;
   fitSelection(): ViewCommandOutcome;
   resetView(): ViewCommandOutcome;
@@ -97,6 +97,11 @@ export function createViewCommands(deps: ViewCommandDeps): ViewCommands {
   }
 
   return {
+    ...createZoomCommands({
+      viewport: deps.viewport,
+      size: deps.size,
+      limits: deps.zoomLimits ?? (() => ABSOLUTE_ZOOM_LIMITS),
+    }),
     fitAll: () =>
       fitTo(
         union([

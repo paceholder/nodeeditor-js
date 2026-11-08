@@ -1,11 +1,9 @@
 /// <reference types="@vitest/browser-playwright" />
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
-import { nodeId } from "../core/index.js";
-import { cleanupScope, makeHost } from "./browser-support.js";
+import { cleanupScope, makeHost, selNode } from "./browser-support.js";
 import { clipboardModel } from "./interact/clipboard/clipboard-fixtures.js";
 import { clientOf } from "./interact/input/input-test-support.js";
-import { nodeKey } from "./interact/selection/selection-model.js";
 import { mountView } from "./mount-view.js";
 
 const cleanup = cleanupScope();
@@ -37,7 +35,7 @@ function hover(view: ReturnType<typeof setup>["view"], wx: number, wy: number) {
 describe("clipboard shortcuts end to end", () => {
   it("Copy and paste shortcuts: centred at the pointer, selected, one entry", async () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a")), nodeKey(nodeId("b"))]);
+    view.selection.replace([selNode("a"), selNode("b")]);
     await chord("c");
     await tick();
     hover(view, 300, 200);
@@ -51,8 +49,8 @@ describe("clipboard shortcuts end to end", () => {
       { x: 250, y: 200 },
       { x: 350, y: 200 },
     ]);
-    expect(view.selection.nodeIds()).toEqual(added.map((n) => n.id));
-    expect(view.selection.connectionIds()).toHaveLength(1);
+    expect(view.selection.nodes()).toEqual(added.map((n) => n.id));
+    expect(view.selection.connections()).toHaveLength(1);
     expect(model.historyState().undoLabel).toBe("Paste");
     await chord("z");
     expect(model.reader.nodes()).toHaveLength(before);
@@ -60,16 +58,16 @@ describe("clipboard shortcuts end to end", () => {
 
   it("Duplicate shortcut: one step away, selected", async () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("b"))]);
+    view.selection.replace([selNode("b")]);
     await chord("d");
     const copy = model.reader.nodes().at(-1);
     expect(copy?.position).toEqual({ x: 120, y: 20 });
-    expect(view.selection.nodeIds()).toEqual([copy?.id]);
+    expect(view.selection.nodes()).toEqual([copy?.id]);
   });
 
   it("Cut is one history entry; undo restores original IDs", async () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a")), nodeKey(nodeId("b"))]);
+    view.selection.replace([selNode("a"), selNode("b")]);
     await chord("x");
     await tick();
     expect(model.reader.nodes()).toHaveLength(0);
@@ -84,7 +82,7 @@ describe("clipboard shortcuts end to end", () => {
 
   it("dispose removes the clipboard listeners", async () => {
     const { model, view } = setup();
-    view.selection.replace([nodeKey(nodeId("a"))]);
+    view.selection.replace([selNode("a")]);
     view.dispose();
     const data = new DataTransfer();
     const event = new ClipboardEvent("copy", {

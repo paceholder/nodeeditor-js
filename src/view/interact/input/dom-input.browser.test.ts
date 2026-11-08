@@ -6,7 +6,12 @@ import {
   buildModel,
   twoPortNode,
 } from "../../../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "../../browser-support.js";
+import {
+  cleanupScope,
+  frames,
+  makeHost,
+  selNode,
+} from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
 import { clientOf, key, mouse } from "./input-test-support.js";
 
@@ -97,7 +102,7 @@ describe("DOM input adapter: cancellation", () => {
     startDrag(s);
     key(s.view.element, "Escape");
     expectCleanAfter(s, revision);
-    expect(s.view.selection.keys()).toEqual(["n:a"]);
+    expect(s.view.selection.nodes()).toEqual([selNode("a").id]);
   });
 
   it("dispose in the middle of a gesture commits nothing and detaches input", () => {

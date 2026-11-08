@@ -3,13 +3,14 @@ import { act, createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { frames } from "../view/browser-support.js";
+import { frames, selConn, selNode } from "../view/browser-support.js";
 import type { ViewHandle } from "../view/index.js";
 import {
   EditorProvider,
   NodeEditor,
   useCommandAvailability,
   useEditor,
+  useEditorState,
   useHistory,
   useSelection,
   useViewport,
@@ -50,6 +51,30 @@ function Inspector(): ReactNode {
     { id: "out" },
     `${primary ? `${primary.kind}:${primary.id}` : "none"}/${nodes.length}+${connections.length}`,
   );
+}
+
+const LOCK_AND_SELECTION = ["lock", "selection"] as const;
+const LOCKED_COUNT = { fallback: "0|false" };
+
+function LockedAndSelected(): ReactNode {
+  seen.renders += 1;
+  const text = useEditorState(
+    (v) => `${v.selection.size}|${v.locked}`,
+    LOCK_AND_SELECTION,
+    LOCKED_COUNT,
+  );
+  return createElement("p", { id: "out" }, text);
+}
+
+/** Reads a fresh object and passes a fresh events array every render, with no options. */
+function ObjectReader(): ReactNode {
+  seen.renders += 1;
+  const state = useEditorState(
+    (v) => ({ n: v.selection.size, locked: v.locked }),
+    ["selection", "lock"],
+    { fallback: { n: 0, locked: false } },
+  );
+  return createElement("p", { id: "out" }, `${state.n}|${state.locked}`);
 }
 
 function DeleteButton(): ReactNode {
@@ -114,7 +139,7 @@ describe("React hooks", () => {
   it("Inspector follows selection", async () => {
     const { view, text } = await mount(model(), createElement(Inspector));
     expect(text()).toBe("none/0+0");
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     expect(text()).toBe("node:a/1+0");
     await act(async () => void view.selection.clear());
     expect(text()).toBe("none/0+0");
@@ -126,14 +151,54 @@ describe("React hooks", () => {
       [["c1", "a", "aR", "b", "bL"]],
     );
     const { view, text } = await mount(linked, createElement(Inspector));
-    await act(async () => void view.selection.replace(["n:a", "c:c1"]));
+    await act(
+      async () => void view.selection.replace([selNode("a"), selConn("c1")]),
+    );
     expect(text()).toBe("connection:c1/1+1");
+  });
+
+  it("a host follows any view state through the generic hook", async () => {
+    const { view, text } = await mount(
+      model(),
+      createElement(LockedAndSelected),
+    );
+    expect(text()).toBe("0|false");
+    await act(
+      async () => void view.selection.replace([selNode("a"), selNode("b")]),
+    );
+    expect(text()).toBe("2|false");
+    await act(async () => void view.setLocked(true));
+    expect(text()).toBe("2|true");
+    // And not otherwise: a pan, and a selection of the same size in another order, change
+    // the view but not the value this component shows.
+    const settled = seen.renders;
+    await act(async () => {
+      view.viewport.set({ zoom: 1, panX: 40, panY: 0 });
+    });
+    await frames();
+    await act(
+      async () => void view.selection.replace([selNode("b"), selNode("a")]),
+    );
+    expect(seen.renders).toBe(settled);
+  });
+
+  it("a read that builds a new object each call neither loops nor re-renders for an equal value", async () => {
+    const { view, text } = await mount(model(), createElement(ObjectReader));
+    expect(text()).toBe("0|false");
+    await act(async () => void view.selection.replace([selNode("a")]));
+    expect(text()).toBe("1|false");
+    const settled = seen.renders;
+    // A different node, the same size: the event fires, the value is equal.
+    await act(async () => void view.selection.replace([selNode("b")]));
+    expect(seen.renders).toBe(settled);
+    await act(async () => void view.setLocked(true));
+    expect(text()).toBe("1|true");
   });
 
   it("Command availability hook", async () => {
     const { view, text } = await mount(model(), createElement(DeleteButton));
     expect(text()).toMatch(/^no:/);
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     expect(text()).toBe("yes");
     await act(async () => void view.selection.clear());
     expect(text()).toMatch(/^no:/);

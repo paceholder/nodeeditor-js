@@ -6,7 +6,7 @@
  * model the way a host adapter would.
  */
 import type { GraphModel, PatchOp } from "nodeeditor-js";
-import { COMMAND_IDS, nodeKey, type ViewHandle } from "nodeeditor-js/view";
+import { COMMAND_IDS, type ViewHandle } from "nodeeditor-js/view";
 import { createPrng } from "../../bench/fixtures/prng.js";
 import {
   type FrameSampler,
@@ -165,7 +165,9 @@ const moveSelection: StressAction = {
           n.position.y < world.y1,
       )
       .slice(0, MAX_SELECTED);
-    view.selection.replace(onScreen.map((n) => nodeKey(n.id)));
+    view.selection.replace(
+      onScreen.map((n) => ({ kind: "node" as const, id: n.id })),
+    );
     await nextFrame();
     // Grab the selected node nearest the centre: aim at node centres, nearest first, and
     // confirm with one pick each. (A blind pick grid would cost seconds when zoomed out.)
@@ -190,7 +192,10 @@ const moveSelection: StressAction = {
     let grab: { x: number; y: number } | undefined;
     for (const { p } of byDistance.slice(0, 50)) {
       const hit = view.pick(p.x, p.y)[0];
-      if (hit?.kind === "node" && view.selection.has(nodeKey(hit.nodeId))) {
+      if (
+        hit?.kind === "node" &&
+        view.selection.has({ kind: "node", id: hit.nodeId })
+      ) {
         grab = p;
         break;
       }

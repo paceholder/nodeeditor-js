@@ -49,8 +49,8 @@ export type {
   MirrorArgs,
   RotateArgs,
 } from "./interact/commands/transform-commands.js";
-export { VIEW_COMMAND_IDS } from "./interact/commands/view-commands.js";
 export type {
+  AvailabilityEvent,
   ContextMenuEvent,
   ContextMenuInvocation,
   ContextMenuTarget,
@@ -78,6 +78,11 @@ export {
   connectionKey,
   nodeKey,
 } from "./interact/selection/selection-model.js";
+export type {
+  SelectedEntity,
+  SelectionState,
+  ViewSelection,
+} from "./interact/selection/view-selection.js";
 export type { AutoPanOptions } from "./interact/tools/auto-pan.js";
 export { DEFAULT_AUTO_PAN } from "./interact/tools/auto-pan.js";
 export { connectTool } from "./interact/tools/connect-tool.js";

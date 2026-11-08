@@ -12,6 +12,7 @@
  */
 import type { CSSProperties, ReactNode } from "react";
 import type { InputOptions, ViewHandle, ViewOptions } from "../view/index.js";
+import { warnZoomLimitsIgnored, zoomLimitsUsable } from "./zoom-limits-prop.js";
 
 export type OptionKind = "live" | "remount" | "initial" | "nested";
 
@@ -92,5 +93,11 @@ export function sameKeys(
 export function viewOptionsOf(p: NodeEditorProps): ViewOptions {
   const out: Record<string, unknown> = {};
   for (const k of OPTION_KEYS) if (p[k] !== undefined) out[k] = p[k];
+  const limits = p.zoomLimits;
+  if (limits && !zoomLimitsUsable(limits)) {
+    // Mounting with limits the view rejects would throw from the mount effect.
+    delete out.zoomLimits;
+    warnZoomLimitsIgnored(limits);
+  }
   return out as ViewOptions;
 }

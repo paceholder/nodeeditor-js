@@ -67,6 +67,8 @@ describe("clipboard service: copy, paste, duplicate", () => {
         fitSelection: noView,
         resetView: noView,
         reveal: noView,
+        zoomBy: noView,
+        canZoomBy: () => false,
       },
     }));
     registerClipboardCommands(commands, s.service);

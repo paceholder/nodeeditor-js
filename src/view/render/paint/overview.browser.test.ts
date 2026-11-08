@@ -10,6 +10,8 @@ import {
   frames,
   makeHost,
   pixelAt,
+  selConn,
+  selNode,
 } from "../../browser-support.js";
 import { mountView } from "../../mount-view.js";
 import { DEFAULT_THEME } from "../theme/tokens.js";
@@ -56,7 +58,7 @@ describe("overview level", () => {
       initialViewport: { zoom: 0.1, panX: 300, panY: 200 },
     });
     cleanup(() => view.dispose());
-    view.selection.replace(["n:sel", "c:csel"]);
+    view.selection.replace([selNode("sel"), selConn("csel")]);
     await frames();
     const scene = view.canvases.scene;
 

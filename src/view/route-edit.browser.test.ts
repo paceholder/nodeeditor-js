@@ -9,7 +9,7 @@ import {
   type RouteConstraint,
 } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "./browser-support.js";
+import { cleanupScope, frames, makeHost, selConn } from "./browser-support.js";
 import { mouse } from "./interact/input/input-test-support.js";
 import { createOrthogonalSegmentEditor } from "./interact/route-edit/orthogonal-segment-editor.js";
 import { mountView } from "./mount-view.js";
@@ -104,14 +104,14 @@ describe("route editing in a mounted view", () => {
   it("grips are painted on a selected orthogonal wire only", async () => {
     const { view, c1, grips } = await setup();
     expect(grips.count).toBe(0);
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     expect(grips.count).toBeGreaterThan(0);
   });
 
   it("Move a middle segment: one history entry, painted 40 units right, undo restores", async () => {
     const { model, view, c1, xs } = await setup();
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     expect(xs("scene", c1)).toContain(250);
     const changes: number[] = [];
@@ -140,14 +140,14 @@ describe("route editing in a mounted view", () => {
   it("a diamond is painted on a long segment of a selected wire", async () => {
     const { view, c1, grips } = await setup();
     expect(grips.diamonds).toBe(0);
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     expect(grips.diamonds).toBeGreaterThan(0);
   });
 
   it("dragging the diamond adds two bends in one history entry", async () => {
     const { model, view, c1, xs } = await setup();
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     const changes: number[] = [];
     model.on("change", (e) => changes.push(e.patch.ops.length));
@@ -172,7 +172,7 @@ describe("route editing in a mounted view", () => {
 
   it("Straight wire becomes editable: dragging its segment makes a step", async () => {
     const { model, view, c1, xs } = await setup(undefined, [400, 100]);
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     expect(xs("scene", c1)).toEqual([]);
     mouse(view).drag([250, 100], [250, 140]);
@@ -185,7 +185,7 @@ describe("route editing in a mounted view", () => {
 
   it("Drag back to the start adds no history entry", async () => {
     const { model, view, c1 } = await setup();
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     const before = model.historyState().undoLabel;
     const m = mouse(view);
@@ -200,7 +200,7 @@ describe("route editing in a mounted view", () => {
 
   it("Escape during the drag leaves the model unchanged", async () => {
     const { model, view, c1, xs } = await setup();
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     const m = mouse(view);
     m.down(250, 175);
@@ -218,7 +218,7 @@ describe("route editing in a mounted view", () => {
     const { view, c1 } = await setup();
     mouse(view).move(250, 175);
     expect(view.element.style.cursor).toBe("");
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     mouse(view).move(251, 175);
     expect(view.element.style.cursor).toBe("ew-resize");
@@ -229,7 +229,7 @@ describe("route editing in a mounted view", () => {
   it("a double-click on a pinned segment frees it", async () => {
     const { model, view, c1 } = await setup();
     model.execute({ kind: "setRoute", connection: c1, route: [V(300)] });
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     const m = mouse(view);
     m.down(300, 175);
@@ -242,7 +242,7 @@ describe("route editing in a mounted view", () => {
 
   it("route.reset clears two selected wires in one entry and is unavailable without pins", async () => {
     const { model, view, c1, c2 } = await setup();
-    view.selection.replace([`c:${c1}`, `c:${c2}`]);
+    view.selection.replace([selConn(c1), selConn(c2)]);
     expect(view.commands.availability("route.reset").available).toBe(false);
     model.execute({ kind: "setRoute", connection: c1, route: [V(260)] });
     model.execute({ kind: "setRoute", connection: c2, route: [V(270)] });
@@ -259,7 +259,7 @@ describe("route editing in a mounted view", () => {
 
   it("a kind without an editor: dragging a selected wire changes nothing", async () => {
     const { model, view, c1 } = await setup(false);
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     const before = model.historyState().undoLabel;
     mouse(view).drag([250, 175], [300, 175]);
@@ -293,7 +293,7 @@ describe("route editing in a mounted view", () => {
       cursor: () => "move",
     };
     view.routeEditors.replace("default", host);
-    view.selection.replace([`c:${c1}`]);
+    view.selection.replace([selConn(c1)]);
     await frames();
     mouse(view).drag([250, 175], [270, 175]);
     await frames();

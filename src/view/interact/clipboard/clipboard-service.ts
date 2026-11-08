@@ -89,6 +89,7 @@ export function createClipboardService(
   function write(report: CopyReport, sink: TextSink | undefined): void {
     buffer = report.text;
     placement = copiedPlacement(report.text);
+    deps.bufferChanged?.();
     if (sink) {
       sink(report.text);
       return;

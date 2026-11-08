@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { mountView } from "../view/index.js";
+import { mountView, type ZoomLimits } from "../view/index.js";
 import { devWarn } from "./dev-warning.js";
 import { provideStore, useEditorStore } from "./editor-context.js";
 import { createEditorStore } from "./editor-store.js";
@@ -21,6 +21,8 @@ import {
   sameKeys,
   viewOptionsOf,
 } from "./node-editor-props.js";
+import { sameData } from "./same-data.js";
+import { warnZoomLimitsIgnored, zoomLimitsUsable } from "./zoom-limits-prop.js";
 
 /** Counts how many times the remount keys changed; the effect restarts on each. */
 function useRemountGeneration(keys: readonly unknown[]): number {
@@ -125,7 +127,7 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
   const { theme } = props;
   useEffect(() => {
     const view = store.get().view;
-    if (!view || applied.current.theme === theme) return;
+    if (!view || sameData(applied.current.theme, theme)) return;
     applied.current.theme = theme;
     // The prop describes the whole theme: dropping a key or the prop restores the default.
     view.setTheme(theme ?? {}, { replace: true });
@@ -135,7 +137,7 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
   const toolOptions = input?.toolOptions;
   useEffect(() => {
     const view = store.get().view;
-    if (!view || applied.current.toolOptions === toolOptions) return;
+    if (!view || sameData(applied.current.toolOptions, toolOptions)) return;
     applied.current.toolOptions = toolOptions;
     view.setToolOptions(toolOptions ?? {}, { replace: true });
   }, [store, toolOptions]);
@@ -152,14 +154,17 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
   const zoomMin = props.zoomLimits?.min;
   const zoomMax = props.zoomLimits?.max;
   useEffect(() => {
-    store.get().view?.setZoomLimits(
+    const limits: ZoomLimits | undefined =
       zoomMin === undefined && zoomMax === undefined
         ? undefined
         : {
             ...(zoomMin !== undefined && { min: zoomMin }),
             ...(zoomMax !== undefined && { max: zoomMax }),
-          },
-    );
+          };
+    // An unusable value is ignored (the previous limits stay), not thrown from an effect.
+    if (limits && !zoomLimitsUsable(limits))
+      return warnZoomLimitsIgnored(limits);
+    store.get().view?.setZoomLimits(limits);
   }, [store, zoomMin, zoomMax]);
 
   const chooser = input?.chooseConnection;

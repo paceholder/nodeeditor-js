@@ -15,6 +15,7 @@ import {
 import { createOverlayHost } from "./interact/overlay/overlay-host.js";
 import { createPresence } from "./interact/overlay/presence.js";
 import { createSelectionModel } from "./interact/selection/selection-model.js";
+import { createViewSelection } from "./interact/selection/view-selection.js";
 import {
   type ContainerMetrics,
   observeContainer,
@@ -124,6 +125,7 @@ export function mountView(
     ...(options.model ? [selection.bindToModel(options.model)] : []),
     selection.on(() => markDirty("scene")),
   ];
+
   let hovered: string | undefined;
   const viewState: ViewState = {
     isSelected: (id) => selection.isSelected(id) || baseState.isSelected(id),
@@ -271,7 +273,15 @@ export function mountView(
   });
 
   // The view moved under a resting pointer: the entity beneath it may have changed.
-  const offViewportHover = viewportNotifier.on(() => editing.refreshHover());
+  // Hosts subscribe through the view's one event channel.
+  const viewSelection = createViewSelection(selection);
+  offSelection.push(
+    selection.on(() => editing.emit("selection", viewSelection.state())),
+  );
+  const offViewportHover = [
+    viewportNotifier.on(() => editing.refreshHover()),
+    viewportNotifier.on((v) => editing.emit("viewport", v)),
+  ];
 
   const offPainters = [
     painters.nodes.onChange(() => markDirty("scene")),
@@ -298,23 +308,7 @@ export function mountView(
     interaction: { add: interaction.add, invalidate: interaction.invalidate },
     overlay: { attach: overlay.attach },
     setToolPreview: previews.set,
-    selection: {
-      keys: selection.keys,
-      has: selection.has,
-      get size() {
-        return selection.size;
-      },
-      primary: selection.primary,
-      nodeIds: selection.nodeIds,
-      connectionIds: selection.connectionIds,
-      isSelected: selection.isSelected,
-      apply: selection.apply,
-      replace: selection.replace,
-      add: selection.add,
-      toggle: selection.toggle,
-      clear: selection.clear,
-      on: selection.on,
-    },
+    selection: viewSelection,
     commands: {
       run: editing.commands.run,
       availability: editing.commands.availability,
@@ -343,6 +337,8 @@ export function mountView(
       if (current.zoom < zoomLimits.min || current.zoom > zoomLimits.max) {
         viewport.set(current);
       }
+      // Zoom in and out are unavailable at a limit, whether or not the zoom moved.
+      editing.emit("availability", { cause: "zoom-limits" });
     },
     theme: () => theme,
     setTheme(patch, opts) {
@@ -354,7 +350,6 @@ export function mountView(
       set: viewport.set,
       zoomAt: viewport.zoomAt,
       panBy: viewport.panBy,
-      on: viewportNotifier.on,
     },
     clientToWorld: viewport.clientToWorld,
     nodeRect: handleNodeRect,
@@ -386,7 +381,7 @@ export function mountView(
       if (disposed) return;
       disposed = true;
       for (const off of offPainters) off();
-      offViewportHover();
+      for (const off of offViewportHover) off();
       // First: a gesture in flight is cancelled while everything it touches still exists.
       editing.dispose();
       for (const off of offSelection) off();

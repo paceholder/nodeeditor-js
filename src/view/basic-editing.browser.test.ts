@@ -133,9 +133,13 @@ describe("basic editing", () => {
 
     // Shift-marquee left to right selects the pump and the valve, not the controller.
     pointer.drag([120, 60], [480, 240], { shift: true });
-    expect(view.selection.keys()).toHaveLength(2);
-    expect(view.selection.has(`n:${byTitle("Pump").id}`)).toBe(true);
-    expect(view.selection.has(`n:${byTitle("Valve").id}`)).toBe(true);
+    expect(view.selection.nodes()).toHaveLength(2);
+    expect(view.selection.has({ kind: "node", id: byTitle("Pump").id })).toBe(
+      true,
+    );
+    expect(view.selection.has({ kind: "node", id: byTitle("Valve").id })).toBe(
+      true,
+    );
     expect(changes).toEqual([]);
 
     // Dragging one selected node moves both, as one change and one history entry.
@@ -180,7 +184,7 @@ describe("basic editing", () => {
     model.on("change", () => changes++);
     pointer.down(200, 150);
     pointer.up(200, 150);
-    expect(view.selection.keys()).toEqual([`n:${byTitle("Pump").id}`]);
+    expect(view.selection.nodes()).toEqual([byTitle("Pump").id]);
     key(view.element, "Delete");
     expect(changes).toBe(1);
     expect(model.reader.nodes()).toHaveLength(2);

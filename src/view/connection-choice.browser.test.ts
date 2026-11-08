@@ -8,7 +8,7 @@ import {
   portId,
 } from "../core/index.js";
 import { graphOps, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "./browser-support.js";
+import { cleanupScope, frames, makeHost, selNode } from "./browser-support.js";
 import type {
   ConnectionChoiceRequest,
   ConnectionChooser,
@@ -116,7 +116,7 @@ describe("connection chooser in the view", () => {
   it("Escape while choosing, from a button in the overlay: cancelled, selection kept", async () => {
     const { model, view, requests, answer, connect } = setup();
     connect();
-    view.selection.replace(["n:c"]);
+    view.selection.replace([selNode("c")]);
     const picker = document.createElement("button");
     view.overlay.attach(picker, { kind: "world", point: { x: 280, y: 100 } });
     await frames(2);
@@ -124,10 +124,22 @@ describe("connection chooser in the view", () => {
     const esc = key(picker, "Escape");
     expect(esc.defaultPrevented).toBe(true);
     expect(requests[0]?.signal.aborted).toBe(true);
-    expect(view.selection.keys()).toEqual(["n:c"]);
+    expect(view.selection.nodes()).toEqual([selNode("c").id]);
     answer("fast");
     await flush();
     expect(kinds(model)).toEqual([]);
+  });
+
+  it("locking while choosing cancels the choice, and a late answer commits nothing", async () => {
+    const { model, view, requests, answer, connect } = setup();
+    connect();
+    expect(requests).toHaveLength(1);
+    view.setLocked(true);
+    expect(requests[0]?.signal.aborted).toBe(true);
+    answer("fast");
+    await flush();
+    expect(kinds(model)).toEqual([]);
+    expect(model.historyState().undoLabel).not.toBe("Connect");
   });
 
   it("Revalidated at commit: a filled slot rejects the chosen option", async () => {
@@ -149,10 +161,10 @@ describe("connection chooser in the view", () => {
 
   it("graph shortcuts do nothing while a choice is pending", () => {
     const { model, view, requests, connect } = setup();
-    view.selection.replace(["n:c"]);
+    view.selection.replace([selNode("c")]);
     view.element.focus();
     connect();
-    view.selection.replace(["n:c"]);
+    view.selection.replace([selNode("c")]);
     const del = key(view.element, "Delete");
     expect(del.defaultPrevented).toBe(true);
     expect(model.reader.getNode(nodeId("c"))).toBeDefined();

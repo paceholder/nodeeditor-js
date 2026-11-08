@@ -50,7 +50,12 @@ All options are optional:
 | `zOrder`          | Paint order of `"connection"`, `"node"`, `"port"`, bottom to top. Default: connections, nodes, ports. |
 | `viewState`       | `{ isSelected(id), isHovered(id) }` merged with the view's own selection and hover. Default: nothing extra. |
 | `input`           | Tools, keymap and platform, or `false` for none (see [interaction.md](interaction.md)). Default: the built-in tools and keymap. |
+| `routes`          | A `RouteRegistry`: how each connection kind's path is shaped (Bezier unless you register another router; see "Routes"). |
+| `routeEditors`    | A `RouteEditorRegistry`: the editors that let a user drag a wire's segments (see "Route editors"). |
 | `initialViewport` | `{ zoom, panX, panY }`. |
+| `zoomLimits`      | `{ min?, max? }`: narrows the supported zoom range for this view (section 9). |
+| `initialFit`      | `true` or `{ paddingPx, maxZoom }`: fit the content once when the container first has a size; skipped when `initialViewport` is given (section 9). |
+| `locked`          | Start with editing refused (see "The view lock"). Default: unlocked. |
 | `gestureBitmap`   | `{ minVisible?, settleMs?, maxZoomRatio?, maxUncovered? }`: reuse the last scene frame as a picture while panning or zooming a large visible set (section 7). Off when absent. |
 | `frameClock`      | Test seam replacing `requestAnimationFrame`. |
 
@@ -802,8 +807,11 @@ const handle = view.overlay.attach(input, { kind: "node", node: pump.id });
 // Anchors: { kind: "world", point, scale? }, { kind: "node", node, scale? }, or
 // { kind: "viewport", point } for a fixed spot on screen (a context menu).
 // A node anchor sits on the node's body bounds and hides while the node is absent. By
-// default it is the top-left corner; `placement` ("top", "bottom", "left", "right",
-// "center") and `offset` (a gap in CSS pixels, constant at any zoom) put it elsewhere.
+// default it is the top-left corner. `placement` puts it elsewhere: an edge ("top",
+// "bottom", "left", "right") sits it outside the body, centred on that edge, "center" sits
+// it on the middle, and a corner ("top-left", "top-right", "bottom-left", "bottom-right")
+// pins the element's same corner to the node's corner. `offset` is the gap in CSS pixels
+// for the edge placements, constant at any zoom.
 handle.setVisible(false); // display: none, so it cannot block input
 handle.setAnchor({ kind: "world", point: point<"world">(100, 40), scale: true });
 handle.dispose();
@@ -828,11 +836,13 @@ view.overlay.attach(popover, {
   placement: "top", // centred above the body
   offset: 8,        // 8 CSS pixels clear of it
 });
-view.nodeRect(pump.id); // { x, y, width, height } in client pixels, or undefined
+view.nodeRect(pump.id); // DOMRect-shaped, in client pixels, or undefined
 ```
 
-`view.nodeRect` gives the body bounds as a plain value, so a floating-UI library can use it
-as a virtual reference element.
+`view.nodeRect` gives the body bounds as a plain value with `x`, `y`, `width`, `height`,
+`top`, `left`, `right` and `bottom`, the shape of a `DOMRect`. A floating-UI library can use
+it as a virtual reference element with no adapter:
+`{ getBoundingClientRect: () => view.nodeRect(pump.id) }`.
 
 ### Hover: which entity is under the pointer
 
@@ -851,7 +861,61 @@ target is a node, a port (only while ports are visible at the current zoom) or a
 by stable ID. A node's event carries its rectangle on screen. A hovered entity that leaves
 the model raises a leave event. Delays and popover content are the host's: start a timer on
 enter and cancel it on leave. The same state feeds the `hovered` flag that painters receive.
-Hover needs editing input; with `input: false` nothing is tracked.
+Hover needs editing input; with `input: false` nothing is tracked. The pointer moving over
+host content in the overlay layer (a popover, the controls panel) is not over the canvas: it
+neither hovers the node underneath nor ends the current hover, so a popover anchored to a
+node can be entered without closing.
+
+### The selection: entities, not keys
+
+`view.selection` names entities by kind and ID. `nodes()`, `connections()` and `primary()`
+read it (`primary` is the entity selected last, as `{ kind, id }`), `state()` returns all
+three as one value, and `has(entity)` and `isSelected(id)` ask about one entity. `replace`,
+`add` and `toggle` take a list of `{ kind: "node" | "connection", id }` and return whether
+the selection changed; `clear()` empties it. Entities that leave the model drop out on
+their own. The view's internal key strings (used by the tools) never appear here.
+
+```ts
+view.selection.replace([{ kind: "node", id: pump.id }]);
+view.selection.add([{ kind: "connection", id: pipe.id }]);
+const { nodes, connections, primary } = view.selection.state();
+```
+
+### The view lock
+
+A locked view refuses editing and keeps viewing. Start locked with the `locked` mount
+option, or switch at run time with `view.setLocked(value)`; `view.locked` reads it. While
+locked, move, resize, connect, route editing, delete, cut, paste and duplicate do nothing,
+and the matching commands are unavailable with the reason "The view is locked". Selection,
+copy, fit, reset, pan, zoom and hover keep working. Locking ends a gesture in progress
+without committing it; unlocking ends none, so a pan under way carries on.
+
+The `"lock"` event, `view.on("lock", ({ locked }) => ...)`, fires on every change. The lock
+belongs to the view, not the model: it never enters history or a snapshot, never loosens
+what the model's own permissions allow, and code that edits the model directly is not
+blocked. A command you register yourself is refused while the view is locked unless it is
+registered with `allowWhenLocked: true` (selection, view and copy commands are).
+
+```ts
+view.commands.register({
+  id: "app.focusNode",
+  labelKey: "command.app.focusNode",
+  allowWhenLocked: true, // it only looks, so a locked view may still run it
+  availability: () => ({ available: true }),
+  run: () => ({ ok: true, value: { changed: false } }),
+});
+```
+
+### View events: one channel
+
+Everything a host can follow arrives through `view.on(type, handler)`, which returns the
+unsubscribe function: `"viewport"` (see section 9), `"selection"` (the same value as
+`view.selection.state()`: node IDs, connection IDs and the primary, raised when any of them
+changes), `"hover"`, `"lock"`, `"availability"` (what a command
+can do changed because a command was registered or removed, the clipboard buffer was
+filled, or the zoom limits moved) and `"context-menu"`. There is no
+other subscription style on the viewport or the selection; the selection model's own `on`
+is internal to the view.
 
 ### Context menus: a hook, not a component
 
@@ -1017,7 +1081,7 @@ view.viewport.zoomAt(point<"viewport">(x, y), 1.1);  // factor, anchored at a vi
 The setters return a `Result` and reject non-finite input; zoom is clamped to the supported
 range. They repaint by themselves. The viewport is `viewport = world * zoom + pan`.
 
-`view.viewport.on(handler)` tells you when the viewport changed: at most once per animation
+`view.on("viewport", handler)` tells you when the viewport changed: at most once per animation
 frame, after painting, and not at all when the viewport ended the frame where it started.
 That is the hook for a zoom readout or a minimap, since a pan can move it hundreds of times
 per second.

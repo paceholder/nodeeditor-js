@@ -156,7 +156,15 @@ export function attachDomInput(
 
   const onPointerMove = (e: PointerEvent): void => {
     track(e);
-    if (e.pointerType === "mouse") deps.hover.move(e.clientX, e.clientY);
+    // Host content in the overlay (a popover, the controls) is not the canvas: the pointer
+    // moving over it neither picks the node underneath nor ends the current hover, so a
+    // popover anchored to a node can be entered.
+    if (
+      e.pointerType === "mouse" &&
+      !isOverlayContent(e.target, deps.overlay)
+    ) {
+      deps.hover.move(e.clientX, e.clientY);
+    }
     if (router.activePointer !== undefined) {
       pointer("pointer-move", e);
       return;

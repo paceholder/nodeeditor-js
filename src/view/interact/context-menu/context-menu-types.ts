@@ -8,8 +8,10 @@ import type {
   NodeId,
   Point,
   PortId,
+  Viewport,
 } from "../../../core/index.js";
 import type { HoverEvent } from "../hover/hover-types.js";
+import type { SelectionState } from "../selection/view-selection.js";
 import type { Modifiers } from "../tools/tool-types.js";
 
 /** What the menu was opened on: the topmost hit, or the canvas. */
@@ -49,4 +51,21 @@ export interface ViewEventMap {
   readonly hover: HoverEvent;
   /** The view lock changed. */
   readonly lock: { readonly locked: boolean };
+  /**
+   * The viewport changed: at most once per animation frame, after painting, and
+   * not when it ended the frame where it started.
+   */
+  readonly viewport: Viewport;
+  /** The selection changed, or only which entity is primary. */
+  readonly selection: SelectionState;
+  /**
+   * What a command can do may have changed for a reason no other event reports:
+   * a command was registered or removed, the clipboard buffer was filled, or the zoom
+   * limits moved. A toolbar re-reads command availability on it.
+   */
+  readonly availability: AvailabilityEvent;
+}
+
+export interface AvailabilityEvent {
+  readonly cause: "commands" | "clipboard" | "zoom-limits";
 }

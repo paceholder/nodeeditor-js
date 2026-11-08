@@ -32,8 +32,8 @@ async function checkBatching(routes: FixtureRoutes): Promise<void> {
     });
     expect(r.status).toBe("accepted");
     view.selection.replace([
-      `n:${selectedNode.id}`,
-      `c:${selectedConnection.id}`,
+      { kind: "node", id: selectedNode.id },
+      { kind: "connection", id: selectedConnection.id },
     ]);
     await settle(300);
 

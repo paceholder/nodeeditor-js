@@ -8,7 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type NodeId, nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { frames } from "../view/browser-support.js";
+import { frames, selNode } from "../view/browser-support.js";
 import type { ViewHandle } from "../view/index.js";
 import { key, mouse } from "../view/interact/input/input-test-support.js";
 import {
@@ -155,7 +155,7 @@ describe("node overlay", () => {
       {},
       createElement("input", { id: "field", defaultValue: "abc" }),
     );
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     await frames();
     const field = view.overlayElement.querySelector("#field") as HTMLElement;
     field.focus();

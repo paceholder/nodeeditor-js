@@ -6,7 +6,13 @@ import {
   type GraphModel,
   type NodeId,
 } from "../core/index.js";
-import { cleanupScope, frames, makeHost, pixelAt } from "./browser-support.js";
+import {
+  cleanupScope,
+  frames,
+  makeHost,
+  pixelAt,
+  selNode,
+} from "./browser-support.js";
 import { mouse } from "./interact/input/input-test-support.js";
 import { mountView } from "./mount-view.js";
 
@@ -64,7 +70,7 @@ async function setup() {
   cleanup(() => scene.dispose());
   await frames(3);
   const select = async (id: NodeId) => {
-    view.selection.replace([`n:${id}`]);
+    view.selection.replace([selNode(id)]);
     await frames(2);
   };
   const handleAlpha = (x: number, y: number) =>

@@ -29,6 +29,15 @@ describe("view zoom limits", () => {
     expect(wheel(view, 100, 100, 400).defaultPrevented).toBe(false);
   });
 
+  it("Zoom limits: a trackpad pinch (a wheel with the control key) stays inside the limits too", async () => {
+    const view = mounted([twoPortNode("a", 100, 100)]);
+    await frames();
+    for (let i = 0; i < 40; i++) wheel(view, 100, 100, -400, { ctrl: true });
+    expect(view.viewport.get().zoom).toBe(2);
+    for (let i = 0; i < 80; i++) wheel(view, 100, 100, 400, { ctrl: true });
+    expect(view.viewport.get().zoom).toBe(0.1);
+  });
+
   it("Zoom limits: fit never zooms in past the maximum", async () => {
     const view = mounted([twoPortNode("a", 100, 100, { w: 20, h: 20 })]);
     await frames();
@@ -53,7 +62,7 @@ describe("view zoom limits", () => {
     view.viewport.set({ zoom: 1.5, panX: 0, panY: 0 });
     await frames();
     let notified = 0;
-    view.viewport.on(() => notified++);
+    view.on("viewport", () => notified++);
     view.setZoomLimits({ min: 0.5, max: 1 });
     expect(view.zoomLimits()).toEqual({ min: 0.5, max: 1 });
     expect(view.viewport.get().zoom).toBe(1);

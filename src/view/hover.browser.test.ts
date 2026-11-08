@@ -136,4 +136,30 @@ describe("hover", () => {
     await frames();
     expect(seen).toHaveLength(0);
   });
+
+  it("the pointer over overlay content neither hovers the node beneath nor ends the hover", async () => {
+    const { view, centre, events } = setup();
+    await frames();
+    const panel = document.createElement("div");
+    view.overlayElement.append(panel);
+    const [ax, ay] = centre("a");
+    const [bx, by] = centre("b");
+    // Entering the overlay content from empty canvas, over node b: nothing is hovered.
+    mouse(view).move(200, 250);
+    mouse(view, panel).move(bx, by);
+    await frames();
+    expect(events).toHaveLength(0);
+    expect(view.hover.get()).toBeNull();
+    // Hovering node a, then moving onto overlay content over node b: a stays hovered.
+    mouse(view).move(ax, ay);
+    await frames();
+    mouse(view, panel).move(bx, by);
+    await frames();
+    expect(events.map((e) => e.target)).toEqual([{ kind: "node", node: "a" }]);
+    expect(view.hover.get()).toEqual({ kind: "node", node: "a" });
+    // Back on the canvas over node b, hover moves as usual.
+    mouse(view).move(bx, by);
+    await frames();
+    expect(view.hover.get()).toEqual({ kind: "node", node: "b" });
+  });
 });

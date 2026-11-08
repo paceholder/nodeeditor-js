@@ -2,6 +2,8 @@
 /** Helpers for browser tests: mounted hosts with cleanup, frame waits, pixel probes. */
 import { afterEach } from "vitest";
 import { cdp } from "vitest/browser";
+import { connectionId, nodeId } from "../core/index.js";
+import type { SelectedEntity } from "./interact/selection/view-selection.js";
 
 const cleanups: Array<() => void | Promise<void>> = [];
 
@@ -82,3 +84,15 @@ export async function clearDpr(): Promise<void> {
   await cdp().send("Emulation.clearDeviceMetricsOverride");
   await new Promise((r) => setTimeout(r, 100));
 }
+
+/** A selected node, for the view's selection API. */
+export const selNode = (id: string): SelectedEntity => ({
+  kind: "node",
+  id: nodeId(id),
+});
+
+/** A selected connection, for the view's selection API. */
+export const selConn = (id: string): SelectedEntity => ({
+  kind: "connection",
+  id: connectionId(id),
+});

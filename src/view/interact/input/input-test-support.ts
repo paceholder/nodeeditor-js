@@ -117,12 +117,14 @@ export function wheel(
   wx: number,
   wy: number,
   deltaY: number,
+  m: Mods = {},
 ): WheelEvent {
   const at = clientOf(view, wx, wy);
   const event = new WheelEvent("wheel", {
     clientX: at.x,
     clientY: at.y,
     deltaY,
+    ctrlKey: m.ctrl === true,
     bubbles: true,
     cancelable: true,
     composed: true,

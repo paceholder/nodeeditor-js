@@ -34,6 +34,7 @@ import {
   registerTransformCommands,
   TRANSFORM_COMMAND_IDS,
 } from "./transform-commands.js";
+import { DEFAULT_ZOOM_STEP } from "./zoom-commands.js";
 
 export interface NudgeArgs {
   /** World units. */
@@ -51,6 +52,8 @@ export const COMMAND_IDS = {
   resetRoute: "route.reset",
   ...TRANSFORM_COMMAND_IDS,
   fitAll: "view.fitAll",
+  zoomIn: "view.zoomIn",
+  zoomOut: "view.zoomOut",
   fitSelection: "view.fitSelection",
   resetView: "view.resetView",
   reveal: "view.reveal",
@@ -169,9 +172,43 @@ function simple(
   return {
     id,
     labelKey: `command.${id}`,
-    viewOnly: true,
+    allowWhenLocked: true,
     availability: (_args, ctx) => availability(ctx),
     run: (_args, ctx) => run(ctx),
+  };
+}
+
+/** Arguments of the zoom commands: the factor of one step, 1.25 by default. */
+export interface ZoomArgs {
+  readonly factor?: number;
+}
+
+/**
+ * Zoom in (`direction` 1) or out (-1) about the centre of the view. Unavailable at the
+ * matching zoom limit, so a toolbar button can disable itself; works while the view is
+ * locked, like the other view commands.
+ */
+function zoomCommand(
+  id: string,
+  direction: 1 | -1,
+): EditorCommand<ZoomArgs | undefined> {
+  const factorOf = (args: ZoomArgs | undefined): number => {
+    const step = args?.factor ?? DEFAULT_ZOOM_STEP;
+    return direction === 1 ? step : 1 / step;
+  };
+  return {
+    id,
+    labelKey: `command.${id}`,
+    allowWhenLocked: true,
+    availability: (args, { view }) =>
+      view.canZoomBy(factorOf(args))
+        ? OK
+        : refusal(
+            direction === 1
+              ? "Already at the maximum zoom"
+              : "Already at the minimum zoom",
+          ),
+    run: (args, { view }) => view.zoomBy(factorOf(args)),
   };
 }
 
@@ -220,6 +257,8 @@ export function registerBuiltinCommands(
       ({ view }) => view.fitAll(),
     ),
   );
+  registry.register(zoomCommand(COMMAND_IDS.zoomIn, 1));
+  registry.register(zoomCommand(COMMAND_IDS.zoomOut, -1));
   registry.register(
     simple(
       COMMAND_IDS.fitSelection,
@@ -238,7 +277,7 @@ export function registerBuiltinCommands(
   registry.register({
     id: COMMAND_IDS.reveal,
     labelKey: `command.${COMMAND_IDS.reveal}`,
-    viewOnly: true,
+    allowWhenLocked: true,
     availability: () => OK,
     run: (id: NodeId | ConnectionId, { view }) => view.reveal(id),
   });

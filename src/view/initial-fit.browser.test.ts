@@ -26,7 +26,7 @@ describe("initial fit", () => {
   it("Fit on first load: all nodes visible with the padding, once", async () => {
     const view = mounted({ initialFit: { paddingPx: 20 } });
     let changes = 0;
-    view.viewport.on(() => changes++);
+    view.on("viewport", () => changes++);
     await frames();
     const v = view.viewport.get();
     expect(v.zoom).toBeLessThan(1);

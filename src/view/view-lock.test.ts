@@ -66,10 +66,12 @@ const EDITING = [
   COMMAND_IDS.duplicate,
 ] as const;
 
-const VIEW_ONLY = [
+const ALLOWED_WHEN_LOCKED = [
   COMMAND_IDS.selectAll,
   COMMAND_IDS.clearSelection,
   COMMAND_IDS.fitAll,
+  COMMAND_IDS.zoomIn,
+  COMMAND_IDS.zoomOut,
   COMMAND_IDS.fitSelection,
   COMMAND_IDS.resetView,
   COMMAND_IDS.copy,
@@ -100,10 +102,10 @@ describe("view lock", () => {
     expect(h.model.reader.nodes()).toHaveLength(2);
   });
 
-  it("selection, fit, reset and copy keep working while locked", () => {
+  it("selection, fit, zoom, reset and copy keep working while locked", () => {
     const { commands, lock, h } = setup();
     lock.set(true);
-    for (const id of VIEW_ONLY) {
+    for (const id of ALLOWED_WHEN_LOCKED) {
       expect(commands.availability(id).available, id).toBe(true);
     }
     expect(commands.run(COMMAND_IDS.selectAll).ok).toBe(true);

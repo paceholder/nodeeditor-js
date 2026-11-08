@@ -28,7 +28,7 @@ export interface ViewConnectionChoiceDeps {
 }
 
 export interface ViewConnectionChoice
-  extends Pick<ConnectionChoice, "installed" | "setChooser"> {
+  extends Pick<ConnectionChoice, "installed" | "setChooser" | "cancel"> {
   /** The effect host's `choose`: a release on a choice target. */
   open(release: ChoiceRelease): void;
   dispose(): void;
@@ -81,6 +81,7 @@ export function attachViewConnectionChoice(
     open: choice.open,
     installed: choice.installed,
     setChooser: choice.setChooser,
+    cancel: choice.cancel,
     dispose() {
       root.removeEventListener("keydown", onKeyDown, true);
       root.removeEventListener("pointerdown", onPointerDown, true);

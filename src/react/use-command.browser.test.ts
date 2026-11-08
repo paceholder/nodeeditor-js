@@ -2,7 +2,7 @@
 import { act, createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { frames } from "../view/browser-support.js";
+import { frames, selNode } from "../view/browser-support.js";
 import type { ViewHandle } from "../view/index.js";
 import {
   EditorProvider,
@@ -73,7 +73,7 @@ describe("command hooks follow the lock", () => {
   it("availability turns off when the view is locked and back on when unlocked", async () => {
     const { r, view } = await mount(createElement(AvailabilityText));
     const text = () => r.container.querySelector("#out")?.textContent;
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     expect(text()).toBe("yes");
     await act(async () => view.setLocked(true));
     expect(text()).toBe("no");
@@ -87,7 +87,7 @@ describe("useCommand", () => {
     const { r, m, view } = await mount(createElement(DeleteButton));
     const button = () => r.container.querySelector<HTMLButtonElement>("#del");
     expect(button()?.disabled).toBe(true);
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     expect(button()?.disabled).toBe(false);
     await act(async () => button()?.click());
     expect(m.reader.nodes()).toHaveLength(1);
@@ -96,7 +96,7 @@ describe("useCommand", () => {
 
   it("carries the lock reason while locked", async () => {
     const { r, view } = await mount(createElement(DeleteButton));
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     await act(async () => view.setLocked(true));
     const button = r.container.querySelector<HTMLButtonElement>("#del");
     expect(button?.disabled).toBe(true);
@@ -105,9 +105,9 @@ describe("useCommand", () => {
 
   it("does not re-render for changes that leave the answer unchanged", async () => {
     const { view } = await mount(createElement(DeleteButton));
-    await act(async () => void view.selection.replace(["n:a"]));
+    await act(async () => void view.selection.replace([selNode("a")]));
     const before = seen.renders;
-    await act(async () => void view.selection.replace(["n:b"]));
+    await act(async () => void view.selection.replace([selNode("b")]));
     expect(seen.renders).toBe(before);
   });
 });

@@ -1,8 +1,8 @@
 /// <reference types="@vitest/browser-playwright" />
 import { describe, expect, it } from "vitest";
-import { nodeId } from "../core/index.js";
+import { exportSnapshot, nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, frames, makeHost } from "./browser-support.js";
+import { cleanupScope, frames, makeHost, selNode } from "./browser-support.js";
 import { key, mouse, wheel } from "./interact/input/input-test-support.js";
 import { mountView } from "./mount-view.js";
 
@@ -33,7 +33,7 @@ describe("view lock gestures", () => {
     pointer.drag([100, 100], [150, 140]);
     // From the right port of a to the left port of b.
     pointer.drag([130, 100], [270, 100]);
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     key(view.element, "Delete");
     await frames();
     expect(position()).toEqual(start);
@@ -47,7 +47,7 @@ describe("view lock gestures", () => {
     await frames();
     pointer.down(100, 100);
     pointer.up(100, 100);
-    expect(view.selection.keys()).toContain("n:a");
+    expect(view.selection.nodes()).toContain(selNode("a").id);
     const before = view.viewport.get();
     pointer.drag([200, 250], [240, 270]);
     await frames();
@@ -92,5 +92,34 @@ describe("view lock gestures", () => {
     pointer.up(160, 140);
     await frames();
     expect(position()).toEqual(start);
+  });
+
+  it("unlocking during a pan leaves the pan running", async () => {
+    const { view, pointer } = setup(true);
+    await frames();
+    const start = view.viewport.get().panX;
+    pointer.down(200, 250);
+    pointer.move(220, 260);
+    await frames();
+    const midway = view.viewport.get().panX;
+    expect(midway).not.toBe(start);
+    view.setLocked(false);
+    pointer.move(260, 280);
+    pointer.up(260, 280);
+    await frames();
+    expect(view.viewport.get().panX).not.toBe(midway);
+  });
+
+  it("locking and unlocking leave no history entry and no trace in a snapshot", async () => {
+    const { model, view } = setup(false);
+    await frames();
+    const history = model.historyState();
+    const revision = model.reader.revision();
+    const snapshot = JSON.stringify(exportSnapshot(model));
+    view.setLocked(true);
+    view.setLocked(false);
+    expect(model.historyState()).toEqual(history);
+    expect(model.reader.revision()).toBe(revision);
+    expect(JSON.stringify(exportSnapshot(model))).toBe(snapshot);
   });
 });

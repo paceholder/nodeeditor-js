@@ -1,8 +1,6 @@
 /** Hover hook: the entity under the pointer; re-renders only when it changes. */
-import { useMemo } from "react";
 import type { HoverTarget } from "../view/index.js";
-import { useEditor } from "./editor-context.js";
-import { useExternalValue } from "./use-external-value.js";
+import { useEditorState } from "./use-editor-state.js";
 
 function same(a: HoverTarget | null, b: HoverTarget | null): boolean {
   if (a === b) return true;
@@ -17,22 +15,17 @@ function same(a: HoverTarget | null, b: HoverTarget | null): boolean {
   return false;
 }
 
+const EVENTS = ["hover"] as const;
+const OPTIONS = { fallback: null, isEqual: same };
+
 /**
  * The hovered node, port or connection, or null. A host that wants a delay before showing
  * a tooltip keeps it on its side; use `view.on("hover")` for the node's screen rectangle.
  */
 export function useHover(): HoverTarget | null {
-  const view = useEditor();
-  const subscribe = useMemo(
-    () =>
-      view
-        ? (notify: () => void) => view.on("hover", () => notify())
-        : undefined,
-    [view],
+  return useEditorState<HoverTarget | null>(
+    (view) => view.hover.get(),
+    EVENTS,
+    OPTIONS,
   );
-  const read = useMemo(
-    () => (view ? () => view.hover.get() : undefined),
-    [view],
-  );
-  return useExternalValue<HoverTarget | null>(subscribe, read, same, null);
 }

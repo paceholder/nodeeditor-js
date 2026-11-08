@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
-import { cleanupScope, makeHost } from "./browser-support.js";
+import { cleanupScope, makeHost, selNode } from "./browser-support.js";
 import { mountView } from "./mount-view.js";
 
 const cleanup = cleanupScope();
@@ -40,7 +40,7 @@ describe("view commands API", () => {
     const undo = view.commands.run("history.undo");
     expect(undo.ok).toBe(false);
     expect(view.commands.run("view.fitAll").ok).toBe(true);
-    view.selection.replace(["n:a"]);
+    view.selection.replace([selNode("a")]);
     expect(view.commands.run("edit.delete").ok).toBe(false);
     expect(full.reader.nodes()).toHaveLength(1);
   });

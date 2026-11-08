@@ -58,7 +58,7 @@ export interface EditorCommand<A = void> {
    * True for commands that work while the view is locked (selection, view and copy
    * commands). Any other command is refused with the lock reason.
    */
-  readonly viewOnly?: boolean;
+  readonly allowWhenLocked?: boolean;
   availability(args: A, ctx: CommandContext): Availability;
   run(args: A, ctx: CommandContext): CommandOutcome;
 }
@@ -83,6 +83,8 @@ const unknownCommand = (id: string): Rejection =>
 export function createCommandRegistry(
   context: () => CommandContext,
   locked: () => boolean = () => false,
+  /** Called after a command is registered, replaced or removed. */
+  changed: () => void = () => {},
 ): CommandRegistry {
   // Args are erased at the registry boundary; each command validates its own.
   const commands = new Map<string, EditorCommand<unknown>>();
@@ -90,14 +92,17 @@ export function createCommandRegistry(
     register(command) {
       const stored = command as EditorCommand<unknown>;
       commands.set(command.id, stored);
+      changed();
       return () => {
-        if (commands.get(command.id) === stored) commands.delete(command.id);
+        if (commands.get(command.id) !== stored) return;
+        commands.delete(command.id);
+        changed();
       };
     },
     run(id, args) {
       const command = commands.get(id);
       if (!command) return err(unknownCommand(id));
-      if (locked() && !command.viewOnly) return err(VIEW_LOCKED);
+      if (locked() && !command.allowWhenLocked) return err(VIEW_LOCKED);
       const ctx = context();
       const availability = command.availability(args, ctx);
       return availability.available
@@ -107,7 +112,7 @@ export function createCommandRegistry(
     availability(id, args) {
       const command = commands.get(id);
       if (!command) return { available: false, reason: unknownCommand(id) };
-      return locked() && !command.viewOnly
+      return locked() && !command.allowWhenLocked
         ? { available: false, reason: VIEW_LOCKED }
         : command.availability(args, context());
     },

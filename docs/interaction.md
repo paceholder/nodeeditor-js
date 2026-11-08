@@ -258,7 +258,7 @@ corner grip on resizable nodes only, instead of eight handles on every node.
 - **Pan** only changes the viewport, never the model.
 - **Hover** is reported through `view.on("hover", ...)` (guide-view, section 8): one pick per
   frame, nothing while a gesture is in flight, and a recompute when it ends.
-- `view.fitAll`, `view.fitSelection`, `view.resetView` and `view.reveal` are commands
+- `view.fitAll`, `view.fitSelection`, `view.resetView`, `view.reveal`, `view.zoomIn` and `view.zoomOut` are commands
   (section 6); an empty graph or an empty selection is a successful no-op.
 
 ### 5a. Auto-pan
@@ -305,6 +305,7 @@ an unavailable command returns the reason (for example a capability denial).
 | `nodes.mirror` | Mirror the selected nodes in screen axes, `{ axis: "horizontal" }` (left and right swap) or `{ axis: "vertical" }` (top and bottom), each about its own centre: one command. Locked nodes are left out as for rotate. |
 | `view.fitAll` | Fit the whole graph in view. |
 | `view.fitSelection` | Fit the selection in view. |
+| `view.zoomIn`, `view.zoomOut` | Zoom about the centre of the view by one step, `{ factor: 1.25 }` by default. Unavailable at the maximum or minimum zoom of the view. They work while the view is locked. |
 | `view.resetView` | Zoom 1, origin at the top-left. |
 | `view.reveal` | Pan, and zoom out if needed, so one node or connection (a bare ID) is fully visible. |
 | `edit.copy` | Copy the selected nodes (and every connection between them) as a fragment. Unavailable without a selected node. Adds no history entry. |
@@ -503,6 +504,18 @@ The plain demo (`examples/plain-js/context-menu.ts`) is a complete host menu in 
 hundred lines: items from `view.commands.list()` with disabled entries showing the
 availability reason, arrow keys, Escape and click-away.
 
+## 7b. The view lock
+
+A view can be locked (`locked: true` at mount, `view.setLocked(value)` later; the `"lock"`
+event reports changes, see [guide-view.md](guide-view.md#the-view-lock)). A locked view
+refuses editing and keeps viewing: the move, resize, connect and route-editing gestures
+start nothing, `edit.delete`, `edit.cut`, `edit.paste`, `edit.duplicate` and every command
+that edits are unavailable with the reason "The view is locked", while selection, copy,
+fit, reset, pan, zoom and hover work as before. Locking cancels a gesture in progress (and a
+pending connection choice) without committing; unlocking cancels nothing. A command
+registered with `allowWhenLocked: true` runs while locked; any other registered command is
+refused, so a host command that edits stays blocked by default.
+
 ## 8. Options
 
 ```ts
@@ -533,8 +546,9 @@ before select-move so a press on a port connects instead of moving the node; emp
 presses nothing else claimed, and lets Shift or Ctrl/Cmd presses fall through to the
 marquee. Editing needs a model that offers
 the command API (a `GraphModel` does); a read-only model still allows selection, pan and
-zoom. The `view.selection` handle reads and changes the selection, and fires events the
-view uses to repaint outlines.
+zoom. The `view.selection` handle reads and changes the selection by entity kind and ID
+(guide-view, "The selection: entities, not keys"), and the `"selection"` event reports every
+change.
 
 ## 9. Writing a tool
 

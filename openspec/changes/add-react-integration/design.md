@@ -2,7 +2,7 @@
 
 ## Context
 
-`ViewHandle` already exposes `viewport.get`, `selection.on`, `commands.availability`,
+`ViewHandle` already exposes `viewport.get`, the selection readers, `commands.availability`,
 `overlay.attach` (anchor kinds `world`, `node` top-left, `viewport`) and `on("context-menu")`
 (`ViewEventMap`). The model side offers `change`/`reset` events, readers and
 `historyState()`. `FitOptions` (`paddingPx`, `maxZoom`) exist in
@@ -36,42 +36,52 @@ deliberately lacks.
 
 ### D2. Hooks are `useSyncExternalStore` over narrow subscribe functions
 Each hook has a `subscribe` and a cached `getSnapshot` that returns the same object while
-the underlying value is equal:
-- selection: `selection.on`, snapshot `{ nodes, connections, primary }` with real IDs and the primary
+the underlying value is equal. Everything that can be followed arrives through the one
+`view.on` channel (`"viewport"`, `"selection"`, `"hover"`, `"lock"`), and a generic hook,
+`useEditorState(read, events, { fallback, isEqual })`, wraps the subscribe-and-cache pair
+so the built-in hooks are a few lines each and a host can follow its own state the same
+way. The old `viewport.on` and `selection.on` were removed (pre-release, no consumers):
+two subscription styles meant every hook hand-wrote its own plumbing.
+- selection: the `"selection"` view event, snapshot `{ nodes, connections, primary }` with real IDs and the primary
   entity's kind; the view's internal key encoding does not reach the host;
 - viewport: `ViewportState` has no event today, so the view gains a coalesced
-  `viewport` change notification (at most once per animation frame, never per pointer
+  `"viewport"` event (at most once per animation frame, never per pointer
   sample); the hook subscribes to it;
-- availability: re-evaluated on selection, model change and history change, snapshot kept
-  referentially stable when `available` and `reason` are unchanged;
+- availability: re-read on selection, model change (which covers history), lock, viewport
+  and `"availability"` events (a command registered or removed, the clipboard buffer
+  filled, the zoom limits moved); the snapshot is kept referentially stable when
+  `available` and `reason` are unchanged;
 - history: `model.historyState()` re-read on model `change`/`reset`, equality on the four
   fields;
 - entity by ID: one shared per-model dispatcher maps ID to a listener set, filled from a
   single `change` subscription that walks the patch operations; only listeners of touched
   IDs are called, and the snapshot is the reader's record, stable while the record is
   unchanged. A `reset` notifies all.
-The hook type for the model is `ViewModel`-compatible; history hooks need `EditableModel`
-and return an inert state for a read-only model.
+The hook type for the model is `ViewModel`-compatible; history hooks use the `hasHistory`
+guard and return an inert state for a model without history (a read-only one).
 
 ### D3. Hover is computed from existing picking, once per frame
-Pointer moves record the last client position. A frame callback (the existing scheduler)
-runs `pick` (spatial index) only when a position is pending, takes the
+Pointer moves record the last client position. A callback on the view's frame clock (the
+tracker asks the clock for its own frame) runs `pick` (spatial index) only when a position is pending, takes the
 topmost candidate, and emits only when the `(kind, id)` pair differs from the last
 emitted one. Gestures (any tool not idle, pan, marquee, wheel in progress) suppress
-emission and clear nothing until the gesture ends; on end the hover is recomputed from the
+emission and clear nothing until the gesture ends (a gesture is any pointer-captured one:
+a node drag, marquee, pan or connection drag; a wheel turn is not one); on end the hover is recomputed from the
 last position. Pointer leave emits the leave form. Ports are picked only when the level of detail rule says
 ports are pickable at the current zoom. The payload is plain data:
 `{ target: null | { kind: "node" | "port" | "connection", ... ids }, rect?: ViewRect }`
 where `rect` is a node's on-screen rectangle in client coordinates. The state
 `view.hover` returns the current target; `viewState.isHovered` reads it by default, and
-a change repaints the scene layer only when painters use hover (a flag already tracked by
-selection repaints is reused).
+a change of the hovered entity always repaints the scene layer, so a painter that reads the
+hovered flag needs nothing more. Pointer moves over host content in the overlay layer do
+not reach the tracker.
 
 ### D4. Overlay placement is a pure function
-`OverlayAnchor` node kind gains optional `placement` (`top-left` default, `top`, `bottom`,
-`left`, `right`, `center`, plus an `offset` in CSS pixels) resolved against the body
+`OverlayAnchor` node kind gains optional `placement` (`top-left` default, `top`, `top-right`, `left`,
+`center`, `right`, `bottom-left`, `bottom`, `bottom-right`, plus an `offset` in CSS pixels
+for the edges; edges sit the element outside the body, corners pin the same corner) resolved against the body
 bounds in `overlay-host.ts`. `view.nodeRect(id)` returns the node's client rectangle as a
-value (undefined when absent), so floating-UI style libraries can use it as a virtual
+value shaped like a `DOMRect`, with `top`, `left`, `right` and `bottom` (undefined when absent), so floating-UI style libraries can use it as a virtual
 reference element. The React `NodeOverlay` creates a host element, calls `overlay.attach`
 in an effect, renders children with `createPortal` into that element, and disposes on
 unmount. The overlay hides while the node is absent (existing behavior) and focus stability close
@@ -86,11 +96,14 @@ import or before size is known) and only if `initialViewport` is not given. `zoo
 zoom outside the new range back in, so the React prop is live and compared by value.
 `initialFit` and `initialViewport` are read once at mount; the React props ignore later
 changes, as a `defaultValue` does. Core `clampZoom` keeps its absolute bounds as an outer
-guard. Controls (`ViewControls`, a small panel anchored bottom-left by default) are four buttons: zoom in, zoom out, fit and lock. Lock calls the view-level lock (see D6). Fit: fit runs the existing `view.fitAll`
-command through the registry; zoom in and out call `viewport.zoomAt` at the view
-centre with a configurable factor, because no zoom command exists (adding one is left
-out of scope). They render `button` elements with stable class
-names and no bundled CSS.
+guard. Controls (`ViewControls`, a small panel anchored bottom-left by default) are four buttons: zoom in, zoom out, fit and lock. Lock calls the view-level lock (see D6). Fit, zoom in and zoom out run
+registry commands: `view.fitAll`, and the new `view.zoomIn` and `view.zoomOut`, which
+zoom about the view centre by `{ factor }` (1.25 by default), are unavailable at the matching
+zoom limit, and work while the view is locked, so shortcuts and menus can share them. The
+buttons render `button` elements with stable class names, inline SVG icons (the lock icon
+follows the state; `icons` replaces any of them) and no bundled CSS. A host adds its own
+buttons as children, using the exported `ControlsButton`. The availability hook also follows
+the `"viewport"` event, since the zoom commands depend on where the zoom is.
 
 ## Risks / Trade-offs
 
@@ -120,3 +133,10 @@ the tools that edit (move, resize, connect, reconnect, route edit, delete, paste
 unavailable with a "view locked" reason and the matching commands are disabled; pan, zoom, fit,
 selection, inspection and hover keep working. Lock never relaxes adapter permissions and is
 never serialized or put in history. React exposes it as `useViewLocked()`.
+
+Where the lock is enforced, each place for a reason: the command registry (any command not
+registered with `allowWhenLocked` is refused), the tool context's `can` and `plan` (so no
+tool starts or finishes an edit), the route-editor lookup (no segment cursor or drag while
+locked) and the clipboard service (its direct paste and cut methods). Locking also ends the
+gesture in progress and cancels a pending connection choice, so nothing planned earlier can
+arrive late. A separate gate on the final commit was removed as redundant.
