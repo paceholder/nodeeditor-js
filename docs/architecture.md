@@ -12,7 +12,7 @@ describes something not implemented yet, it says **(planned)** and names the cha
 
 ```mermaid
 flowchart TB
-  react["<b>nodeeditor-js/react</b><br/>provider, hooks, inspector integration<br/><i>React peer dependency</i>"]
+  react["<b>nodeeditor-js/react</b><br/>provider, mount component, hooks, node overlay, view controls<br/><i>React peer dependency</i>"]
   view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays, tools, DOM input<br/>building blocks: <b>nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
   core["<b>nodeeditor-js</b> (core)<br/>records, IDs, patches, history, commands,<br/>policy, snapshot, geometry, spatial index<br/><i>headless: runs in Node</i>"]
   react -- depends on --> view
@@ -467,7 +467,8 @@ src/view/                                                     (nodeeditor-js/vie
   view-connection-choice.ts, mount-view.ts
   index.ts                       host API (nodeeditor-js/view)
   advanced.ts                    building blocks (nodeeditor-js/view/advanced)
-src/react/                       provider and hooks                  planned (Slice B)
+src/react/                       provider, mount component, hooks,   implemented
+                                 node overlay, view controls
 ```
 
 How the layers depend on each other. An arrow means "may be imported by", and the test

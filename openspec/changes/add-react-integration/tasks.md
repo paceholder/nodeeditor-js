@@ -31,8 +31,8 @@
 ## 5. Example and docs
 
 - [x] 5.1 Add `examples/react` (mount, inspector from selection, toolbar from availability and history, a hover popover via `NodeOverlay`, controls) with its tsconfig inclusion; verify `npm run typecheck` passes and the example builds with `npm run demo:build`-style Vite config
-- [ ] 5.2 Write `docs/guide-react.md` (hooks, subscription granularity per the subscription granularity rule, option remount rules, overlay scope and limits) and update `docs/architecture.md` (react layer no longer "planned"); verify `grep -n "subscription granularity" docs/guide-react.md` finds the granularity table and the links resolve
-- [ ] 5.3 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build`; verify all pass and `dist/react` exports only react names plus the documented hooks
+- [x] 5.2 Write `docs/guide-react.md` (hooks, subscription granularity per the subscription granularity rule, option remount rules, overlay scope and limits) and update `docs/architecture.md` (react layer no longer "planned"); verify `grep -n "subscription granularity" docs/guide-react.md` finds the granularity table and the links resolve
+- [x] 5.3 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build`; verify all pass and `dist/react` exports only react names plus the documented hooks
 
 ## Traceability
 
