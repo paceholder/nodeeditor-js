@@ -128,6 +128,28 @@ describe("node overlay", () => {
     expect(changes).toBe(1);
   });
 
+  it("Overlay follows the node across pan, zoom and node move", async () => {
+    const { model, view } = await mount({});
+    await frames();
+    const slot = view.overlayElement.firstElementChild as HTMLElement;
+    const aligned = () => {
+      const rect = view.nodeRect(nodeId("a"));
+      const at = slot.getBoundingClientRect();
+      expect(at.left).toBeCloseTo(rect?.x ?? Number.NaN, 1);
+      expect(at.top).toBeCloseTo(rect?.y ?? Number.NaN, 1);
+    };
+    aligned();
+    view.viewport.panBy(40, 25);
+    await frames();
+    aligned();
+    view.viewport.zoomAt({ x: 150, y: 100 }, 1.5);
+    await frames();
+    aligned();
+    model.moveNodes([{ node: nodeId("a"), position: { x: 180, y: 90 } }]);
+    await frames();
+    aligned();
+  });
+
   it("Text field keeps its keys: Delete and a bound letter edit text only", async () => {
     const { model, view } = await mount(
       {},
