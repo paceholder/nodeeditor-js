@@ -796,7 +796,9 @@ const input = document.createElement("input");
 const handle = view.overlay.attach(input, { kind: "node", node: pump.id });
 // Anchors: { kind: "world", point, scale? }, { kind: "node", node, scale? }, or
 // { kind: "viewport", point } for a fixed spot on screen (a context menu).
-// A node anchor is the top-left of the node's body bounds and hides while the node is absent.
+// A node anchor sits on the node's body bounds and hides while the node is absent. By
+// default it is the top-left corner; `placement` ("top", "bottom", "left", "right",
+// "center") and `offset` (a gap in CSS pixels, constant at any zoom) put it elsewhere.
 handle.setVisible(false); // display: none, so it cannot block input
 handle.setAnchor({ kind: "world", point: point<"world">(100, 40), scale: true });
 handle.dispose();
@@ -810,6 +812,41 @@ Overlay content handles its own input: presses on it start no gesture, and keys 
 in it (a button in a host menu, a text field) run no graph shortcut or clipboard command.
 So Escape or Delete in a host menu reaches only the menu; close it and call
 `view.element.focus()` to give the keyboard back to the editor.
+
+A popover next to a node is one attach call with a placement; the element needs no
+measuring, because the placement shifts it by a share of its own size:
+
+```ts
+view.overlay.attach(popover, {
+  kind: "node",
+  node: pump.id,
+  placement: "top", // centred above the body
+  offset: 8,        // 8 CSS pixels clear of it
+});
+view.nodeRect(pump.id); // { x, y, width, height } in client pixels, or undefined
+```
+
+`view.nodeRect` gives the body bounds as a plain value, so a floating-UI library can use it
+as a virtual reference element.
+
+### Hover: which entity is under the pointer
+
+```ts
+const off = view.on("hover", (e) => {
+  if (e.target?.kind === "node") show(e.target.node, e.rect); // rect: client pixels
+  else if (e.target === null) hide();                          // the leave form
+});
+view.hover.get(); // the current target, or null
+```
+
+The event fires when the entity under a resting mouse changes, at most once per animation
+frame (moves only record a position; one pick runs per frame), never while a gesture is in
+flight, and once more when a gesture ends, for whatever is then under the pointer. The
+target is a node, a port (only while ports are visible at the current zoom) or a connection,
+by stable ID. A node's event carries its rectangle on screen. A hovered entity that leaves
+the model raises a leave event. Delays and popover content are the host's: start a timer on
+enter and cancel it on leave. The same state feeds the `hovered` flag that painters receive.
+Hover needs editing input; with `input: false` nothing is tracked.
 
 ### Context menus: a hook, not a component
 
@@ -974,6 +1011,17 @@ view.viewport.zoomAt(point<"viewport">(x, y), 1.1);  // factor, anchored at a vi
 
 The setters return a `Result` and reject non-finite input; zoom is clamped to the supported
 range. They repaint by themselves. The viewport is `viewport = world * zoom + pan`.
+
+`view.viewport.on(handler)` tells you when the viewport changed: at most once per animation
+frame, after painting, and not at all when the viewport ended the frame where it started.
+That is the hook for a zoom readout or a minimap, since a pan can move it hundreds of times
+per second.
+
+Two mount options shape the viewport. `zoomLimits: { min, max }` narrows the supported zoom
+range for this view: wheel and pinch, `zoomAt`, `set` and the fit commands stay inside it, and
+fit never zooms in past `max`. `initialFit: true` (or `{ paddingPx, maxZoom }`) fits the
+content once, after the container is first measurable; it is skipped when you pass an
+`initialViewport`.
 
 Pointer events give you *client* coordinates (relative to the browser window). Convert them
 with `clientToWorld`, which reads the container's bounding rect at call time, so page

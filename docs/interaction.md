@@ -250,12 +250,14 @@ corner grip on resizable nodes only, instead of eight handles on every node.
 ## 5. Navigation
 
 - **Wheel** zooms around the cursor by `exp(-deltaY * wheelSensitivity)`, clamped to the
-  zoom limits. Line and page wheel deltas are normalized to pixels.
+  zoom limits (the supported range, narrowed by the view's `zoomLimits` option). Line and page wheel deltas are normalized to pixels.
 - The `wheel` option picks the behavior: `"zoom"` (default) or
   `"scroll-page-unless-modifier"`, which zooms only while Ctrl/Cmd is held.
 - The wheel event is consumed (`preventDefault`) only when the viewport really changed.
   At a zoom limit, or in scroll mode without the modifier, the page scrolls normally.
 - **Pan** only changes the viewport, never the model.
+- **Hover** is reported through `view.on("hover", ...)` (guide-view, section 8): one pick per
+  frame, nothing while a gesture is in flight, and a recompute when it ends.
 - `view.fitAll`, `view.fitSelection`, `view.resetView` and `view.reveal` are commands
   (section 6); an empty graph or an empty selection is a successful no-op.
 
