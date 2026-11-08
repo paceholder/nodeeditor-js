@@ -13,6 +13,7 @@ import {
   type Viewport,
   worldToViewport,
 } from "../../../core/index.js";
+import { type OverlayPlacement, placeAtNode } from "./placement.js";
 
 export type OverlayAnchor =
   | {
@@ -22,10 +23,17 @@ export type OverlayAnchor =
       readonly scale?: boolean;
     }
   | {
-      /** Top-left corner of the node's body bounds; hidden while the node is absent. */
+      /** A spot on the node's body bounds; hidden while the node is absent. */
       readonly kind: "node";
       readonly node: NodeId;
       readonly scale?: boolean;
+      /** Where the element sits relative to the body bounds. Default `"top-left"`. */
+      readonly placement?: OverlayPlacement;
+      /**
+       * Gap in CSS pixels between the body and the element for the edge placements
+       * ("top", "bottom", "left", "right"). Constant at any zoom; default 0.
+       */
+      readonly offset?: number;
     }
   | {
       /** A fixed point of the view (a context menu): it stays put while the view pans and zooms. */
@@ -65,27 +73,42 @@ interface Slot {
 export function createOverlayHost(deps: OverlayDeps): OverlayHost {
   const slots = new Set<Slot>();
 
+  /** Viewport point of the anchor plus the shift (CSS) back by a share of the element. */
+  function resolve(
+    anchor: OverlayAnchor,
+    v: Viewport,
+  ): { at: Point<"viewport">; shift: string } | undefined {
+    if (anchor.kind === "viewport") return { at: anchor.point, shift: "" };
+    if (anchor.kind === "world") {
+      return { at: worldToViewport(v, anchor.point), shift: "" };
+    }
+    const body = deps.scene()?.node(anchor.node)?.bodyBounds;
+    if (!body) return undefined;
+    const placed = placeAtNode(body, v, anchor.placement, anchor.offset);
+    const moved = placed.shiftX !== 0 || placed.shiftY !== 0;
+    return {
+      at: placed.at,
+      shift: moved
+        ? ` translate(${placed.shiftX * 100}%, ${placed.shiftY * 100}%)`
+        : "",
+    };
+  }
+
   function place(slot: Slot): void {
     const { style } = slot.element;
     const { anchor } = slot;
-    const origin =
-      anchor.kind === "node"
-        ? deps.scene()?.node(anchor.node)?.bodyBounds
-        : anchor.point;
-    if (!slot.visible || !origin) {
+    const v = deps.viewport();
+    const spot = slot.visible ? resolve(anchor, v) : undefined;
+    if (!spot) {
       style.display = "none";
       return;
     }
-    const v = deps.viewport();
-    const at =
-      anchor.kind === "viewport"
-        ? anchor.point
-        : worldToViewport(v, { x: origin.x, y: origin.y } as Point<"world">);
     style.display = slot.display;
+    // The shift comes last so its percentages refer to the element's scaled size.
     style.transform =
       anchor.kind !== "viewport" && anchor.scale
-        ? `translate(${at.x}px, ${at.y}px) scale(${v.zoom})`
-        : `translate(${at.x}px, ${at.y}px)`;
+        ? `translate(${spot.at.x}px, ${spot.at.y}px) scale(${v.zoom})${spot.shift}`
+        : `translate(${spot.at.x}px, ${spot.at.y}px)${spot.shift}`;
   }
 
   const host: OverlayHost = {

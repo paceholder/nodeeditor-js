@@ -2,6 +2,7 @@
 import type {
   GeometryRegistry,
   HitCandidate,
+  NodeId,
   PickOptions,
   Point,
   Rejection,
@@ -30,6 +31,7 @@ import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
 import type { ViewModel } from "./platform/model-binding.js";
 import type { RenderStats } from "./platform/render-stats.js";
+import type { ViewRect } from "./platform/view-rect.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 import type { ZoomLimits } from "./platform/zoom-limits.js";
 import type { AssetService } from "./render/assets/asset-service.js";
@@ -144,6 +146,12 @@ export interface ViewHandle {
     clientY: number,
     opts?: Omit<PickOptions, "zoom">,
   ): HitCandidate[];
+  /**
+   * The node's body bounds on screen, in client coordinates, as a plain value:
+   * a popover library can take it as a reference element. Undefined for an absent node
+   * or while the container is not measurable.
+   */
+  nodeRect(id: NodeId): ViewRect | undefined;
   /** Painter registries, shared with the options when given. Changes repaint. */
   readonly painters: PainterRegistries;
   /** Geometry registrations, shared with the options when given. Changes repaint. */

@@ -180,3 +180,52 @@ describe("overlay", () => {
     expect(probe()).toBe(view.element);
   });
 });
+
+describe("overlay placement and node rectangle", () => {
+  function setup(zoom: number) {
+    const model = buildModel([twoPortNode("a", 100, 75, { w: 60, h: 30 })]);
+    const host = makeHost(400, 300);
+    const view = mountView(host, {
+      model,
+      initialViewport: { zoom, panX: 30, panY: 20 },
+    });
+    cleanup(() => view.dispose());
+    return { model, host, view };
+  }
+
+  it("Placement above a node: centred above the body at the offset, zoomed", async () => {
+    for (const zoom of [0.5, 2]) {
+      const { view } = setup(zoom);
+      const popover = box(40, 20);
+      view.overlay.attach(popover, {
+        kind: "node",
+        node: nodeId("a"),
+        placement: "top",
+        offset: 6,
+      });
+      await frames();
+      const rect = view.nodeRect(nodeId("a"));
+      const at = popover.getBoundingClientRect();
+      expect(rect).toBeDefined();
+      if (!rect) return;
+      expect(at.left + at.width / 2).toBeCloseTo(rect.x + rect.width / 2, 2);
+      expect(at.bottom).toBeCloseTo(rect.y - 6, 2);
+    }
+  });
+
+  it("Node rectangle as a value: client pixels of the body, nothing for an absent node", async () => {
+    const { model, host, view } = setup(1.5);
+    await frames();
+    const body = createGeometryScene(model).node(nodeId("a"))?.bodyBounds;
+    const origin = host.getBoundingClientRect();
+    expect(view.nodeRect(nodeId("a"))).toEqual({
+      x: origin.left + 30 + (body?.x ?? 0) * 1.5,
+      y: origin.top + 20 + (body?.y ?? 0) * 1.5,
+      width: (body?.w ?? 0) * 1.5,
+      height: (body?.h ?? 0) * 1.5,
+    });
+    expect(view.nodeRect(nodeId("missing"))).toBeUndefined();
+    model.deleteEntities({ nodes: [nodeId("a")] });
+    expect(view.nodeRect(nodeId("a"))).toBeUndefined();
+  });
+});

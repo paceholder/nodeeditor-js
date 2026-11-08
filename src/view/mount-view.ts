@@ -26,6 +26,7 @@ import {
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
+import { clientRectOf } from "./platform/view-rect.js";
 import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
 import { resolveZoomLimits } from "./platform/zoom-limits.js";
@@ -335,6 +336,11 @@ export function mountView(
       on: viewportNotifier.on,
     },
     clientToWorld: viewport.clientToWorld,
+    nodeRect(id) {
+      const body = scene?.node(id)?.bodyBounds;
+      if (!body || !metrics.isMeasurable()) return undefined;
+      return clientRectOf(body, viewport.get(), metrics.clientRect());
+    },
     pick(clientX, clientY, opts) {
       const at = viewport.clientToWorld(clientX, clientY);
       if (!at.ok || !scene) return [];

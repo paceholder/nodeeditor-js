@@ -5,7 +5,7 @@
 - [x] 1.1 Add a frame-coalesced viewport change notification to the view handle; verify `src/view/viewport-notify.browser.test.ts` named for the subscription granularity rule: 100 pointer-sample pans in one frame yield one notification, and no notification without a change
 - [x] 1.2 Add `zoomLimits` mount option and enforce it in wheel/pinch, `zoomAt`, `set` and fit; verify `src/view/platform/viewport-state.test.ts` and a browser test named for the initial fit and zoom limits rule "Zoom limits" (0.1 to 2, fit capped)
 - [x] 1.3 Add `initialFit` mount option running once after the first measurable layout and not when `initialViewport` is given; verify `src/view/initial-fit.browser.test.ts` named for the initial fit and zoom limits rule "Fit on first load" (once, padding honoured, skipped with an initial viewport)
-- [ ] 1.4 Add `view.nodeRect(id)` and the node `placement`/`offset` anchor options with a pure placement function; verify `src/view/interact/overlay/placement.test.ts` named for the overlay placement rule for each placement and zoom, plus a browser test "Node rectangle as a value" (absent node returns undefined)
+- [x] 1.4 Add `view.nodeRect(id)` and the node `placement`/`offset` anchor options with a pure placement function; verify `src/view/interact/overlay/placement.test.ts` named for the overlay placement rule for each placement and zoom, plus a browser test "Node rectangle as a value" (absent node returns undefined)
 
 ## 2. Hover (view/interact)
 
