@@ -52,6 +52,7 @@ export function pointerInputOf(
   const base = {
     pointerId: e.pointerId,
     button: BUTTONS.has(e.button) ? (e.button as 0 | 1 | 2) : 0,
+    buttons: e.buttons,
     viewport: at.viewport,
     world: at.world,
     modifiers: modifiersOf(e, platform),

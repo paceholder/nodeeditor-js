@@ -96,9 +96,18 @@ export interface ToolRouter {
 
 const IGNORED: RouteResult = { effects: [], handled: false };
 
+/** DOM `buttons` bit of each `button` value: primary 1, middle 4, secondary 2. */
+const BUTTON_BIT = { 0: 1, 1: 4, 2: 2 } as const;
+
+function released(input: PointerInput, button: 0 | 1 | 2): boolean {
+  return (
+    input.buttons !== undefined && (input.buttons & BUTTON_BIT[button]) === 0
+  );
+}
+
 export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
   let active:
-    | { slot: ToolSlot; gesture: Gesture; pointerId: number }
+    | { slot: ToolSlot; gesture: Gesture; pointerId: number; button: 0 | 1 | 2 }
     | undefined;
   let space = false;
   let generation = 0;
@@ -125,7 +134,12 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
       if (gesture.isIdle()) {
         effects.push({ type: "release", pointerId: input.pointerId });
       } else {
-        active = { slot, gesture, pointerId: input.pointerId };
+        active = {
+          slot,
+          gesture,
+          pointerId: input.pointerId,
+          button: input.button,
+        };
         generation++;
       }
       return { effects, handled: true };
@@ -186,11 +200,20 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
           };
         }
         case "pointer-move":
-        case "pointer-up":
-          return active?.pointerId === input.pointerId &&
-            !active.gesture.awaiting()
-            ? feed(input, ctx)
-            : IGNORED;
+        case "pointer-up": {
+          if (
+            active?.pointerId !== input.pointerId ||
+            active.gesture.awaiting()
+          ) {
+            return IGNORED;
+          }
+          // The release never arrived: a move without the gesture's button cancels it.
+          // Committing on a guessed release could write an edit the user did not make.
+          if (input.type === "pointer-move" && released(input, active.button)) {
+            return feed({ type: "cancel", reason: "button-released" }, ctx);
+          }
+          return feed(input, ctx);
+        }
         case "wheel":
           // Wheel zoom stays available during a gesture, anchored at the cursor.
           return wheelZoom(input, ctx);

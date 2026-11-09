@@ -55,16 +55,27 @@ export function mouse(view: ViewHandle, target: EventTarget = view.element) {
     ctrlKey: m.ctrl === true,
     metaKey: m.meta === true,
   });
-  const down = (wx: number, wy: number, m: Mods = {}, button = 0) =>
-    pointer(target, "pointerdown", at(wx, wy), {
+  // Held buttons as a DOM `buttons` mask, as a real mouse reports them on every event.
+  const BIT = [1, 4, 2] as const;
+  let held = 0;
+  const down = (wx: number, wy: number, m: Mods = {}, button = 0) => {
+    held |= BIT[button] ?? 0;
+    return pointer(target, "pointerdown", at(wx, wy), {
       ...mods(m),
       button,
-      buttons: 1 << button,
+      buttons: held,
     });
+  };
   const move = (wx: number, wy: number, m: Mods = {}) =>
-    pointer(target, "pointermove", at(wx, wy), mods(m));
-  const up = (wx: number, wy: number, m: Mods = {}, button = 0) =>
-    pointer(target, "pointerup", at(wx, wy), { ...mods(m), button });
+    pointer(target, "pointermove", at(wx, wy), { ...mods(m), buttons: held });
+  const up = (wx: number, wy: number, m: Mods = {}, button = 0) => {
+    held &= ~(BIT[button] ?? 0);
+    return pointer(target, "pointerup", at(wx, wy), {
+      ...mods(m),
+      button,
+      buttons: held,
+    });
+  };
   return {
     down,
     move,
@@ -162,11 +173,15 @@ export function touch(view: ViewHandle) {
   const at = (x: number, y: number) => clientOf(view, x, y);
   return {
     down: (x: number, y: number) =>
-      pointer(view.element, "pointerdown", at(x, y), { ...init, button: 0 }),
+      pointer(view.element, "pointerdown", at(x, y), {
+        ...init,
+        button: 0,
+        buttons: 1,
+      }),
     move: (x: number, y: number) =>
-      pointer(view.element, "pointermove", at(x, y), init),
+      pointer(view.element, "pointermove", at(x, y), { ...init, buttons: 1 }),
     up: (x: number, y: number) =>
-      pointer(view.element, "pointerup", at(x, y), init),
+      pointer(view.element, "pointerup", at(x, y), { ...init, buttons: 0 }),
     native: (x: number, y: number) => contextMenu(view, x, y, init),
   };
 }

@@ -50,7 +50,8 @@ function pointerEvent(
       clientX: at.x,
       clientY: at.y,
       button,
-      buttons: type === "pointerup" ? 0 : 1 << button,
+      // DOM `buttons` bits: primary 1, middle 4, secondary 2.
+      buttons: type === "pointerup" ? 0 : ([1, 4, 2][button] ?? 0),
       bubbles: true,
       cancelable: true,
       composed: true,

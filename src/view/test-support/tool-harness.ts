@@ -119,6 +119,9 @@ export interface ToolHarness {
 
 export interface PointerExtra {
   readonly button?: 0 | 1 | 2;
+  /** Held buttons as DOM pointer events report them; omitted: unknown. */
+  readonly buttons?: number;
+  readonly pointerType?: "mouse" | "touch" | "pen";
   readonly modifiers?: Partial<Modifiers>;
   readonly pointerId?: number;
 }
@@ -273,6 +276,8 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
         viewport: worldToViewport(viewport, world),
         modifiers: { ...NO_MODIFIERS, ...extra.modifiers },
         time: time++,
+        ...(extra.buttons === undefined ? {} : { buttons: extra.buttons }),
+        ...(extra.pointerType ? { pointerType: extra.pointerType } : {}),
       });
 
   return {

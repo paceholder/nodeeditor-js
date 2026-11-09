@@ -62,6 +62,12 @@ interface PointerFields {
   readonly pointerId: number;
   /** The button that changed (0 primary, 1 middle, 2 secondary); 0 for plain moves. */
   readonly button: 0 | 1 | 2;
+  /**
+   * The buttons held, as a bit mask the way DOM pointer events report it: 1 primary,
+   * 2 secondary, 4 middle. The DOM adapter always fills it; omitted means unknown, and
+   * the router then cannot notice a release the browser never delivered.
+   */
+  readonly buttons?: number;
   readonly viewport: Point<"viewport">;
   readonly world: Point<"world">;
   readonly modifiers: Modifiers;
@@ -97,7 +103,12 @@ export type CancelReason =
   /** The view was locked. */
   | "locked"
   /** A press started a new gesture while one waited for a host verdict. */
-  | "new-press";
+  | "new-press"
+  /**
+   * A move arrived without the button that started the gesture: the browser never
+   * delivered its release (a native menu took the mouse-up, for example).
+   */
+  | "button-released";
 
 /** The reasons a gesture ends without the user asking. */
 export type GestureCancelReason = Extract<
