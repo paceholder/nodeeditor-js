@@ -21,7 +21,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 
 - [x] 3.1 Cache text fitting per font, text and width (D8); verify `text-measure.test.ts` (500 truncated titles: the second pass makes no measurement)
 - [x] 3.2 Look up port records directly and remove the cheap per-entity allocations (D9); verify `scene-layer.test.ts` (painting a 200-port node reads each port once and never asks for the node's port list; a node painter sees the same bounds object in two frames of an unchanged node)
-- [ ] 3.3 Repaint the scene on hover only for painters that declare `repaintOnHover` (D7); verify `hover.browser.test.ts` (no scene repaint for a hover change without such a painter; a declaring painter sees the hover)
+- [x] 3.3 Repaint the scene on hover only for painters that declare `repaintOnHover` (D7); verify `hover.browser.test.ts` (no scene repaint for a hover change without such a painter; a declaring painter sees the hover)
 
 ## 4. Shared state
 

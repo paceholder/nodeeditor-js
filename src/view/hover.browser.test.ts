@@ -10,7 +10,7 @@ import { createPainterRegistries } from "./render/registries/painters.js";
 
 const cleanup = cleanupScope();
 
-function setup() {
+function setup(repaintOnHover = true) {
   const model = buildModel(
     [
       twoPortNode("a", 100, 100, { w: 60, h: 40 }),
@@ -28,6 +28,7 @@ function setup() {
   const hovered = new Set<string>();
   const painters = createPainterRegistries();
   painters.nodes.replace("t", {
+    repaintOnHover,
     paint(_ctx, args) {
       if (args.state.hovered) hovered.add(args.node.id);
       else hovered.delete(args.node.id);
@@ -161,5 +162,35 @@ describe("hover", () => {
     mouse(view).move(bx, by);
     await frames();
     expect(view.hover.get()).toEqual({ kind: "node", node: "b" });
+  });
+});
+
+describe("hover repaint on request", () => {
+  it("a hover change does not repaint the scene when no node painter asks for it", async () => {
+    const { view, centre, events } = setup(false);
+    await frames();
+    const before = view.renderStats().scenePaints.exact;
+    const [ax, ay] = centre("a");
+    mouse(view).move(ax, ay);
+    await frames();
+    const [bx, by] = centre("b");
+    mouse(view).move(bx, by);
+    await frames();
+    expect(events.map((e) => e.target)).toEqual([
+      { kind: "node", node: "a" },
+      { kind: "node", node: "b" },
+    ]);
+    expect(view.renderStats().scenePaints.exact).toBe(before);
+  });
+
+  it("a hover change repaints the scene for a painter that asks, which sees the hover", async () => {
+    const { view, centre, hovered } = setup(true);
+    await frames();
+    const before = view.renderStats().scenePaints.exact;
+    const [ax, ay] = centre("a");
+    mouse(view).move(ax, ay);
+    await frames();
+    expect(view.renderStats().scenePaints.exact).toBeGreaterThan(before);
+    expect([...hovered]).toEqual(["a"]);
   });
 });

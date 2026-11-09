@@ -47,6 +47,12 @@ export interface NodePaintInput {
 /** Context transform: node-local space. */
 export interface NodePainter {
   paint(ctx: CanvasRenderingContext2D, input: NodePaintInput): void;
+  /**
+   * The painter draws `state.hovered`, so the scene must repaint when a node it paints
+   * enters or leaves hover. Omitted: hover changes do not repaint the scene (no built-in
+   * painter draws hover; hover feedback can go on the interaction layer instead).
+   */
+  readonly repaintOnHover?: boolean;
 }
 
 export interface PortGlyphInput {

@@ -264,6 +264,15 @@ export function mountView(
     zoomLimits,
   );
 
+  /** Whether the node with this ID is painted by a painter that draws hover. */
+  const paintsHover = (id: string | undefined): boolean => {
+    const node = id === undefined ? undefined : reader?.getNode(nodeId(id));
+    return (
+      node !== undefined &&
+      painters.nodes.get(node.type).repaintOnHover === true
+    );
+  };
+
   const handleNodeRect = (id: string): ViewRect | undefined => {
     const body = scene?.node(nodeId(id))?.bodyBounds;
     if (!body || !metrics.isMeasurable()) return undefined;
@@ -285,8 +294,10 @@ export function mountView(
     nodeRect: (id) => handleNodeRect(id),
     setHovered(id) {
       if (id === hovered) return;
+      const left = hovered;
       hovered = id;
-      markDirty("scene");
+      // Only a painter that draws hover needs the scene repainted.
+      if (paintsHover(left) || paintsHover(id)) markDirty("scene");
     },
     input: options.input ?? {},
     routeEditors,
