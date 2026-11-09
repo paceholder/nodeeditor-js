@@ -339,7 +339,7 @@ pan. Pan gestures (middle button, Space, plain drags on empty canvas) never auto
 Every command has a stable ID and a localizable `labelKey` (`command.<id>`). The view
 exposes them as `view.commands.run(id, args?)`, `availability(id, args?)`, `list()` and
 `register(command)`. A shortcut and an API call run the same command, so they produce the
-same patches. `run` returns `{ ok: true, value: { changed } }` or `{ ok: false, error }`;
+same patches. `run` returns `{ ok: true, value: { changed } }` or `{ ok: false, rejection }`;
 an unavailable command returns the reason (for example a capability denial).
 
 | Command ID | Does |

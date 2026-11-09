@@ -124,9 +124,9 @@ const bad = model.connect({ node: b.id, port: bOut }, { node: s.id, port: sIn })
 bad.status;   // "rejected"
 if (bad.status === "rejected") {
   bad.ok;               // false
-  bad.error.code;       // "type-mismatch"
-  bad.error.message;    // 'Port types differ: "hydraulic" and "signal"'
-  bad.error.entities;   // ["p4", "p5"], the ports involved
+  bad.rejection.code;       // "type-mismatch"
+  bad.rejection.message;    // 'Port types differ: "hydraulic" and "signal"'
+  bad.rejection.entities;   // ["p4", "p5"], the ports involved
 }
 ```
 
@@ -145,7 +145,7 @@ greyed-out menu item; `plan` also tells you what would happen:
 
 ```ts
 model.can({ kind: "connect", from: { node: b.id, port: bOut }, to: { node: s.id, port: sIn } });
-// { available: false, reason: { code: "type-mismatch", ... } }
+// { available: false, rejection: { code: "type-mismatch", ... } }
 
 const plan = model.plan({ kind: "deleteEntities", nodes: [a.id] });
 if (plan.kind === "ready") {
@@ -224,7 +224,7 @@ const model = createGraphModel({
     const answer = await res.json();
     return answer.ok
       ? { valid: true }
-      : { valid: false, reason: rejectionOf("capability-denied", answer.message, [proposal.to.port]) };
+      : { valid: false, rejection: rejectionOf("capability-denied", answer.message, [proposal.to.port]) };
   },
   timeoutMs: 5000,   // there is no default: without it a silent server leaves the proposal pending
 });
@@ -241,10 +241,10 @@ const r = model.connect(from, to);       // no answer yet
 r.status;                                // "unverified"
 r.missing;                               // [{ from, to, kind }]: what the host would be asked
 model.can({ kind: "connect", from, to });
-// { available: false, reason: { code: "pending-validation", message, entities } }
+// { available: false, rejection: { code: "pending-validation", message, entities } }
 
 await model.verifyConnections(r.missing);   // asks for the missing answers, resolves when all settled
-model.connect(from, to);                    // now accepted, or rejected with the validator's reason
+model.connect(from, to);                    // now accepted, or rejected with the validator's rejection
 ```
 
 - **Who asks.** A request starts only from `verifyConnections` or from a connect gesture in a
@@ -559,7 +559,7 @@ sequenceDiagram
     A-->>C: { ok: true, status: "accepted", changed }
   else invalid
     A->>E: "failure" event
-    A-->>C: { ok: false, status: "rejected", error }
+    A-->>C: { ok: false, status: "rejected", rejection }
   end
 ```
 
@@ -578,12 +578,12 @@ Two levels are offered, and they differ in what they include:
 ```ts
 // Document: a string you can write to a file or localStorage.
 const saved = saveDocument(model, { indent: 2 });
-if (!saved.ok) throw new Error(saved.error[0]?.message);
+if (!saved.ok) throw new Error(saved.rejection[0]?.message);
 
 const fresh = createGraphModel({ registry });
 const loaded = loadDocument(fresh, saved.value);
 if (loaded.ok) {
-  loaded.value.revision;      // "r1"
+  loaded.value.revision;      // 1
   loaded.value.diagnostics;   // [], or "unresolved-type" entries for unregistered types
 }
 ```
@@ -599,7 +599,7 @@ loadSnapshot(fresh, snapshot);
 Points to know:
 
 - Both return `Result`s. Invalid input (wrong format, unsupported version, bad shape)
-  returns `{ ok: false, error: [...] }` with codes such as `unsupported-format`, and the
+  returns `{ ok: false, rejection: [...] }` with codes such as `unsupported-format`, and the
   model is left untouched.
 - **Loading is a reset, not an edit.** It replaces the whole document, clears undo
   history, and emits one `reset` event. You cannot undo a load.
@@ -649,7 +649,7 @@ model.reader.getNode(a.id)?.position;   // { x: 50, y: 50 }
 // The old value no longer matches, so a second submit is a conflict, not an overwrite:
 const again = model.submit(patch);
 again.status;   // "rejected"
-if (again.status === "rejected") again.error.code;   // "conflict"
+if (again.status === "rejected") again.rejection.code;   // "conflict"
 
 // The inverse swaps old and new (and reverses op order). Undo is exactly this.
 model.submit(invertPatch(patch), { history: "skip" });
@@ -662,7 +662,28 @@ throws `MisuseError` for those. Hand-written `add` is rarely what you want anywa
 `createNode` so IDs and ports come from the registry.
 
 `submit` takes the same validation path as commands (policy, capabilities, conflicts),
-so a hand-built patch cannot corrupt the model. This is the same patch format a future
+so a hand-built patch cannot corrupt the model.
+
+A revision is a plain integer: `model.revision()`, `model.reader.revision()`, the
+`revision` of an accepted result and of every `change` or `reset` event are the same
+number, 0 for a fresh model and one more per committed change or load. `submit` options
+can name the revision the patch was planned against and the operation ID to tag it with:
+
+```ts
+import { operationId } from "@paceholder/nodeeditor-js";
+
+const base = model.revision();      // read when the patch was planned
+// ... a confirmation dialog later ...
+const r2 = model.submit(patch, { baseRevision: base, operationId: operationId("save-1") });
+// rejected with "stale-revision" if anything was committed since `base`, else accepted;
+// r2.operationId and the change event's operationId are "save-1"
+```
+
+Without `baseRevision` the current revision is used, so the check never gets in the way.
+An edit submitted from inside an event handler is checked when it is submitted, not
+when the queued edit runs, so several edits from one handler do not refuse each other.
+`operationId(text)` accepts the same IDs as `nodeId` (non-empty, no whitespace) and
+throws `MisuseError` otherwise. This is the same patch format a future
 external adapter will send to and receive from a server.
 
 ## Where next

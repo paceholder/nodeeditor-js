@@ -145,7 +145,7 @@ sequenceDiagram
     A->>V: one "change" event, inverse patch to history
     A-->>C: { ok: true, changed IDs }
   else invalid or stale
-    A-->>C: { ok: false, error: { code, message, entities } }
+    A-->>C: { ok: false, rejection: { code, message, entities } }
     Note over S: nothing changed
   end
 ```
@@ -160,7 +160,7 @@ sequenceDiagram
   it lands in one store batch. Observers are notified once, after the graph is
   consistent again; nobody ever sees a connection pointing at a deleted node.
 - **Results, not exceptions**: a rejected edit returns
-  `{ ok: false, error: { code, message, entities } }`. Exceptions (`MisuseError`) are
+  `{ ok: false, rejection: { code, message, entities } }`. Exceptions (`MisuseError`) are
   reserved for programmer mistakes, like calling an API in a state where it can never
   succeed.
 - **One gesture = one history entry**. Dragging a node through 200 pointer
@@ -508,7 +508,8 @@ Three things worth knowing about the layers, none of them a cycle between files:
 
 - `edit/` is one layer because its folders lean on each other: `adapter/` creates the
   event hub and the local history, and `events/` and `history/` import back from
-  `adapter/types.ts`, but only types (`Revision`, `OperationId`, `HistoryState`).
+  `adapter/types.ts`, but only the type `HistoryState`. `Revision` and `OperationId`
+  live in `base/`, because the reader, the adapter and the events all need them.
   `space/scene` listens to model changes, which is why `space/` sits above `edit/`.
   Inside `space/`, `routing/` imports `geometry/` (the polyline and Bezier builders) and
   `scene/` imports both; `geometry/` imports neither, so there is no cycle.

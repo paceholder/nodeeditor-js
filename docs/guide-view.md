@@ -64,7 +64,9 @@ server-rendering; the DOM work starts inside `mountView()`.
 
 The root (`view.element`) has the role `application` (the editor handles its own keys, so
 screen readers pass them through), the role description "node editor" and the accessible
-name "Node editor"; set its `aria-label` to a localized or more specific name. The canvases
+name "Node editor"; pass a localized or more specific name as the `label` mount option
+(`mountView(el, { label: "Circuit diagram" })`) and rename a mounted view with
+`view.setLabel(name)` (no argument restores the default). The canvases
 are hidden from assistive technology. Keyboard navigation between nodes is not there yet.
 
 The view never copies the graph. It subscribes to the model's *committed* changes, so
@@ -983,7 +985,7 @@ view.on("context-menu", (e) => {
     const item = document.createElement("button");
     item.textContent = myLabels[labelKey] ?? id;
     item.disabled = !state.available;
-    if (!state.available) item.title = state.reason.message; // why it is unavailable
+    if (!state.available) item.title = state.rejection.message; // why it is unavailable
     item.onclick = () => {
       view.commands.run(id, args); // same patch and undo step as the shortcut
       handle.dispose();
@@ -1128,7 +1130,7 @@ view.clipboard.importText(textarea.value);         // PasteOutcome, like a paste
 
 // A toolbar Paste button: the async Clipboard API, which may prompt.
 const outcome = await view.clipboard.pasteFromSystem();
-if (!outcome.ok && outcome.error.code === "clipboard-unavailable") showImportDialog();
+if (!outcome.ok && outcome.rejection.code === "clipboard-unavailable") showImportDialog();
 
 // Every paste and duplicate, from any route: what was created and what was left out.
 view.clipboard.on("paste", (o) => {

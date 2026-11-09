@@ -94,7 +94,7 @@ deciding which kind it is.
 
 | Kind | Props | What a change does |
 | --- | --- | --- |
-| Live | `theme`, `locked`, `zoomLimits`, `input.toolOptions`, `input.chooseConnection` | Applied to the live view. Selection, viewport and any gesture stay; `chooseConnection` can be an inline function (the view always calls the latest one, and a pending choice is kept). |
+| Live | `theme`, `locked`, `label`, `zoomLimits`, `input.toolOptions`, `input.chooseConnection` | Applied to the live view. Selection, viewport and any gesture stay; `chooseConnection` can be an inline function (the view always calls the latest one, and a pending choice is kept). |
 | Initial | `initialViewport`, `initialFit` | Read once at mount, ignored afterwards. An inline object costs nothing. |
 | Remount | `model`, `geometry`, `routes`, `routeEditors`, `zOrder`, `painters`, `assets`, `viewState`, `gestureBitmap`, `frameClock`, `input` (on or off), `input.tools`, `input.keymap`, `input.platform`, `input.clipboard` | A fresh view replaces the old one, which is disposed first. The new view keeps the viewport, selection and lock of the old one for the same model. |
 
@@ -117,6 +117,12 @@ is back at its default, and removing the prop restores the default theme or tool
 The imperative `view.setTheme(patch)` and `view.setToolOptions(patch)` still merge. The
 component compares these props by value (plain data, entry by entry; functions by
 identity), so an inline object costs nothing while its contents are unchanged.
+
+### The accessible name
+
+`label` is the name assistive technology announces for the editor, "Node editor" when the
+prop is absent. A change renames the mounted view without a remount, and removing the prop
+restores the default: `<NodeEditor model={model} label="Circuit diagram" />`.
 
 ### The lock: uncontrolled or controlled
 
@@ -148,7 +154,7 @@ the same object while nothing it reports has changed, so it can sit in a depende
 | `useViewport()` | the pan and zoom | the viewport changes, at most once per frame |
 | `useHover()` | the hovered node, port or connection, or `null` | the hovered entity changes |
 | `useViewLocked()` | `boolean` | the lock changes |
-| `useCommand(id, args?)` | `{ available, reason, run }` for one button | the answer changes: selection, model, history, lock, viewport or availability events |
+| `useCommand(id, args?)` | `{ available, rejection, run }` for one button | the answer changes: selection, model, history, lock, viewport or availability events |
 | `useCommandAvailability(id, args?)` | whether the command can run now, with the reason if not | selection, model, history, lock, viewport or availability events alter the answer |
 | `useHistory()` | `canUndo`, `canRedo` and labels | the history state changes |
 | `useNode(id)` | the node's record, or `undefined` while absent | a committed change touched that node |
@@ -220,7 +226,7 @@ function NodeDetails({ id }: { id: NodeId }) {
 
 ### Toolbars
 
-`useCommand(id, args?)` is what a toolbar button needs: `available`, the `reason` while it
+`useCommand(id, args?)` is what a toolbar button needs: `available`, the `rejection` while it
 cannot run, and a `run()` that executes it. The IDs are in `COMMAND_IDS` from
 `@paceholder/nodeeditor-js/view`. The answer follows selection, model, history, the view lock, the viewport and the
 `"availability"` event, and
@@ -233,7 +239,7 @@ function DeleteButton() {
     <button
       type="button"
       disabled={!del.available}
-      title={del.reason?.message ?? "Delete"}
+      title={del.rejection?.message ?? "Delete"}
       onClick={del.run}
     >
       Delete
@@ -325,7 +331,7 @@ with the panel's class, an accessible `label`, `disabled`, `title` and, for a to
 ```
 
 An application that wants entirely different controls builds them with `useCommand`
-(`useCommand("view.zoomIn")` gives `{ available, reason, run }`), `useViewLocked` and
+(`useCommand("view.zoomIn")` gives `{ available, rejection, run }`), `useViewLocked` and
 `view.setLocked`.
 
 `zoomLimits` bounds wheel, pinch, button and fit zoom and is a live prop: it is compared by

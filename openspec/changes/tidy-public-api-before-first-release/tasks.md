@@ -22,7 +22,7 @@
 
 ## 6. Documentation
 
-- [ ] 6.1 Update the guides, `docs/architecture.md`, README snippets and examples for the new names, the revision type, the base revision check, `operationId` and `label`, and state the boundary of `rejection`, `reason` and `error`; verify lint, typecheck (examples) and a search for the old names
+- [x] 6.1 Update the guides, `docs/architecture.md`, README snippets and examples for the new names, the revision type, the base revision check, `operationId` and `label`, and state the boundary of `rejection`, `reason` and `error`; verify lint, typecheck (examples) and a search for the old names
 
 ## 7. Gates
 

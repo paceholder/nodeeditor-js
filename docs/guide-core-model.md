@@ -19,7 +19,7 @@ Anything that can fail for an *expected* reason returns a `Result`:
 ```ts
 type Result<T> =
   | { ok: true; value: T }
-  | { ok: false; error: Rejection };   // { code, message, entities }
+  | { ok: false; rejection: Rejection };   // { code, message, entities }
 ```
 
 ```ts
@@ -27,9 +27,15 @@ import { validateNodeRecord } from "./validate-records.js";
 
 const result = validateNodeRecord({ id: "n1", position: { x: Number.NaN, y: 0 } });
 if (!result.ok) {
-  console.log(result.error.code);      // "malformed-record" — required fields are missing
+  console.log(result.rejection.code);  // "malformed-record" — required fields are missing
 }
 ```
+
+Every refusal the library reports, in any result, outcome, availability answer or event,
+is in a field named `rejection`. Two other names mean something else: `reason` is a
+plain-text explanation (or an enumerated cause) of a state that is not a refusal, such
+as an edit still waiting for validation, and `error` is a value your own code threw and
+the library caught (for example a throwing event handler).
 
 `MisuseError` is *thrown*, but only for programmer mistakes, such as a malformed ID
 literal or reading the graph in the middle of a write. If you catch `MisuseError` in
