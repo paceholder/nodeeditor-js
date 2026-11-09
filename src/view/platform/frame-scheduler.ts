@@ -26,6 +26,11 @@ export interface FrameScheduler {
   markDirty(...layers: readonly LayerName[]): void;
   /** True while a frame request is outstanding. */
   isPending(): boolean;
+  /**
+   * Paint the dirty layers now, as a frame would, and drop the pending request. For a
+   * resize: the canvases were just cleared and must not be shown blank.
+   */
+  flush(time: number): void;
   /** Cancel any pending frame and drop dirty marks. Later marks are ignored. */
   dispose(): void;
 }
@@ -69,6 +74,11 @@ export function createFrameScheduler(
       if (handle === undefined) handle = clock.request(frame);
     },
     isPending: () => handle !== undefined,
+    flush(time) {
+      if (disposed || dirty.size === 0) return;
+      if (handle !== undefined) clock.cancel(handle);
+      frame(time);
+    },
     dispose() {
       disposed = true;
       dirty.clear();

@@ -112,6 +112,28 @@ describe("frame scheduler", () => {
     expect(painted).toEqual(["background", "interaction", "background"]);
   });
 
+  it("flush paints the dirty layers at once and drops the pending frame request", () => {
+    const f = fakeClock();
+    const painted: LayerName[] = [];
+    let after = 0;
+    const s = createFrameScheduler(
+      f.clock,
+      (l) => void painted.push(l),
+      () => void after++,
+    );
+    s.flush(0);
+    expect(painted).toEqual([]);
+    s.markDirty("scene", "background");
+    s.flush(0);
+    expect(painted).toEqual(["background", "scene"]);
+    expect(after).toBe(1);
+    expect(s.isPending()).toBe(false);
+    expect(f.pendingCount()).toBe(0);
+    // Later marks request a frame as usual.
+    s.markDirty("interaction");
+    expect(f.pendingCount()).toBe(1);
+  });
+
   it("an after-frame hook that throws is reported and later frames still run", () => {
     const f = fakeClock();
     const errors: unknown[] = [];

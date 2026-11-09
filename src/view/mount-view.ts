@@ -234,6 +234,9 @@ export function mountView(
       editing.fitAll(fit === true ? {} : fit);
     }
     dirtyAll();
+    // Resizing cleared the canvases. Resize observers run after layout and before the
+    // browser paints, so painting now means the cleared state is never shown.
+    scheduler.flush(win.performance.now());
   });
   const viewport = createViewportState(
     metrics,
