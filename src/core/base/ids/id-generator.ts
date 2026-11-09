@@ -6,6 +6,7 @@
  * JSON-compatible, and only ever moves forward (undo never rewinds it), which keeps a
  * deleted ID from being reused.
  */
+import { MisuseError } from "../result.js";
 import type { IdKind } from "./ids.js";
 
 /** Opaque generator state, owned by the generator and persisted verbatim. */
@@ -55,11 +56,22 @@ export function cursorProblem(value: unknown): string | undefined {
 /** The empty cursor of the counter generator. */
 export const EMPTY_CURSOR: IdCursor = {};
 
+/**
+ * Largest counter `observe` tracks. Counting from 1 never reaches it, so an outside ID
+ * above it cannot collide with a minted one, and tracking it would only exhaust the counter.
+ */
+export const MAX_OBSERVED_COUNTER = 2 ** 50;
+
+/** The counter for `prefix`; a corrupt value fails loudly instead of restarting at 0. */
 function counterOf(cursor: IdCursor, prefix: string): number {
   const value = cursor[prefix];
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
-    ? value
-    : 0;
+  if (value === undefined) return 0;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new MisuseError(
+      `ID cursor counter ${prefix} must be a non-negative safe integer, not ${String(value)}`,
+    );
+  }
+  return value;
 }
 
 /** Default generator: one counter per kind, minting `n1`, `p1`, `c1`, ... */
@@ -67,7 +79,10 @@ export function createCounterIdGenerator(): IdGenerator {
   return {
     next(kind, cursor) {
       const prefix = PREFIX_BY_KIND[kind];
-      const counter = counterOf(cursor, prefix) + 1;
+      const current = counterOf(cursor, prefix);
+      if (current >= Number.MAX_SAFE_INTEGER)
+        throw new MisuseError(`ID counter ${prefix} is exhausted`);
+      const counter = current + 1;
       return {
         id: `${prefix}${counter}`,
         cursor: { ...cursor, [prefix]: counter },
@@ -85,7 +100,11 @@ export function createCounterIdGenerator(): IdGenerator {
         return cursor;
       }
       const seen = Number(digits);
-      if (!Number.isSafeInteger(seen) || seen <= counterOf(cursor, prefix))
+      if (
+        !Number.isSafeInteger(seen) ||
+        seen > MAX_OBSERVED_COUNTER ||
+        seen <= counterOf(cursor, prefix)
+      )
         return cursor;
       return { ...cursor, [prefix]: seen };
     },

@@ -55,15 +55,19 @@ function parseCursor(value: unknown, sink: ErrorSink): IdCursor | undefined {
   const out: Record<string, number | string> = {};
   let good = true;
   for (const [key, v] of Object.entries(value)) {
-    if (
-      typeof v === "string" ||
-      (typeof v === "number" && Number.isFinite(v))
-    ) {
-      out[key] = v;
+    if (key === "__proto__") {
+      sink.add(
+        "invalid-shape",
+        "idCursor may not have a key named __proto__",
+        `idCursor.${key}`,
+      );
+      good = false;
+    } else if (typeof v === "string" || Number.isSafeInteger(v)) {
+      out[key] = v as number | string;
     } else {
       sink.add(
         "invalid-shape",
-        "idCursor values must be finite numbers or strings",
+        "idCursor values must be safe integers or strings",
         `idCursor.${key}`,
       );
       good = false;
