@@ -7,13 +7,16 @@
  * a query collects a subtree whose box it contains without testing further. Insertion picks a sibling by a perimeter heuristic and
  * AVL-style rotations keep the height logarithmic. Queries test the fat boxes while
  * descending and the exact tight bounds at the leaves, so results equal a linear scan.
+ * A non-finite box is refused with `MisuseError`.
  */
+
+import { MisuseError } from "../../base/result.js";
 import {
   rectContainsRect,
   rectsIntersect,
   unionRects,
 } from "../geometry/rect.js";
-import type { Rect } from "../geometry/spaces.js";
+import { isFiniteRect, type Rect } from "../geometry/spaces.js";
 import type { SpatialIndex } from "./spatial-index.js";
 
 type W = "world";
@@ -47,6 +50,12 @@ const fatten = (r: Rect<W>, m: number): Rect<W> => ({
 });
 
 const perimeter = (r: Rect<W>): number => 2 * (r.w + r.h);
+
+/** A non-finite box would poison every ancestor's box, so it is misuse. */
+export function refuseNonFinite(key: string, bounds: Rect<W>): void {
+  if (!isFiniteRect(bounds))
+    throw new MisuseError(`Index box for ${key} is not finite`);
+}
 
 export function createAabbTree<K extends string>(
   options: AabbTreeOptions = {},
@@ -176,6 +185,7 @@ export function createAabbTree<K extends string>(
   }
 
   function upsert(key: K, bounds: Rect<W>): void {
+    refuseNonFinite(key, bounds);
     const existing = leaves.get(key);
     if (existing) {
       existing.tight = bounds;
