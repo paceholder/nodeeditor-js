@@ -150,9 +150,21 @@ export function createCommandApi(
     },
     can(command) {
       const planned = plan(command);
-      return planned.kind === "rejected"
-        ? { available: false, reason: planned.error }
-        : { available: true };
+      if (planned.kind === "rejected") {
+        return { available: false, reason: planned.error };
+      }
+      // Unavailable for now: a host verdict is missing. `can` never asks for it.
+      if (planned.kind === "pending") {
+        return {
+          available: false,
+          reason: rejectionOf(
+            "pending-validation",
+            planned.reason,
+            planned.missing.flatMap((p) => [p.from.port, p.to.port]),
+          ),
+        };
+      }
+      return { available: true };
     },
   };
 }
