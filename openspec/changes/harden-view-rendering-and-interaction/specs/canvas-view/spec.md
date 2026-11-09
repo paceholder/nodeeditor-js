@@ -19,7 +19,7 @@ The view SHALL report an error caught from a painter through a `paint-error` vie
 - **THEN** the listener is called once for the scene layer with the first error
 
 ### Requirement: Asset cache keeps the visible set
-The asset cache holds bitmaps of host pictures under a byte budget. A bitmap drawn or stored since the last painted frame is pinned and SHALL NOT be evicted. Evicting an asset's last bitmap SHALL keep its decoded source, so a later draw SHALL NOT call the resolver. Still over budget, the cache SHALL release whole assets not drawn in the current frame, least recently drawn first.
+The asset cache holds bitmaps of host pictures under a byte budget. A bitmap drawn or stored in the frame being painted or the last painted one is pinned and SHALL NOT be evicted. Evicting an asset's last bitmap SHALL keep its decoded source, so a later draw SHALL NOT call the resolver. Still over budget, it SHALL release whole assets drawn in neither of those frames, least recently drawn first.
 
 #### Scenario: Visible pictures exceed the budget
 - **WHEN** eight 512 by 512 pictures stay visible for 120 frames under a 4 MiB budget
@@ -30,7 +30,7 @@ The asset cache holds bitmaps of host pictures under a byte budget. A bitmap dra
 - **THEN** it is rasterized again from its kept source without a new resolver call
 
 ### Requirement: Over-budget visible set is reported
-When the pinned bitmaps and the sources of the assets drawn in the current frame alone exceed the asset budget, the cache SHALL keep them, exceeding the budget, and SHALL report in its statistics that it is over budget and how many bytes the frame pins.
+When the pinned bitmaps and the sources of the assets drawn in those two frames alone exceed the asset budget, the cache SHALL keep them, exceeding the budget, and SHALL report in its statistics that it is over budget and how many bytes the frame pins.
 
 #### Scenario: Budget too small for the frame
 - **WHEN** the pictures one frame draws need 8 MiB of bitmaps under a 4 MiB budget

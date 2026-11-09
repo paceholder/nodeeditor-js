@@ -186,6 +186,8 @@ export function mountView(
     },
     () => {
       stats.frameEnd();
+      // What this frame drew stops being pinned in the asset cache.
+      assets.endFrame();
       if (overlay.count > 0) overlay.layout();
       viewportNotifier.flush();
     },

@@ -4,7 +4,15 @@
  * Lifecycle per asset: unrequested -> resolving -> decoding -> ready | failed. The host
  * resolver supplies bytes; with no resolver nothing is fetched and the asset reads as
  * failed. Ready assets are rasterized per zoom bucket into a byte-budgeted LRU cache;
- * while a sharper bucket is prepared the nearest cached one is drawn scaled. Failures
+ * while a sharper bucket is prepared the nearest cached one is drawn scaled.
+ *
+ * Eviction keeps what the frames draw: bitmaps drawn or stored in the frame being painted
+ * or the last painted one are pinned (results arrive between frames, and the next frame
+ * draws the same set). An asset whose last bitmap is evicted keeps its decoded source,
+ * so drawing it again rasterizes without asking the resolver. Only when bitmaps alone
+ * cannot make room are whole assets released, those drawn in neither of those frames,
+ * least recently drawn first. When the frame's own set exceeds the budget the cache stays
+ * over it (`stats().overBudget`) instead of evicting what it is about to draw. Failures
  * are sticky: an asset is not retried until `retry(ref)` or a new resolver, which keeps
  * a broken asset from causing a request per frame. The service owns its state and
  * `dispose()` releases every decoded source and cached bitmap.
@@ -12,15 +20,18 @@
 import type { Rect } from "../../../core/index.js";
 import type {
   AssetDiagnostic,
-  AssetDrawer,
   AssetFailureCode,
   AssetOptions,
   AssetResolver,
+  AssetService,
   AssetSource,
   AssetStatus,
   DrawResult,
 } from "./asset-types.js";
 import { createBitmapCache } from "./bitmap-cache.js";
+
+export type { AssetService, AssetStats } from "./asset-types.js";
+
 import { type DecodedAsset, type DecodeResult, decodeAsset } from "./decode.js";
 import {
   bucketExponent,
@@ -29,39 +40,6 @@ import {
   nearestBucket,
   rasterSize,
 } from "./zoom-bucket.js";
-
-export interface AssetStats {
-  /** Resolver calls made. */
-  readonly resolves: number;
-  /** Bitmaps rendered (one per asset and bucket, plus re-renders after eviction). */
-  readonly rasterizations: number;
-  /** Bytes of cached bitmaps. */
-  readonly cacheBytes: number;
-  readonly cacheEntries: number;
-  /** Estimated bytes of decoded sources (width * height * 4); counted in the budget. */
-  readonly sourceBytes: number;
-}
-
-export interface AssetService {
-  /** A drawer bound to a context; `scale` is device pixels per context unit. */
-  drawer(ctx: CanvasRenderingContext2D, scale: number): AssetDrawer;
-  status(ref: string): AssetStatus;
-  diagnostics(): readonly AssetDiagnostic[];
-  /** Forget a failure and load the asset again. */
-  retry(ref: string): void;
-  /**
-   * Forget one asset, or every asset without a reference: cached bitmaps, decoded sources
-   * and failures are released, and the next draw asks the resolver again. For a host whose
-   * resolver now returns something else for a reference (a swapped symbol library).
-   */
-  invalidate(ref?: string): void;
-  /** Replace the resolver; failed assets become eligible again. */
-  setResolver(resolve: AssetResolver["resolve"] | undefined): void;
-  /** Called when an asset becomes ready or fails; returns an unsubscribe function. */
-  onChange(handler: () => void): () => void;
-  stats(): AssetStats;
-  dispose(): void;
-}
 
 /** Test seams: the decode step, so Node tests can use fake bitmaps. */
 export interface AssetServiceSeams {
@@ -76,6 +54,10 @@ interface Entry {
   decoded?: DecodedAsset;
   /** Bucket exponents being rendered now. */
   readonly rendering: Set<number>;
+  /** The frame number of the last draw; entries drawn in the current frame are pinned. */
+  drawnIn: number;
+  /** Bytes the decoded source counts against the budget. */
+  sourceBytes: number;
 }
 
 const MAX_DIAGNOSTICS = 200;
@@ -91,12 +73,13 @@ export function createAssetService(
     ...(options.budgetBytes === undefined
       ? {}
       : { budgetBytes: options.budgetBytes }),
-    onEvict: (key) => releaseIfBare(key.slice(0, key.indexOf("\u0000"))),
   });
   const entries = new Map<string, Entry>();
   const diagnostics = new Map<string, AssetDiagnostic>();
   const handlers = new Set<() => void>();
   const counts = { resolves: 0, rasterizations: 0 };
+  let frame = 0;
+  let over = false;
   let disposed = false;
 
   const notify = (): void => {
@@ -125,18 +108,27 @@ export function createAssetService(
   }
 
   /**
-   * A decoded source is only worth keeping while it has cached buckets (or one being
-   * rendered). Past that it is released and the asset reads as unrequested again.
+   * Bring the cache within budget without touching the current frame's set: unpinned
+   * bitmaps first, then whole ready assets drawn in neither this frame nor the last and
+   * with nothing rendering, least recently drawn first. What remains over is pinned.
    */
-  function releaseIfBare(ref: string): void {
-    const entry = entries.get(ref);
-    if (!entry?.decoded || entry.rendering.size > 0) return;
-    for (let e = MIN_BUCKET_EXP; e <= MAX_BUCKET_EXP; e++) {
-      if (cache.has(keyOf(ref, e))) return;
+  function trim(): void {
+    cache.trim();
+    if (cache.overBudget()) {
+      const idle = [...entries]
+        .filter(
+          ([, e]) =>
+            e.status === "ready" &&
+            e.drawnIn < frame - 1 &&
+            e.rendering.size === 0,
+        )
+        .sort(([, a], [, b]) => a.drawnIn - b.drawnIn);
+      for (const [ref] of idle) {
+        if (!cache.overBudget()) break;
+        forget(ref);
+      }
     }
-    entry.decoded.release();
-    cache.unreserve(ref);
-    entries.delete(ref);
+    over = cache.overBudget();
   }
 
   /** Stale results (disposed service, retried or replaced entry) are dropped. */
@@ -166,14 +158,21 @@ export function createAssetService(
       return;
     }
     entry.decoded = decoded.value;
-    cache.reserve(ref, decoded.value.width * decoded.value.height * 4);
+    entry.sourceBytes = decoded.value.width * decoded.value.height * 4;
+    cache.reserve(ref, entry.sourceBytes);
     entry.status = "ready";
     diagnostics.delete(ref);
+    trim();
     notify();
   }
 
   function request(ref: string): Entry {
-    const entry: Entry = { status: "resolving", rendering: new Set() };
+    const entry: Entry = {
+      status: "resolving",
+      rendering: new Set(),
+      drawnIn: frame,
+      sourceBytes: 0,
+    };
     entries.set(ref, entry);
     if (!resolve) {
       fail(ref, entry, "no-resolver", "no asset resolver is configured");
@@ -193,7 +192,10 @@ export function createAssetService(
       .then((bitmap) => {
         entry.rendering.delete(exp);
         if (!current(ref, entry)) return bitmap.close();
+        // Stored for the frame that asked for it: pinned like a drawn bitmap.
         cache.set(keyOf(ref, exp), bitmap);
+        cache.pin(keyOf(ref, exp));
+        trim();
         notify();
       })
       .catch(() => {
@@ -212,11 +214,13 @@ export function createAssetService(
   ): DrawResult {
     if (disposed) return "failed";
     const entry = entries.get(ref) ?? request(ref);
+    entry.drawnIn = frame;
     if (entry.status === "failed") return "failed";
     const decoded = entry.decoded;
     if (entry.status !== "ready" || !decoded) return "pending";
     const wanted = bucketExponent((rect.w * scale) / decoded.width, decoded);
-    let bitmap = cache.get(keyOf(ref, wanted));
+    let key = keyOf(ref, wanted);
+    let bitmap = cache.get(key);
     if (!bitmap) {
       render(ref, entry, wanted);
       const ready: number[] = [];
@@ -224,9 +228,12 @@ export function createAssetService(
         if (cache.has(keyOf(ref, e))) ready.push(e);
       }
       const near = nearestBucket(ready, wanted);
-      bitmap = near === undefined ? undefined : cache.get(keyOf(ref, near));
+      if (near === undefined) return "pending";
+      key = keyOf(ref, near);
+      bitmap = cache.get(key);
     }
     if (!bitmap) return "pending";
+    cache.pin(key);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(bitmap, rect.x, rect.y, rect.w, rect.h);
@@ -277,6 +284,10 @@ export function createAssetService(
       }
       notify();
     },
+    endFrame() {
+      frame++;
+      cache.endFrame();
+    },
     onChange(handler) {
       handlers.add(handler);
       return () => handlers.delete(handler);
@@ -286,6 +297,12 @@ export function createAssetService(
       cacheBytes: cache.bytes(),
       cacheEntries: cache.size(),
       sourceBytes: cache.reservedBytes(),
+      pinnedBytes:
+        cache.pinnedBytes() +
+        [...entries.values()]
+          .filter((e) => e.drawnIn >= frame - 1 && e.decoded)
+          .reduce((sum, e) => sum + e.sourceBytes, 0),
+      overBudget: over,
     }),
     dispose() {
       if (disposed) return;

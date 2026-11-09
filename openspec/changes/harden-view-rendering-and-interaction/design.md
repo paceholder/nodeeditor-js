@@ -35,12 +35,16 @@ was designed to avoid).
 
 ### D2 Asset cache eviction model
 
-- A bitmap drawn or stored since the last painted frame is pinned: eviction never removes it. The
-  view tells the asset service a frame ended (`endFrame()`, called after every painted frame).
+- A bitmap drawn or stored in the frame being painted or in the last painted frame is pinned:
+  eviction never removes it. The view tells the asset service a frame ended (`endFrame()`,
+  called after every painted frame). Two frames, not one, because rasterizations and decodes
+  finish between frames: with one frame, a result arriving after the frame that asked for it
+  could evict the bitmaps that frame drew, and the next frame would ask again (measured: the
+  eight-picture scenario still made 484 resolver calls with a one-frame pin).
 - Evicting an asset's last bitmap no longer forgets the asset. Its decoded source stays and is
   counted, so the next draw rasterizes again without calling the host resolver.
-- When the cache is still over budget after evicting unpinned bitmaps, whole assets that were not
-  drawn in the current frame and have nothing rendering are released, least recently drawn first.
+- When the cache is still over budget after evicting unpinned bitmaps, whole assets drawn in
+  neither of those two frames and with nothing rendering are released, least recently drawn first.
   Only those call the resolver again when drawn later, and they are not visible.
 - When the pinned set alone exceeds the budget, the cache stays over budget instead of evicting
   what the frame needs. `stats().overBudget` is true while that holds and `stats().pinnedBytes`
@@ -53,7 +57,7 @@ reported thrash); keeping every resolved source text or blob so that no resolver
 repeated (memory held for assets that may never be drawn again).
 
 A standalone user of `createAssetService` must call `endFrame()` after each frame; without it
-every bitmap stays pinned. This is documented on the method.
+every bitmap drawn stays pinned. This is documented on the method.
 
 ### D3 SVG size and accounting
 

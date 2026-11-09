@@ -73,6 +73,38 @@ describe("bitmap cache", () => {
   });
 });
 
+describe("asset cache keeps the visible set", () => {
+  it("bitmaps pinned in this frame or the last are never evicted; older pins lapse", () => {
+    const cache = createBitmapCache<ReturnType<typeof fake>>({
+      budgetBytes: 800,
+    });
+    const a = fake(10, 10);
+    const b = fake(10, 10);
+    const c = fake(10, 10);
+    cache.set("a", a);
+    cache.pin("a");
+    cache.set("b", b);
+    cache.pin("b");
+    cache.set("c", c);
+    cache.pin("c");
+    // Over budget, but every bitmap is pinned: none goes.
+    expect([a.closed, b.closed, c.closed]).toEqual([false, false, false]);
+    expect(cache.pinnedBytes()).toBe(1200);
+    expect(cache.bytes()).toBe(1200);
+    cache.endFrame();
+    // The last painted frame's pins still hold.
+    cache.trim();
+    expect([a.closed, b.closed, c.closed]).toEqual([false, false, false]);
+    cache.pin("c");
+    cache.endFrame();
+    expect(cache.pinnedBytes()).toBe(400);
+    cache.trim();
+    // The least recently used unpinned bitmap goes first, until the budget holds.
+    expect([a.closed, b.closed, c.closed]).toEqual([true, false, false]);
+    expect(cache.bytes()).toBe(800);
+  });
+});
+
 describe("bitmap cache reservations", () => {
   it("reserved source bytes count against the budget and eviction is reported", () => {
     const evicted: string[] = [];

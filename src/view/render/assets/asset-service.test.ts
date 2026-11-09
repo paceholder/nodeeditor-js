@@ -134,6 +134,101 @@ describe("asset invalidation", () => {
   });
 });
 
+describe("asset cache keeps the visible set", () => {
+  it("eight visible 512x512 pictures under a 4 MiB budget resolve and rasterize once each", async () => {
+    const f = fakes({ side: 512 });
+    let resolves = 0;
+    const s = service(
+      {
+        budgetBytes: 4 * 1024 * 1024,
+        resolve: async () => {
+          resolves++;
+          return SVG;
+        },
+      },
+      { decode: f.decode },
+    );
+    const box = rect<"local">(0, 0, 512, 512);
+    const refs = Array.from({ length: 8 }, (_, i) => `sym${i}`);
+    for (let frame = 0; frame < 120; frame++) {
+      const d = s.drawer(ctx, 1);
+      for (const ref of refs) d.drawAsset(ref, box);
+      s.endFrame();
+      await settle();
+    }
+    expect(resolves).toBe(8);
+    expect(s.stats().rasterizations).toBe(8);
+    expect(s.stats().resolves).toBe(8);
+    // The frame needs 8 MiB of bitmaps: the cache stays over budget and says so.
+    expect(s.stats().overBudget).toBe(true);
+    expect(s.stats().pinnedBytes).toBeGreaterThanOrEqual(8 * 1024 * 1024);
+    s.dispose();
+  });
+
+  it("an evicted bitmap is rasterized again from the kept source without a resolver call", async () => {
+    const f = fakes({ side: 100 }); // 40 000 bytes per bitmap and per source
+    let resolves = 0;
+    const s = service(
+      {
+        budgetBytes: 200_000,
+        resolve: async () => {
+          resolves++;
+          return SVG;
+        },
+      },
+      { decode: f.decode },
+    );
+    const box = rect<"local">(0, 0, 100, 100);
+    const frame = async (...refs: string[]): Promise<void> => {
+      for (let i = 0; i < 4; i++) {
+        const d = s.drawer(ctx, 1);
+        for (const ref of refs) d.drawAsset(ref, box);
+        s.endFrame();
+        await settle();
+      }
+    };
+    await frame("a", "b");
+    await frame("c");
+    // Sources of a, b, c plus three bitmaps exceed the budget: a's bitmap went first.
+    expect(s.stats().cacheEntries).toBeLessThan(3);
+    expect(s.status("a")).toBe("ready");
+    await frame("a");
+    expect(resolves).toBe(3);
+    expect(s.stats().rasterizations).toBe(4);
+    expect(s.stats().overBudget).toBe(false);
+    s.dispose();
+  });
+
+  it("assets not drawn in the current frame are released whole when bitmaps alone cannot make room", async () => {
+    const f = fakes({ side: 100 });
+    let resolves = 0;
+    const s = service(
+      {
+        budgetBytes: 100_000,
+        resolve: async () => {
+          resolves++;
+          return SVG;
+        },
+      },
+      { decode: f.decode },
+    );
+    const box = rect<"local">(0, 0, 100, 100);
+    for (const ref of ["a", "b", "c"]) {
+      for (let i = 0; i < 4; i++) {
+        s.drawer(ctx, 1).drawAsset(ref, box);
+        s.endFrame();
+        await settle();
+      }
+    }
+    // Only the asset drawn last stays; the earlier ones were forgotten.
+    expect(s.status("c")).toBe("ready");
+    expect(s.status("a")).toBe("unrequested");
+    expect(resolves).toBe(3);
+    expect(s.stats().overBudget).toBe(false);
+    s.dispose();
+  });
+});
+
 async function drawUntilDrawn(
   d: ReturnType<ReturnType<typeof createAssetService>["drawer"]>,
   ref: string,

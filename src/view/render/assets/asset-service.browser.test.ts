@@ -121,14 +121,21 @@ describe("asset service", () => {
     expect(s.drawer(ctx, 1).drawAsset("sym", BOX)).toBe("failed");
   });
 
-  it("decoded sources count against the budget and are released with their last bucket", async () => {
+  it("decoded sources count against the budget; an asset not drawn lately is released whole", async () => {
     // Each asset costs 3200 (source) + 3200 (bucket); the budget holds one and a bit.
     const s = service({ resolve: async () => red, budgetBytes: 9000 });
     const { ctx } = canvas();
-    await until(() => s.drawer(ctx, 1).drawAsset("a", BOX) === "drawn");
+    const draw = (ref: string): boolean => {
+      const drawn = s.drawer(ctx, 1).drawAsset(ref, BOX) === "drawn";
+      s.endFrame();
+      return drawn;
+    };
+    await until(() => draw("a"));
     expect(s.stats().sourceBytes).toBe(3200);
-    await until(() => s.drawer(ctx, 1).drawAsset("b", BOX) === "drawn");
-    // "a" lost its only bucket, so its decoded source went with it.
+    s.endFrame();
+    s.endFrame();
+    await until(() => draw("b"));
+    // "a" was drawn in neither of the last two frames: bucket and source both went.
     expect(s.status("a")).toBe("unrequested");
     expect(s.status("b")).toBe("ready");
     expect(s.stats().sourceBytes).toBe(3200);
