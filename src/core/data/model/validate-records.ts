@@ -21,9 +21,12 @@ import type {
   RouteConstraint,
 } from "./records.js";
 import {
+  inWorldRange,
   isFiniteSize,
   isFiniteVec2,
   isQuarterTurns,
+  MAX_WORLD_COORD,
+  MAX_WORLD_SIZE,
   type Vec2,
 } from "./values.js";
 
@@ -64,6 +67,21 @@ export function validateNodeRecord(
     return reject("non-finite", "Node size must be finite and non-negative", [
       id,
     ]);
+  const { x, y } = o.position;
+  if (!inWorldRange(x) || !inWorldRange(y)) {
+    return reject(
+      "out-of-range",
+      `Node position must stay within +-${MAX_WORLD_COORD}`,
+      [id],
+    );
+  }
+  if (o.size.width > MAX_WORLD_SIZE || o.size.height > MAX_WORLD_SIZE) {
+    return reject(
+      "out-of-range",
+      `Node width and height must not exceed ${MAX_WORLD_SIZE}`,
+      [id],
+    );
+  }
   if (typeof o.z !== "number" || !Number.isFinite(o.z)) {
     return reject("non-finite", "Node z must be finite", [id]);
   }
@@ -217,11 +235,18 @@ export function validateConnectionRecord(
       [id],
     );
   }
+  const route = o.route as readonly RouteConstraint[] | undefined;
+  if (route?.some((c) => !inWorldRange(c.at))) {
+    return reject(
+      "out-of-range",
+      `Route constraints must stay within +-${MAX_WORLD_COORD}`,
+      [id],
+    );
+  }
   const end = (e: unknown): ConnectionRecord["from"] => {
     const v = e as ConnectionRecord["from"];
     return { node: v.node, port: v.port };
   };
-  const route = o.route as readonly RouteConstraint[] | undefined;
   return ok({
     id: o.id,
     kind: o.kind,

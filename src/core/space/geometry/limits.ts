@@ -15,11 +15,18 @@ import {
   type Result,
   rejectionOf,
 } from "../../base/result.js";
+import {
+  MAX_WORLD_COORD,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from "../../data/model/values.js";
 import { isFinitePoint, type Point, type Space } from "./spaces.js";
 
-export const MAX_WORLD_COORD = 1e7;
-export const MIN_ZOOM = 1e-3;
-export const MAX_ZOOM = 1e3;
+export {
+  MAX_WORLD_COORD,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from "../../data/model/values.js";
 export const MIN_DPR = 0.1;
 export const MAX_DPR = 16;
 export const MIN_DETERMINANT = 1e-12;

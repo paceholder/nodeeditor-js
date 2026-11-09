@@ -109,4 +109,5 @@ export const SNAPSHOT_ERROR_CODES = [
   "dangling-reference",
   "port-node-mismatch",
   "invalid-limit",
+  "out-of-range",
 ] as const;
