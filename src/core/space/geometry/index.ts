@@ -7,14 +7,8 @@ export {
   determinant,
   identity,
   invert,
-  isFiniteAffine,
 } from "./affine.js";
-export {
-  BEZIER_MAX_HANDLE,
-  BEZIER_MIN_HANDLE,
-  bezierPath,
-  straightPath,
-} from "./connection-paths.js";
+export { bezierPath, straightPath } from "./connection-paths.js";
 export type { GeometryRegistry } from "./geometry-registry.js";
 export {
   createGeometryRegistry,
@@ -28,7 +22,6 @@ export {
   MAX_DPR,
   MAX_WORLD_COORD,
   MAX_ZOOM,
-  MIN_DETERMINANT,
   MIN_DPR,
   MIN_ZOOM,
 } from "./limits.js";

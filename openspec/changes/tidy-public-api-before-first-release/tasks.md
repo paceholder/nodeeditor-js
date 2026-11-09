@@ -18,7 +18,7 @@
 
 ## 5. Public surface review
 
-- [ ] 5.1 List the core-entry exports that are low-level math or constants a consumer does not need in `notes.md`; remove only names nothing outside their module uses through the entry; verify `src/view/entry-points.test.ts`, lint, typecheck, `npm test`
+- [x] 5.1 List the core-entry exports that are low-level math or constants a consumer does not need in `notes.md`; remove only names nothing outside their module uses through the entry; verify `src/view/entry-points.test.ts`, lint, typecheck, `npm test`
 
 ## 6. Documentation
 
