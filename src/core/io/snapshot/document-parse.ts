@@ -8,7 +8,13 @@
 
 import { isWellFormedId } from "../../base/ids/ids.js";
 import { err, ok, type Result } from "../../base/result.js";
-import { createErrorSink } from "./snapshot-errors.js";
+import {
+  inWorldRange,
+  MAX_WORLD_COORD,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from "../../data/model/values.js";
+import { createErrorSink, type ErrorSink } from "./snapshot-errors.js";
 import {
   DOCUMENT_FORMAT,
   FORMAT_VERSION,
@@ -109,6 +115,89 @@ export function runMigrations(
   return ok({ doc: doc as unknown as WrappedDocument, warnings });
 }
 
+/** The viewport section: only `x`, `y` and `zoom`, inside the supported ranges. */
+function parseViewport(
+  v: unknown,
+  sink: ErrorSink,
+): DocumentViewportData | undefined {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) {
+    sink.add("invalid-shape", "viewport must be an object", "viewport");
+    return undefined;
+  }
+  const o = v as Record<string, unknown>;
+  const before = sink.count();
+  for (const key of Object.keys(o)) {
+    if (!["x", "y", "zoom"].includes(key))
+      sink.add("invalid-shape", `Unknown field "${key}"`, `viewport.${key}`);
+  }
+  const read = (
+    key: "x" | "y" | "zoom",
+    ok: (n: number) => boolean,
+    range: string,
+  ) => {
+    const n = o[key];
+    if (typeof n !== "number" || !Number.isFinite(n)) {
+      sink.add(
+        "invalid-shape",
+        `viewport ${key} must be a finite number`,
+        `viewport.${key}`,
+      );
+    } else if (!ok(n)) {
+      sink.add(
+        "out-of-range",
+        `viewport ${key} must be ${range}`,
+        `viewport.${key}`,
+      );
+    }
+    return n as number;
+  };
+  const world = `within +-${MAX_WORLD_COORD}`;
+  const x = read("x", inWorldRange, world);
+  const y = read("y", inWorldRange, world);
+  const zoom = read(
+    "zoom",
+    (z) => z >= MIN_ZOOM && z <= MAX_ZOOM,
+    `from ${MIN_ZOOM} to ${MAX_ZOOM}`,
+  );
+  return sink.count() > before ? undefined : { x, y, zoom };
+}
+
+/** The selection section: unique IDs of nodes and connections of the graph. */
+function parseSelection(
+  s: unknown,
+  graph: GraphSnapshot,
+  sink: ErrorSink,
+): string[] | undefined {
+  if (!Array.isArray(s) || !s.every(isWellFormedId)) {
+    sink.add("invalid-shape", "selection must be an array of IDs", "selection");
+    return undefined;
+  }
+  const known = new Set<string>();
+  for (const n of graph.nodes) known.add(n.id);
+  for (const c of graph.connections) known.add(c.id);
+  const seen = new Set<string>();
+  const before = sink.count();
+  s.forEach((id: string, i: number) => {
+    if (seen.has(id)) {
+      sink.add(
+        "duplicate-id",
+        `ID ${id} is selected twice`,
+        `selection[${i}]`,
+        [id],
+      );
+    } else if (!known.has(id)) {
+      sink.add(
+        "dangling-reference",
+        `Selected ID ${id} does not exist`,
+        `selection[${i}]`,
+        [id],
+      );
+    }
+    seen.add(id);
+  });
+  return sink.count() > before ? undefined : [...s];
+}
+
 /** Validate the optional viewport and selection sections against the graph. */
 export function parseExtras(
   raw: { readonly viewport?: unknown; readonly selection?: unknown },
@@ -116,62 +205,12 @@ export function parseExtras(
   maxErrors?: number,
 ): Result<DocumentExtras, readonly SnapshotError[]> {
   const sink = createErrorSink(maxErrors);
-  const errors = {
-    push: (e: SnapshotError) => sink.add(e.code, e.message, e.path, e.entities),
-  };
-  let viewport: DocumentViewportData | undefined;
-  const v = raw.viewport;
-  if (v !== undefined) {
-    const o = v as Record<string, unknown> | null;
-    if (
-      typeof o !== "object" ||
-      o === null ||
-      ![o.x, o.y, o.zoom].every(
-        (n) => typeof n === "number" && Number.isFinite(n),
-      ) ||
-      (o.zoom as number) <= 0
-    ) {
-      errors.push(
-        error(
-          "invalid-shape",
-          "viewport needs finite x, y and a positive zoom",
-          "viewport",
-        ),
-      );
-    } else {
-      viewport = { x: o.x as number, y: o.y as number, zoom: o.zoom as number };
-    }
-  }
-  let selection: string[] | undefined;
-  const s = raw.selection;
-  if (s !== undefined) {
-    if (!Array.isArray(s) || !s.every(isWellFormedId)) {
-      errors.push(
-        error(
-          "invalid-shape",
-          "selection must be an array of IDs",
-          "selection",
-        ),
-      );
-    } else {
-      const known = new Set<string>();
-      for (const n of graph.nodes) known.add(n.id);
-      for (const c of graph.connections) known.add(c.id);
-      selection = [];
-      s.forEach((id: string, i: number) => {
-        if (known.has(id)) selection?.push(id);
-        else
-          errors.push(
-            error(
-              "dangling-reference",
-              `Selected ID ${id} does not exist`,
-              `selection[${i}]`,
-              [id],
-            ),
-          );
-      });
-    }
-  }
+  const viewport =
+    raw.viewport === undefined ? undefined : parseViewport(raw.viewport, sink);
+  const selection =
+    raw.selection === undefined
+      ? undefined
+      : parseSelection(raw.selection, graph, sink);
   if (sink.count() > 0) return err(sink.report());
   return ok({
     ...(viewport ? { viewport } : {}),
