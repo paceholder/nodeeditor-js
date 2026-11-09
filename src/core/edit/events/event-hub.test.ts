@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toOperationId } from "../adapter/types.js";
+import { operationId } from "../../base/ids/ids.js";
 import { createEventHub } from "./event-hub.js";
 import type { ChangeEvent } from "./types.js";
 
@@ -7,7 +7,7 @@ const change = (n: number): ChangeEvent => ({
   revision: n,
   patch: { ops: [] },
   origin: "local",
-  operationId: toOperationId(`op${n}`),
+  operationId: operationId(`op${n}`),
   changed: { nodes: [], ports: [], connections: [] },
 });
 

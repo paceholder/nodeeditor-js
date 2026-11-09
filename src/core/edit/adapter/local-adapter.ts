@@ -15,6 +15,7 @@ import {
   type IdCursor,
   type IdGenerator,
 } from "../../base/ids/id-generator.js";
+import { type OperationId, operationId } from "../../base/ids/ids.js";
 import { MisuseError, type Rejection, rejectionOf } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
 import {
@@ -35,15 +36,13 @@ import {
   type DocumentReplacement,
   replaceStoreContents,
 } from "./replace-document.js";
-import {
-  type Accepted,
-  type HistoryState,
-  type ModelAdapter,
-  type OperationId,
-  type Rejected,
-  type Submission,
-  type SubmitResult,
-  toOperationId,
+import type {
+  Accepted,
+  HistoryState,
+  ModelAdapter,
+  Rejected,
+  Submission,
+  SubmitResult,
 } from "./types.js";
 
 export interface LocalAdapterOptions extends StoreOptions {
@@ -133,7 +132,7 @@ export function createLocalAdapter(
     if (disposed) throw new MisuseError("The model has been disposed");
   };
   const revision = (): Revision => store.revision();
-  const mint = (): OperationId => toOperationId(`op${++operations}`);
+  const mint = (): OperationId => operationId(`op${++operations}`);
 
   function reject(sub: Submission, rejection: Rejection): Rejected {
     hub.emit("failure", {

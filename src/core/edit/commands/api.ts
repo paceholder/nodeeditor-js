@@ -7,17 +7,13 @@
  */
 
 import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
+import type { OperationId } from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
-import type {
-  HistoryState,
-  OperationId,
-  Rejected,
-  SubmitResult,
-} from "../adapter/types.js";
+import type { HistoryState, Rejected, SubmitResult } from "../adapter/types.js";
 import type { ConnectionPolicy } from "../policy/types.js";
 import { proposalsAwaitingVerdict } from "../policy/validator.js";
 import { dryRun, stagedAfter } from "./dry-run.js";

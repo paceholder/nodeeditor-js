@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nodeId } from "../../base/ids/ids.js";
+import { nodeId, operationId } from "../../base/ids/ids.js";
 import { MisuseError, rejectionOf } from "../../base/result.js";
 import { mkNode } from "../../data/model/test-helpers.js";
 import { createLocalAdapter } from "./local-adapter.js";
-import { toOperationId } from "./types.js";
 
 const add = (adapter: { revision(): number }, id: string) =>
   ({
-    operationId: toOperationId(`x-${id}`),
+    operationId: operationId(`x-${id}`),
     baseRevision: adapter.revision(),
     patch: {
       ops: [{ op: "add", entity: "node", record: mkNode(id) }],

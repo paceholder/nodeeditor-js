@@ -8,7 +8,7 @@
  */
 
 import type { IdCursor, IdGenerator } from "./base/ids/id-generator.js";
-import type { NodeId } from "./base/ids/ids.js";
+import type { NodeId, OperationId } from "./base/ids/ids.js";
 import { MisuseError } from "./base/result.js";
 import type { Revision } from "./base/revision.js";
 import type { GraphReader } from "./data/model/reader.js";
@@ -24,11 +24,7 @@ import {
   type LocalAdapterOptions,
 } from "./edit/adapter/local-adapter.js";
 import type { DocumentReplacement } from "./edit/adapter/replace-document.js";
-import type {
-  HistoryState,
-  OperationId,
-  SubmitResult,
-} from "./edit/adapter/types.js";
+import type { HistoryState, SubmitResult } from "./edit/adapter/types.js";
 import type { CapabilityPolicy } from "./edit/capabilities/types.js";
 import { createCapabilityValidator } from "./edit/capabilities/validator.js";
 import { type CommandApi, createCommandApi } from "./edit/commands/api.js";

@@ -6,6 +6,7 @@
  * Selection, viewport and hover events belong to the view layer.
  */
 
+import type { OperationId } from "../../base/ids/ids.js";
 import type { Rejection } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
 import type {
@@ -13,7 +14,7 @@ import type {
   ChangeOrigin,
   Patch,
 } from "../../data/patch/types.js";
-import type { HistoryState, OperationId } from "../adapter/types.js";
+import type { HistoryState } from "../adapter/types.js";
 
 export interface ChangeEvent {
   readonly revision: Revision;

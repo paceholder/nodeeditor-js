@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { operationId } from "../../base/ids/ids.js";
 import { moveOp } from "../../data/model/model-fixtures.js";
 import type { CapabilityOverrides } from "../../data/model/records.js";
 import { mkNode } from "../../data/model/test-helpers.js";
 import type { Size } from "../../data/model/values.js";
 import type { PatchOp } from "../../data/patch/types.js";
 import { createLocalAdapter } from "../adapter/local-adapter.js";
-import { toOperationId } from "../adapter/types.js";
 import { end, firstConnection, make, makeModel } from "../commands/test-kit.js";
 import { createCapabilityValidator } from "./validator.js";
 
@@ -233,7 +233,7 @@ describe("resizing is opt-in", () => {
     );
     const submit = (op: PatchOp, origin: "local" | "external") =>
       adapter.submit({
-        operationId: toOperationId(`op-${origin}`),
+        operationId: operationId(`op-${origin}`),
         baseRevision: adapter.revision(),
         patch: { ops: [op] },
         label: "Edit",

@@ -8,6 +8,7 @@
  * with `pending` and settle through `settled`.
  */
 
+import type { OperationId } from "../../base/ids/ids.js";
 import type { Rejection } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
 import type {
@@ -15,15 +16,6 @@ import type {
   ChangeOrigin,
   Patch,
 } from "../../data/patch/types.js";
-
-declare const brand: unique symbol;
-
-/** Identifies one submitted edit. */
-export type OperationId = string & { readonly [brand]: "operation" };
-
-export function toOperationId(value: string): OperationId {
-  return value as OperationId;
-}
 
 export interface Submission {
   readonly operationId: OperationId;

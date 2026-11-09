@@ -10,7 +10,7 @@
 
 ## 3. Operation ID constructor
 
-- [ ] 3.1 Move `OperationId` next to the entity ID brands, export a validating `operationId(text)` from the core entry and remove `toOperationId`; tests in `src/core/base/ids/operation-id.test.ts` ("operation ID constructor"); verify lint, typecheck, `npm test`
+- [x] 3.1 Move `OperationId` next to the entity ID brands, export a validating `operationId(text)` from the core entry and remove `toOperationId`; tests in `src/core/base/ids/operation-id.test.ts` ("operation ID constructor"); verify lint, typecheck, `npm test`
 
 ## 4. Accessible name option and prop
 

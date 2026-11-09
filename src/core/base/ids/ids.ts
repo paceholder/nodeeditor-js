@@ -17,6 +17,8 @@ export type ConnectionId = Brand<"connection">;
 export type GroupId = Brand<"group">;
 export type MemberKey = Brand<"member">;
 export type ValueId = Brand<"value">;
+/** Identifies one submitted edit; not an entity ID. */
+export type OperationId = Brand<"operation">;
 
 /** Entity kinds that own an ID space. Group, member and value are reserved. */
 export type IdKind =
@@ -41,7 +43,7 @@ export function isWellFormedId(value: unknown): value is string {
   return typeof value === "string" && /^\S+$/u.test(value);
 }
 
-function checked(value: unknown, kind: IdKind): string {
+function checked(value: unknown, kind: IdKind | "operation"): string {
   if (!isWellFormedId(value)) {
     throw new MisuseError(`Malformed ${kind} ID: ${JSON.stringify(value)}`);
   }
@@ -71,4 +73,12 @@ export function memberKey(value: string): MemberKey {
 
 export function valueId(value: string): ValueId {
   return checked(value, "value") as ValueId;
+}
+
+/**
+ * Brand a string as an operation ID, for `SubmitOptions.operationId`. Same rule as the
+ * entity IDs; throws `MisuseError` if it is malformed.
+ */
+export function operationId(value: string): OperationId {
+  return checked(value, "operation") as OperationId;
 }

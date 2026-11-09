@@ -12,6 +12,7 @@ export type {
   IdKind,
   MemberKey,
   NodeId,
+  OperationId,
   PortId,
   ValueId,
 } from "./base/ids/ids.js";
@@ -22,6 +23,7 @@ export {
   isWellFormedId,
   memberKey,
   nodeId,
+  operationId,
   portId,
   valueId,
 } from "./base/ids/ids.js";
@@ -97,7 +99,6 @@ export type {
   Deferred,
   HistoryState,
   ModelAdapter,
-  OperationId,
   Rejected,
   Submission,
   SubmitResult,
