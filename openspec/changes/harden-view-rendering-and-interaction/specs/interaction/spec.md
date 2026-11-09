@@ -73,7 +73,7 @@ The view's root element SHALL have the role `application`, a role description, a
 - **THEN** its root has the role `application` and the accessible name "Node editor"
 
 #### Scenario: Host label
-- **WHEN** a view is mounted with the label "Circuit diagram"
+- **WHEN** the host sets the root's accessible name to "Circuit diagram"
 - **THEN** its root's accessible name is "Circuit diagram"
 
 ### Requirement: Tool contract on the advanced entry

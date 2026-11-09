@@ -272,6 +272,10 @@ export interface ViewHandle {
   geometryStats(): SceneStats | undefined;
   /** CSS size and pixel ratio the backing stores currently use. */
   metrics(): { width: number; height: number; dpr: number };
+  /**
+   * The view's root. It has the role `application` and the accessible name "Node editor";
+   * set its `aria-label` to a localized or more specific name.
+   */
   readonly element: HTMLElement;
   readonly overlayElement: HTMLElement;
   readonly canvases: Readonly<Record<LayerName, HTMLCanvasElement>>;

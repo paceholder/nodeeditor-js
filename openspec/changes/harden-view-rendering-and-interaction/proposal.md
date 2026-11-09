@@ -70,7 +70,7 @@ None.
 
 - Source under `src/view` only; no core or React change.
 - Public API: a `paint-error` view event, `view.assets.invalidate`, `AssetStats.overBudget` and
-  `pinnedBytes`, `ViewOptions.label`, `NodePainter.repaintOnHover`, `KeyBinding.repeat`,
+  `pinnedBytes`, `NodePainter.repaintOnHover`, `KeyBinding.repeat`,
   `ToolOptions.wheel: "pan"` and `pinchSensitivity`, wheel input fields `deltaX` and `pinch`,
   pointer input field `buttons`, cancel reasons `button-released`, `entity-changed` and
   `pinch`. Tool-writing names move from `view` to `view/advanced` (breaking; there are no

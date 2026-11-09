@@ -204,8 +204,10 @@ already coalesced per frame.
 ### D19 Accessible root
 
 The root gets `role="application"`, `aria-roledescription="node editor"` and an `aria-label`,
-default "Node editor", replaceable with `ViewOptions.label` (localizable, as messages must be).
-The canvases are `aria-hidden`. `application` is chosen because the editor handles its own keys
+default "Node editor". The host replaces the name by setting `aria-label` on `view.element`
+(localizable, as messages must be). A `label` mount option was rejected for now: every view
+option must also be classified in the React wrapper's option table, which this change does not
+touch; it is a one-line follow-up there. The canvases are `aria-hidden`. `application` is chosen because the editor handles its own keys
 and screen readers should pass them through. Rejected: `region` (screen readers would keep their
 own key handling) and `img` (wrong for an interactive surface).
 

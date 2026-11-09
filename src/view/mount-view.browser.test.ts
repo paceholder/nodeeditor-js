@@ -72,3 +72,31 @@ describe("mountView", () => {
     view.dispose();
   });
 });
+
+describe("accessible root", () => {
+  it("the root has the application role, a role description and a default name", () => {
+    const view = mountView(host());
+    expect(view.element.getAttribute("role")).toBe("application");
+    expect(view.element.getAttribute("aria-roledescription")).toBe(
+      "node editor",
+    );
+    expect(view.element.getAttribute("aria-label")).toBe("Node editor");
+    for (const canvas of Object.values(view.canvases)) {
+      expect(canvas.getAttribute("aria-hidden")).toBe("true");
+    }
+    view.dispose();
+  });
+
+  it("the host can replace the name, and a remount starts from the default", () => {
+    const el = host();
+    const view = mountView(el);
+    view.element.setAttribute("aria-label", "Circuit diagram");
+    expect(
+      el.querySelector("[role=application]")?.getAttribute("aria-label"),
+    ).toBe("Circuit diagram");
+    view.dispose();
+    const again = mountView(el);
+    expect(again.element.getAttribute("aria-label")).toBe("Node editor");
+    again.dispose();
+  });
+});
