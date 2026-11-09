@@ -50,7 +50,11 @@ export function demoPolicy(): ConnectionPolicy {
   };
 }
 
-/** A small list at the drop point; resolves with the clicked option's key. */
+/**
+ * A small list at the drop point; resolves with the clicked option's key. With a host
+ * validator installed, the view then judges the chosen alternative itself before it
+ * connects, so the picker only answers.
+ */
 export function choicePicker(view: ViewHandle): ConnectionChooser {
   return (request) =>
     new Promise((resolve) => {
@@ -62,7 +66,10 @@ export function choicePicker(view: ViewHandle): ConnectionChooser {
         kind: "world",
         point: request.world,
       });
+      let finished = false;
       const done = (key: string | undefined) => {
+        if (finished) return;
+        finished = true;
         handle.dispose();
         view.element.focus();
         resolve(key);

@@ -3,6 +3,7 @@ import {
   createGeometryRegistry,
   createGraphModel,
   createImageSymbolGeometry,
+  type GraphModel,
   type NodeRecord,
 } from "nodeeditor-js";
 import {
@@ -17,6 +18,7 @@ import {
 } from "nodeeditor-js/view";
 import { choicePicker, demoPolicy } from "./choice-picker.js";
 import { installContextMenu } from "./context-menu.js";
+import { demoValidator, VALIDATION_DELAY_MS } from "./host-validator.js";
 import pumpUrl from "./pump.svg?url";
 import { demoRouteEditors, demoRoutes, installRouteToggle } from "./routes.js";
 import tankUrl from "./tank.svg?url";
@@ -41,7 +43,18 @@ async function resolveAsset(ref: string) {
 // Model: image-symbol types carry an asset reference in their payload; ports sit on the
 // picture's outline through durable placements, so they follow rotation and mirroring.
 // The demo policy asks which kind a sensor-to-controller link should be (choice-picker.ts).
-const model = createGraphModel({ connectionPolicy: demoPolicy() });
+// A host validator (host-validator.ts) judges each new connection after a delay: a drag
+// shows the target as pending, then compatible or refused, and a release while pending
+// waits for the answer. The seed connections below are answered at once.
+let validationDelay = 0;
+const model: GraphModel = createGraphModel({
+  connectionPolicy: demoPolicy(),
+  connectionValidator: demoValidator(
+    () => model,
+    () => validationDelay,
+  ),
+  timeoutMs: 5000,
+});
 const left = { x: 0, y: 0.5 };
 const right = { x: 1, y: 0.5 };
 const symbols = [
@@ -138,10 +151,26 @@ const vent = add("valve", "Vent valve", -20, 222, { asset: "valve-symbol" });
 const ctrl = add("controller", "Controller", 740, 270, { subtitle: "demo" });
 add("sensor", "Level sensor", 740, 90, { subtitle: "signal" });
 
-model.connect(port(tank, "output"), port(pump, "input"));
-model.connect(port(pump, "output"), port(valve, "input"));
-model.connect(port(valve, "output"), port(ctrl, "input", 0)); // "feed"
-model.connect(port(vent, "output"), port(tank, "input")); // tank "vent"
+// A connection needs a verdict first: ask for the ones it lacks, then repeat the command.
+async function connectVerified(
+  from: ReturnType<typeof port>,
+  to: ReturnType<typeof port>,
+): Promise<void> {
+  const first = model.connect(from, to);
+  if (first.status !== "unverified") return;
+  await model.verifyConnections(first.missing);
+  const second = model.connect(from, to);
+  if (second.status !== "accepted") {
+    console.warn("A seed connection was not made:", second);
+  }
+}
+void (async () => {
+  await connectVerified(port(tank, "output"), port(pump, "input"));
+  await connectVerified(port(pump, "output"), port(valve, "input"));
+  await connectVerified(port(valve, "output"), port(ctrl, "input", 0)); // "feed"
+  await connectVerified(port(vent, "output"), port(tank, "input")); // tank "vent"
+  validationDelay = VALIDATION_DELAY_MS;
+})();
 
 // Geometry and painters are separate registrations.
 const geometry = createGeometryRegistry();
@@ -203,7 +232,12 @@ view.element.focus();
 // Right-click, a touch long-press, or the menu key / Shift+F10 open an example menu.
 const removeMenu = installContextMenu(view);
 // Dropping a sensor's "level" on the controller's "setpoint" asks which link kind to make.
+// The chosen link is then judged by the host validator like any other (the target shows
+// as pending until the answer arrives).
 view.setConnectionChooser(choicePicker(view));
+// A refused connection reaches the host as an event; the demo shows it under the editor
+// (`say` below writes to the same status line).
+view.on("connection-rejected", ({ rejection }) => say(rejection.message));
 
 installRouteToggle(view, "#orthogonal input"); // switches "default" wires live
 // Grid snapping is a runtime tool option: a 20-unit step when on, none when off.

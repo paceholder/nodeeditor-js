@@ -206,6 +206,73 @@ const policy: ConnectionPolicy = {
 };
 ```
 
+### When a host service has to approve a connection
+
+Some rules live on a server: whether two ports may be joined can depend on state the
+editor does not have. A host supplies one asynchronous validator, and the policy stays
+synchronous:
+
+```ts
+const model = createGraphModel({
+  connectionValidator: async ({ proposal, revision, signal }) => {
+    const res = await fetch("/validate", { method: "POST", signal, body: JSON.stringify(proposal) });
+    const answer = await res.json();
+    return answer.ok
+      ? { valid: true }
+      : { valid: false, reason: rejectionOf("capability-denied", answer.message, [proposal.to.port]) };
+  },
+  timeoutMs: 5000,   // there is no default: without it a silent server leaves the proposal pending
+});
+```
+
+The validator is asked about the connection plan the base policy produced (the two ports and
+the connection kind), once per plan: answers are kept in a cache the policy only **reads**,
+which is `model.verdicts`. Evaluating a connection, asking `model.can(...)` (a toolbar does
+that on every change) and undoing never call the validator. Until an answer is known the
+policy says `pending`, and nothing is created:
+
+```ts
+const r = model.connect(from, to);       // no answer yet
+r.status;                                // "unverified"
+r.missing;                               // [{ from, to, kind }]: what the host would be asked
+model.can({ kind: "connect", from, to });
+// { available: false, reason: { code: "pending-validation", message, entities } }
+
+await model.verifyConnections(r.missing);   // asks for the missing answers, resolves when all settled
+model.connect(from, to);                    // now accepted, or rejected with the validator's reason
+```
+
+- **Who asks.** A request starts only from `verifyConnections` or from a connect gesture in a
+  view (guide-view.md). Paste and duplicate of nodes with connections need an answer for each
+  connection of the fragment too: they return `unverified` and list `missing`, and create
+  nothing; verify, then repeat the command.
+- **A commit uses up its answer.** Creating a connection changes its two ports, which makes
+  the answer stale, so connecting the same pair again later (after a disconnect, say) needs
+  verification again. Undo and redo are exempt: they restore connections that were accepted
+  once, so a missing answer never refuses them; an answer that has since turned invalid
+  still does.
+- **Several connections in one command.** A command such as paste is checked connection by
+  connection and stops at the first problem, so a fragment is reported `unverified` for its
+  first connection that lacks an answer even when a later one would be refused outright. The
+  refusal shows once the answers are in and the command is repeated.
+- **Freshness.** An answer stays current while only other parts of the graph change. A change
+  that touches one of its ports or their nodes makes it stale. A late answer for a stale
+  request is dropped and asked for once more if the caller still wants it; a second time it
+  is refused with `validator-stale`.
+- **Failures.** A validator that throws, answers something that is not a verdict, or
+  exceeds `timeoutMs` produces a rejection coded `validator-failed` or `validator-timeout`.
+  A gesture keeps showing it while it runs; the next gesture asks again.
+- **Rejections carry a code, a message and the affected IDs.** The code is one of the
+  library's rejection codes; the message is free text for the host to show.
+- **Choices.** An alternative the user picks from a policy `choice` is a connection nobody
+  has judged yet. In a mounted view the pick asks for its answer and the connection is
+  created when it settles (a refusal arrives as `connection-rejected`), so the chooser only
+  answers. Code that connects programmatically uses `verifyConnections` as above.
+
+`reset` (loading a document) aborts every request in flight and ignores answers that arrive
+afterwards; `dispose` disposes the cache. A model created without `connectionValidator` has
+no `verdicts` and behaves as before.
+
 ## 4. Moving, updating, deleting
 
 ```ts

@@ -913,7 +913,9 @@ unsubscribe function: `"viewport"` (see section 9), `"selection"` (the same valu
 `view.selection.state()`: node IDs, connection IDs and the primary, raised when any of them
 changes), `"hover"`, `"lock"`, `"availability"` (what a command
 can do changed because a command was registered or removed, the clipboard buffer was
-filled, or the zoom limits moved) and `"context-menu"`. There is no
+filled, or the zoom limits moved), `"connection-rejected"` (a connection was refused;
+see "Host verdicts" below), `"gesture-cancelled"` (a gesture ended because of something other
+than the user) and `"context-menu"`. There is no
 other subscription style on the viewport or the selection; the selection model's own `on`
 is internal to the view.
 
@@ -987,8 +989,14 @@ view.setConnectionChooser(undefined); // remove it again (cancels a pending choi
 The same function can go in `input.chooseConnection` at mount. While it is pending, the
 preview stays, graph shortcuts do nothing, and the chosen connection is validated again
 when it is committed. A thrown error, a rejected promise, an unknown key or `undefined`
-commit nothing. `examples/plain-js/choice-picker.ts` is a complete picker with a demo
-policy.
+commit nothing. With a host validator installed (see "Host verdicts" below), the chosen
+alternative is judged before it connects: the target shows as pending, the connection is
+created when the verdict arrives, a refusal reaches `connection-rejected`, and Escape, a
+press elsewhere, locking, a reset and `dispose()` cancel the wait like they cancel the
+choice, and so do the removal of a port or node of the picked connection and an external
+change of one (reported as `gesture-cancelled`, as for a drag). The commit of the choice
+itself does not cancel it. `examples/plain-js/choice-picker.ts` is a complete picker
+with a demo policy.
 
 **Presence** shows other users' cursors and selections. The host supplies the data in world
 coordinates; the view draws it on the interaction layer and never touches the model or its
@@ -1029,6 +1037,40 @@ view.setToolOptions({ autoPan: false });
 It requests animation frames through the view's frame clock (`frameClock`) only while a
 drag sits in an edge band, and none once the drag ends; see
 [interaction.md](interaction.md#5a-auto-pan-int-09).
+
+### Host verdicts: connecting while a service decides
+
+When the model has a host validator (guide-using-the-model.md, "When a host service has to
+approve a connection"), a connect drag shows a target whose answer is unknown as **pending**:
+the hourglass badge, different in shape from the check, cross and fork badges. The view asks
+the validator once for that pair, and the badge turns compatible or refused as soon as the
+answer arrives, without the pointer moving.
+
+- Releasing on a pending target keeps the preview where it was released and commits nothing.
+  An accepted answer then makes one connection (one undo step); a refused or failed one
+  commits nothing and reports the reason. No pointer is down while it waits, so you can
+  hover, pan and zoom.
+- **Escape, a new press, a lock, a document reset, disposal, and the removal of either
+  port** end the wait, abort the request and ignore a late answer. A press on another port
+  starts a new connect gesture at once. Blur and a hidden tab do not end it.
+- **`"connection-rejected"`** carries `{ rejection, source }`, with the code, message and
+  affected IDs, and `source: "gesture"` (a pointer gesture) or `"command"` (the result of a
+  view command such as paste). It fires for a verdict, for a policy refusal on release over a
+  refused port, and for a commit the model refuses. The host shows it in its own surface:
+
+  ```ts
+  view.on("connection-rejected", ({ rejection }) => statusLine.show(rejection.message));
+  ```
+
+- **`"gesture-cancelled"`** carries `{ reason, ids }`: `"entity-removed"` or
+  `"external-change"` (an entity the gesture uses was removed, or changed by an external
+  change, with its ID), `"locked"` or `"reset"`. Escape and the user's own actions are not
+  reported.
+- The view reads the verdicts from `model.verdicts`; the mount option `verdicts` passes
+  another service (a host with an external adapter). Several views on one model share a
+  request, and disposing one aborts a request only when no other view wants it.
+
+`examples/plain-js` wires a delayed validator that refuses connections into the vent valve.
 
 ### Clipboard: copy, cut, paste, duplicate
 

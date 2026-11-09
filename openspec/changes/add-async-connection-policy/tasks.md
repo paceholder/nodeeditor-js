@@ -24,4 +24,4 @@
 
 ## 4. Docs and gates
 
-- [ ] 4.1 Document the validator recipe (key, cache, explicit requests, wait semantics, timeout, undo and paste rules, the `connection-rejected` and `gesture-cancelled` events) in `docs/guide-using-the-model.md` and `docs/guide-view.md`, and add it to `examples/plain-js` with a fake delayed validator; verify `npm run demo` shows the pending cue then the accepted state, and `npm run lint`, `npm run typecheck`, `npm test` and `npm run test:browser` pass
+- [x] 4.1 Document the validator recipe (key, cache, explicit requests, wait semantics, timeout, undo and paste rules, the `connection-rejected` and `gesture-cancelled` events) in `docs/guide-using-the-model.md` and `docs/guide-view.md`, and add it to `examples/plain-js` with a fake delayed validator; verify `npm run demo` shows the pending cue then the accepted state, and `npm run lint`, `npm run typecheck`, `npm test` and `npm run test:browser` pass

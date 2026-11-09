@@ -107,11 +107,11 @@ glyph, so the state never depends on color alone:
 | incompatible | cross | The policy rejects (type, direction, self-loop, duplicate...). The reason is printed beside the hovered port. |
 | occupied | ring | The port's attachment limit is used up. |
 | unavailable | padlock | A capability denies connecting. |
-| pending | hourglass | The policy has not decided yet. |
+| pending | hourglass | The policy has not decided yet: a host validator has not answered (section 4c). |
 | choice | fork | The policy offers several alternatives (for example two connection kinds); a host chooser picks one (section 4b). |
 
-The wire snaps to the nearest candidate that is compatible or a choice (screen distance,
-ties by pick order). Releasing on a compatible port submits exactly one `connect`
+The wire snaps to the nearest candidate that is compatible, a choice, or (when a host
+validator is installed) pending (screen distance, ties by pick order). Releasing on a compatible port submits exactly one `connect`
 command; the planner checks it again at submission. Releasing anywhere else, pressing Escape, losing the pointer or
 removing the source port cancels the gesture and submits nothing, so no dangling
 connection can exist. The cursor turns to `not-allowed` while the nearest candidate is
@@ -219,8 +219,46 @@ sequenceDiagram
   X-->>U: preview cleared
 ```
 
+**With a host validator** the picked alternative is a plan nobody has judged, so the
+controller does not commit at once. If the model plans the pick as pending it enters a
+`verifying` state of the same choice (same token, abort signal and cancellations, which
+include the rule above for the ports and nodes of the picked connection, reported as
+`gesture-cancelled`; the choice's own commit is not a cancellation): it
+redraws the preview with the target pending, asks the verdict driver for the picked plan
+(`requestCommand`) and waits. When a verdict settles it plans again; once the plan is no
+longer pending it clears the preview and commits the one `connect`. A refusal is then
+reported by the model's result as a `connection-rejected` event, like any other commit.
+Only afterwards does it tell the driver the wait is over, because ending forgets failed
+verdicts and the commit must still see them. The router already ended the connect gesture
+at the release, so the mount layer does not end the driver's gesture while a choice is open.
+
 The plain demo's policy offers a "direct" and a "delayed" link between the level sensor
 and the controller; `examples/plain-js/choice-picker.ts` is the picker.
+
+## 4c. Waiting for a host verdict
+
+With a host validator (guide-using-the-model.md), a target whose answer is unknown is
+`pending`. The connect tool asks the host once per pair through a `request-verdict` effect
+(the mount layer calls the model's verdict service; tools stay pure), and a `verdict` input
+re-reads the target whenever any answer settles, so the badge changes with no pointer move.
+
+A release on a pending target moves the tool to `awaiting`: no pointer is down (the router
+reports none, hover resumes, capture is released), the preview stays at the release point,
+nothing is committed, and a `validate-wait` effect makes sure the pair has been asked. The
+answer decides:
+
+| Answer | Result |
+| ------ | ------ |
+| accepted | one `connect` command, validated again at commit, one history entry |
+| refused or failed | nothing committed, preview cleared, `connection-rejected` event |
+| still unknown | the wait continues |
+
+Escape, a press (which cancels the wait and then starts normally), a lock, a reset,
+disposal and the removal of either port (`involved` of the awaiting state) cancel the
+wait, abort the request when no one else wants it, and ignore a later answer. Blur, a hidden
+tab, a lost pointer capture and a pointer cancel do not, since no pointer is down. When a
+gesture ends, any way, failed answers are forgotten, so the next drag over the same pair asks
+again.
 
 ## 4a. Resizing a node
 
@@ -393,16 +431,16 @@ the mouse adds the growing step, so copies cascade instead of stacking.
   document becoming hidden, a model `reset` (the whole document replaced, for example by
   `loadSnapshot`), a context menu opened on a press that has not started dragging
   (`"context-menu"`, section 7a), and `dispose()`. Each ends the gesture with nothing committed.
-  A committed model change is different: each tool says which nodes, ports and connections
-  its running gesture involves (`Tool.involved(state)`), and the router cancels the gesture
-  when one of them is removed (from any origin) or changed by an external change. A change
-  of anything else, or a local change of an involved entity, leaves the gesture running.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
 
 All cancellation sources meet in the router, and they only matter while a gesture runs.
 Model reset and change are not DOM events: the view forwards them from the model's
-`reset` and `change` events (`view-editing.ts`). A lock ends a gesture with the reason
-`"locked"`.
+`reset` and `change` events (`view-editing.ts`). A reset cancels any gesture. A committed
+change is judged by what the gesture involves: each tool says which nodes, ports and
+connections its running gesture involves (`Tool.involved(state)`), and the router cancels
+the gesture when one of them is removed (from any origin) or changed by an external change.
+A change of anything else, or a local change of an involved entity, leaves the gesture
+running. A lock ends a gesture with the reason `"locked"`.
 
 ```mermaid
 flowchart LR

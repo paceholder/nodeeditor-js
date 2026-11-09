@@ -34,6 +34,13 @@ Decisions taken while applying the change, where the design left room.
   state with its own glyph and a dashed provisional wire, but no policy could produce it. The
   work was making a pending target reachable and testing that its glyph differs in shape from
   compatible, incompatible and choice-required with every state set to one colour.
+- **A host's own message and entities already reach the event; its own code does not.** A
+  verdict's `reason` carries code, message and entity IDs unchanged into the rejection and
+  the `connection-rejected` event, so the host can show its own text (the plain demo does).
+  The code is typed as the library's `RejectionCode` union, so a host-specific machine code
+  has no typed place: the runtime passes an unknown string through, but the type does not
+  allow it. No `detail` field was added; if hosts need one, it is a small addition to
+  `Rejection` and the verdict shape, to be decided separately.
 - **A picked alternative is judged like a pending target.** Decision: the choice
   controller (outside the router, because no pointer is down while the host picks) owns the
   wait, rather than putting the connect tool back into `awaiting`. After a pick it plans the
@@ -50,3 +57,10 @@ Decisions taken while applying the change, where the design left room.
   gesture. A choice the host is still deciding is cancelled by a removal only. The mount layer
   does not end the driver's gesture while a choice is open (a synchronous chooser answers
   inside the release effects).
+- **Seeding a model that has a validator** needs the same two steps as any programmatic
+  connection: run the command, `verifyConnections` the `missing` list, repeat the command
+  (`examples/plain-js/main.ts`).
+- **Known and accepted: file sizes.** `verdict-cache.ts` (about 420 lines) and
+  `connect-tool.ts` (about 320) are above the 100-300 line guide; each holds one state
+  machine whose parts share private state, and splitting them now would only move
+  parameters around. `view-editing.ts` was already large before this change.
