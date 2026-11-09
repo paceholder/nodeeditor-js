@@ -86,14 +86,22 @@ export function routeThroughPins(
   /** Where the last line starts, on the axis of the next line's coordinate. */
   const startOf = (): number =>
     lines.length === 1 ? along(e0, ori0) : (lines[lines.length - 2] as Line).at;
+  // Next fixed coordinate per orientation after each pin index, built in one backward
+  // pass so the walk stays linear in the pins.
+  const nextH: number[] = new Array(rem.length);
+  const nextV: number[] = new Array(rem.length);
+  let h = e1.y;
+  let v = e1.x;
+  for (let i = rem.length - 1; i >= 0; i--) {
+    nextH[i] = h;
+    nextV[i] = v;
+    const p = rem[i] as RouteConstraint;
+    if (oriOfPin(p) === "h") h = p.at;
+    else v = p.at;
+  }
   /** Next fixed coordinate of lines with orientation `o` after pin index `k`. */
-  const nextFixed = (o: Ori, k: number): number => {
-    for (let i = k + 1; i < rem.length; i++) {
-      const p = rem[i] as RouteConstraint;
-      if (oriOfPin(p) === o) return p.at;
-    }
-    return o === "h" ? e1.y : e1.x;
-  };
+  const nextFixed = (o: Ori, k: number): number =>
+    (o === "h" ? nextH[k] : nextV[k]) as number;
   /**
    * A free line between `start` and `target`: their midpoint, kept at least at `edge`
    * in direction `dir` when bounded (a stub's clearance), and moved off `start` by the

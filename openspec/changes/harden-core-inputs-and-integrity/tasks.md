@@ -34,7 +34,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 
 - [x] 4.1 Finite scene entries and an index that refuses non-finite boxes (D4); verify `src/core/space/scene/finite-entries.test.ts` cases titled "non-finite bounds never reach the spatial index"
 - [x] 4.2 Fat boxes shrink, `AabbTree.boxOf` for diagnostics (D19); verify `src/core/space/spatial-index/fat-box-shrink.test.ts` cases titled "enlarged index boxes shrink with their entries"
-- [ ] 4.3 Linear pinned routing (D5); verify `src/core/space/routing/orthogonal-pins.test.ts` case titled "pinned orthogonal routing is linear"
+- [x] 4.3 Linear pinned routing (D5); verify `src/core/space/routing/pins-linear.test.ts` cases titled "pinned orthogonal routing is linear"
 - [ ] 4.4 Geometry content dependencies (D15); verify `src/core/space/scene/geometry-scene.test.ts` case titled "geometry may declare content dependencies"
 
 ## 5. I/O (core/io)
