@@ -4,6 +4,8 @@
  * Events are delivered in the order they were emitted. While a dispatch runs, new events
  * and deferred jobs (edits submitted from inside a handler) are queued behind it, so no
  * handler observes a half-applied patch and every handler sees event 1 before event 2.
+ * The events a deferred job emits go ahead of the jobs still waiting, so every handler
+ * sees one queued edit's events before the next queued edit is applied.
  * A throwing handler is isolated: it becomes a `failure` event and the rest still run.
  * An error thrown by a `failure` handler goes to `onHandlerError` and is not re-dispatched.
  */
@@ -52,6 +54,8 @@ export function createEventHub(options: EventHubOptions = {}): EventHub {
     reset: [],
   };
   let queue: (() => void)[] = [];
+  /** Events emitted by the deferred job now running; they jump the waiting jobs. */
+  let jobEvents: (() => void)[] | undefined;
   let draining = false;
   const pendingDrops = new Set<() => void>();
 
@@ -86,7 +90,8 @@ export function createEventHub(options: EventHubOptions = {}): EventHub {
   }
 
   function enqueue(work: () => void): void {
-    queue.push(work);
+    if (jobEvents) jobEvents.push(work);
+    else queue.push(work);
   }
 
   function drain(): void {
@@ -135,10 +140,15 @@ export function createEventHub(options: EventHubOptions = {}): EventHub {
         pendingDrops.add(drop);
         const work = () => {
           pendingDrops.delete(drop);
+          const own: (() => void)[] = [];
+          jobEvents = own;
           try {
             resolve(job());
           } catch (error) {
             reject(error);
+          } finally {
+            jobEvents = undefined;
+            queue.unshift(...own);
           }
         };
         if (draining) enqueue(work);
@@ -147,6 +157,7 @@ export function createEventHub(options: EventHubOptions = {}): EventHub {
     },
     clear() {
       queue = [];
+      jobEvents = undefined;
       const drops = [...pendingDrops];
       pendingDrops.clear();
       for (const drop of drops) drop();

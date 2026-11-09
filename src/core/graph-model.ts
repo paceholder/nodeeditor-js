@@ -169,9 +169,13 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
       })
     : undefined;
   const policy = cache ? createValidatedPolicy(basePolicy, cache) : basePolicy;
+  // Cleared at commit, before any event or queued edit, so no stale verdict judges one.
   if (cache) {
-    adapter.on("change", (e) => cache.invalidate(touchedBy(e.patch)));
-    adapter.on("reset", () => cache.reset());
+    adapter.onCommit((notice) =>
+      notice.kind === "change"
+        ? cache.invalidate(touchedBy(notice.patch))
+        : cache.reset(),
+    );
   }
   const builtIn = [
     createCapabilityValidator({

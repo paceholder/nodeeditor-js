@@ -57,6 +57,12 @@ export interface LocalAdapter extends ModelAdapter {
   on: EventHub["on"];
   /** Register a validator; returns a function that removes it. */
   addValidator(validator: PatchValidator): () => void;
+  /**
+   * Listen to every commit synchronously, right after the store changed and before any
+   * event is delivered or queued edit applied. For caches that must never be stale; a
+   * listener must not submit. Returns a function that removes it.
+   */
+  onCommit(listener: (notice: CommitNotice) => void): () => void;
   /** The registered validators in registration order, as commits run them. */
   validators(): readonly PatchValidator[];
   /** Current ID cursor; only ever moves forward. */
@@ -78,6 +84,15 @@ export interface LocalAdapter extends ModelAdapter {
   reportRejection(operationId: OperationId, rejection: Rejection): void;
 }
 
+/** What a commit listener hears: an applied patch, or a whole-document replacement. */
+export type CommitNotice =
+  | {
+      readonly kind: "change";
+      readonly patch: AppliedPatch["patch"];
+      readonly origin: Submission["origin"];
+    }
+  | { readonly kind: "reset" };
+
 /** What to do with the history once an applied submission has been committed. */
 type AfterCommit = (applied: AppliedPatch) => boolean;
 
@@ -96,6 +111,10 @@ export function createLocalAdapter(
   );
   const history = createLocalHistory();
   const validators: PatchValidator[] = [];
+  const commitListeners: ((notice: CommitNotice) => void)[] = [];
+  const notifyCommit = (notice: CommitNotice): void => {
+    for (const listener of [...commitListeners]) listener(notice);
+  };
   let cursor: IdCursor = EMPTY_CURSOR;
   // Cursor past the queued submissions; dropped when none is left.
   let reserved: IdCursor | undefined;
@@ -135,6 +154,12 @@ export function createLocalAdapter(
     if (!result.ok) return reject(sub, result.error);
     const applied = result.value;
     cursor = advanceCursor(generator, cursor, sub.patch);
+    if (applied.patch.ops.length > 0)
+      notifyCommit({
+        kind: "change",
+        patch: applied.patch,
+        origin: sub.origin,
+      });
     const accepted: Accepted = {
       ok: true,
       status: "accepted",
@@ -244,6 +269,14 @@ export function createLocalAdapter(
       };
     },
     validators: () => validators,
+    onCommit(listener) {
+      live();
+      commitListeners.push(listener);
+      return () => {
+        const at = commitListeners.indexOf(listener);
+        if (at >= 0) commitListeners.splice(at, 1);
+      };
+    },
     idCursor: () => cursor,
     planningCursor: () => reserved ?? cursor,
     revision,
@@ -252,6 +285,7 @@ export function createLocalAdapter(
       live();
       replaceStoreContents(store, replacement);
       cursor = replacement.idCursor;
+      notifyCommit({ kind: "reset" });
       const hadHistory = history.state().canUndo || history.state().canRedo;
       history.clear();
       const now = revision();
@@ -302,6 +336,7 @@ export function createLocalAdapter(
       hub.clear();
       history.clear();
       validators.length = 0;
+      commitListeners.length = 0;
     },
   };
 }
