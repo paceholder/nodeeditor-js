@@ -21,7 +21,7 @@ import type {
   DrawResult,
 } from "./asset-types.js";
 import { createBitmapCache } from "./bitmap-cache.js";
-import { type DecodedAsset, decodeAsset } from "./decode.js";
+import { type DecodedAsset, type DecodeResult, decodeAsset } from "./decode.js";
 import {
   bucketExponent,
   MAX_BUCKET_EXP,
@@ -57,6 +57,14 @@ export interface AssetService {
   dispose(): void;
 }
 
+/** Test seams: the decode step, so Node tests can use fake bitmaps. */
+export interface AssetServiceSeams {
+  readonly decode?: (
+    source: AssetSource,
+    maxSvgChars?: number,
+  ) => Promise<DecodeResult>;
+}
+
 interface Entry {
   status: AssetStatus;
   decoded?: DecodedAsset;
@@ -67,7 +75,11 @@ interface Entry {
 const MAX_DIAGNOSTICS = 200;
 const keyOf = (ref: string, exp: number): string => `${ref}\u0000${exp}`;
 
-export function createAssetService(options: AssetOptions = {}): AssetService {
+export function createAssetService(
+  options: AssetOptions = {},
+  seams: AssetServiceSeams = {},
+): AssetService {
+  const decode = seams.decode ?? decodeAsset;
   let resolve = options.resolve;
   const cache = createBitmapCache<ImageBitmap>({
     ...(options.budgetBytes === undefined
@@ -95,6 +107,8 @@ export function createAssetService(options: AssetOptions = {}): AssetService {
     entry.decoded?.release();
     delete entry.decoded;
     cache.unreserve(ref);
+    // No size of a failed asset stays cached (a rasterization of one size failed).
+    dropBitmaps(ref);
     diagnostics.delete(ref);
     diagnostics.set(ref, { ref, code, message });
     if (diagnostics.size > MAX_DIAGNOSTICS) {
@@ -136,7 +150,7 @@ export function createAssetService(options: AssetOptions = {}): AssetService {
     }
     if (!current(ref, entry)) return;
     entry.status = "decoding";
-    const decoded = await decodeAsset(source, options.maxSvgChars);
+    const decoded = await decode(source, options.maxSvgChars);
     if (!current(ref, entry)) {
       if (decoded.ok) decoded.value.release();
       return;
@@ -213,6 +227,12 @@ export function createAssetService(options: AssetOptions = {}): AssetService {
     return "drawn";
   }
 
+  function dropBitmaps(ref: string): void {
+    for (let e = MIN_BUCKET_EXP; e <= MAX_BUCKET_EXP; e++) {
+      cache.delete(keyOf(ref, e));
+    }
+  }
+
   function forget(ref: string): void {
     const entry = entries.get(ref);
     if (!entry) return;
@@ -220,9 +240,7 @@ export function createAssetService(options: AssetOptions = {}): AssetService {
     entry.decoded?.release();
     cache.unreserve(ref);
     diagnostics.delete(ref);
-    for (let e = MIN_BUCKET_EXP; e <= MAX_BUCKET_EXP; e++) {
-      cache.delete(keyOf(ref, e));
-    }
+    dropBitmaps(ref);
   }
 
   return {
