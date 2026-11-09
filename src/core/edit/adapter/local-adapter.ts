@@ -47,6 +47,8 @@ import {
 
 export interface LocalAdapterOptions extends StoreOptions {
   readonly idGenerator?: IdGenerator;
+  /** Most undo entries kept (a positive integer); the oldest go first. Default: no limit. */
+  readonly historyLimit?: number;
   /** Receives errors thrown by `failure` handlers. */
   readonly onHandlerError?: (error: unknown) => void;
 }
@@ -109,7 +111,9 @@ export function createLocalAdapter(
   const hub = createEventHub(
     options.onHandlerError ? { onHandlerError: options.onHandlerError } : {},
   );
-  const history = createLocalHistory();
+  const history = createLocalHistory(
+    options.historyLimit === undefined ? {} : { limit: options.historyLimit },
+  );
   const validators: PatchValidator[] = [];
   const commitListeners: ((notice: CommitNotice) => void)[] = [];
   const notifyCommit = (notice: CommitNotice): void => {

@@ -11,6 +11,7 @@
  * its entries carry their own old values and are checked when they run.
  */
 
+import { MisuseError } from "../../base/result.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { HistoryState } from "../adapter/types.js";
 
@@ -36,7 +37,17 @@ export interface LocalHistory {
   clear(): void;
 }
 
-export function createLocalHistory(): LocalHistory {
+export interface LocalHistoryOptions {
+  /** Most undo entries kept; recording past it drops the oldest. Default: no limit. */
+  readonly limit?: number;
+}
+
+export function createLocalHistory(
+  options: LocalHistoryOptions = {},
+): LocalHistory {
+  const { limit } = options;
+  if (limit !== undefined && !(Number.isInteger(limit) && limit > 0))
+    throw new MisuseError("historyLimit must be a positive integer");
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
   let undoDropped: string | undefined;
@@ -45,6 +56,7 @@ export function createLocalHistory(): LocalHistory {
   return {
     record(entry) {
       undoStack.push(entry);
+      if (limit !== undefined && undoStack.length > limit) undoStack.shift();
       redoStack = [];
       undoDropped = undefined;
       redoDropped = undefined;
