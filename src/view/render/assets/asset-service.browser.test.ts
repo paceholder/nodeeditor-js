@@ -218,4 +218,21 @@ describe("asset service", () => {
     expect(s.diagnostics()[0]?.code).toBe("unsafe");
     expect(d.drawAsset("evil", BOX)).toBe("failed");
   });
+
+  it.each(["image/svg+xml;charset=utf-8", "IMAGE/SVG+XML"])(
+    "a blob of type %s is screened as SVG",
+    async (type) => {
+      const evil = `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><script>alert(1)</script></svg>`;
+      const s = service({
+        resolve: async () => ({
+          kind: "blob",
+          blob: new Blob([evil], { type }),
+        }),
+      });
+      const { ctx } = canvas();
+      s.drawer(ctx, 1).drawAsset("evil", BOX);
+      await until(() => s.status("evil") === "failed");
+      expect(s.diagnostics()[0]?.code).toBe("unsafe");
+    },
+  );
 });

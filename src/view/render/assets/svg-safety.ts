@@ -3,6 +3,10 @@
  * it is parsed and rejected when it holds anything active or anything that would fetch.
  * A host that needs more can resolve assets through its own sanitizer; this is the
  * built-in policy. Needs `DOMParser`, so it runs in the browser only.
+ *
+ * The real isolation is how SVG is decoded: only through an image element (`decode.ts`),
+ * and browsers run no script and fetch no resource for SVG used as an image. This screen
+ * is a second layer on top of that, not a sanitizer for SVG placed in the document.
  */
 
 export interface SvgInfo {
@@ -55,9 +59,19 @@ function hasExternalUrl(value: string): boolean {
   return /@import/i.test(value);
 }
 
+/** Animations that could rewrite a link attribute after screening. */
+const ANIMATIONS: ReadonlySet<string> = new Set(["set", "animate"]);
+const LINK_ATTRIBUTES: ReadonlySet<string> = new Set(["href", "xlink:href"]);
+
 function violationOf(el: Element): string | undefined {
   const name = el.localName.toLowerCase();
   if (FORBIDDEN_ELEMENTS.has(name)) return `element <${name}> is not allowed`;
+  const animated = (el.getAttribute("attributeName") ?? "")
+    .trim()
+    .toLowerCase();
+  if (ANIMATIONS.has(name) && LINK_ATTRIBUTES.has(animated)) {
+    return `element <${name}> animates a link attribute`;
+  }
   if (name === "style" && hasExternalUrl(el.textContent ?? "")) {
     return "style element references an external resource";
   }

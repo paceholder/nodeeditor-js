@@ -113,8 +113,9 @@ export async function decodeAsset(
     case "svg":
       return decodeSvg(source.text, maxSvgChars);
     case "blob":
-      // An SVG blob must pass the same screening as SVG text.
-      if (source.blob.type === "image/svg+xml") {
+      // An SVG blob must pass the same screening as SVG text, whatever its parameters
+      // (`image/svg+xml;charset=utf-8`).
+      if (source.blob.type.toLowerCase().startsWith("image/svg+xml")) {
         return decodeSvg(await source.blob.text(), maxSvgChars);
       }
       return decodeRaster(source.blob);

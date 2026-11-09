@@ -76,6 +76,29 @@ describe("svg safety", () => {
   });
 });
 
+describe("svg blobs screened by media-type prefix", () => {
+  it.each([
+    [
+      "set on href",
+      '<set attributeName="href" to="https://example.com/a.png"/>',
+    ],
+    [
+      "animate on xlink:href",
+      '<animate attributeName="xlink:href" values="https://example.com/a.png"/>',
+    ],
+    ["set on HREF", '<image><set attributeName="HREF" to="x.png"/></image>'],
+  ])("rejects %s", (_name, inner) => {
+    expect(screenSvg(svg(inner)).ok).toBe(false);
+  });
+
+  it("keeps animations of other attributes", () => {
+    expect(
+      screenSvg(svg('<rect><animate attributeName="width" to="10"/></rect>'))
+        .ok,
+    ).toBe(true);
+  });
+});
+
 describe("bounded SVG intrinsic size", () => {
   it("a huge declared size is scaled down to the maximum side, keeping the aspect", () => {
     const square = screenSvg(svg("<rect/>", 'width="30000" height="30000"'));
