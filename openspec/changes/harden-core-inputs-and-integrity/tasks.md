@@ -28,7 +28,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 - [x] 3.6 Rejected undo or redo drops its stack with a reason (D2); verify `src/core/edit/history/rejected-step.test.ts` cases titled "a rejected undo or redo does not block history"
 - [x] 3.7 History limit option `historyLimit` (D3); verify `src/core/edit/history/history-limit.test.ts` cases titled "local history size limit"
 - [x] 3.8 Checked `replaceDocument`, refused during dispatch (D10); verify `src/core/edit/adapter/checked-replacement.test.ts` cases titled "whole-document replacement is checked before it changes anything"
-- [ ] 3.9 Moving nodes walks only the moved nodes' connections; verify `src/core/edit/commands/transform-nodes.test.ts` case titled "moving nodes looks only at their own connections"
+- [x] 3.9 Moving nodes walks only the moved nodes' connections; verify `src/core/edit/commands/move-scan.test.ts` case titled "moving nodes looks only at their own connections"
 
 ## 4. Space (core/space)
 

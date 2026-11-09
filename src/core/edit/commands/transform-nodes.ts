@@ -1,6 +1,7 @@
 /** moveNodes, rotateNodes, mirrorNodes, reorderNodes planners. */
 import type { NodeId } from "../../base/ids/ids.js";
 import { mirroredRotation } from "../../data/model/node-frame.js";
+import type { ConnectionRecord } from "../../data/model/records.js";
 import { translateConstraints } from "../../data/model/route-constraints.js";
 import type { QuarterTurns, Vec2 } from "../../data/model/values.js";
 import type { PatchOp } from "../../data/patch/types.js";
@@ -44,7 +45,8 @@ export const planMoveNodes: PlannerFor<"moveNodes"> = (command, ctx) => {
 /**
  * Route updates for connections whose both endpoint nodes move: their pins shift
  * by the mean of the two node offsets, which is the common offset in a whole-group move.
- * A connection with one fixed end keeps its pins. Ordered by connection collection order.
+ * A connection with one fixed end keeps its pins. Only the moved nodes' connections are
+ * visited, and the updates follow connection collection order.
  */
 function shiftPins(
   ctx: PlanContext,
@@ -57,8 +59,16 @@ function shiftPins(
     const d = { x: to.x - node.position.x, y: to.y - node.position.y };
     return d.x === 0 && d.y === 0 ? undefined : d;
   };
+  const touched = new Map<string, ConnectionRecord>();
+  for (const id of targets.keys()) {
+    for (const c of ctx.reader.connectionsOfNode(id))
+      if (c.route) touched.set(c.id, c);
+  }
+  const ordered = [...touched.values()].sort(
+    (x, y) => (ctx.reader.seqOf(x.id) ?? 0) - (ctx.reader.seqOf(y.id) ?? 0),
+  );
   const ops: PatchOp[] = [];
-  for (const c of ctx.reader.connections()) {
+  for (const c of ordered) {
     if (!c.route) continue;
     const a = delta(c.from.node);
     const b = delta(c.to.node);
