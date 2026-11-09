@@ -110,7 +110,9 @@ export type CancelReason =
    * A move arrived without the button that started the gesture: the browser never
    * delivered its release (a native menu took the mouse-up, for example).
    */
-  | "button-released";
+  | "button-released"
+  /** A second touch went down: the two touches pinch-zoom instead. */
+  | "pinch";
 
 /** The reasons a gesture ends without the user asking. */
 export type GestureCancelReason = Extract<

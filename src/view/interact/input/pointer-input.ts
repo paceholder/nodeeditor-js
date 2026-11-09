@@ -8,6 +8,7 @@ import type {
   Modifiers,
   PointerInput,
   PointerType,
+  ToolInput,
 } from "../tools/tool-types.js";
 
 /** Buttons tools understand: primary, middle, secondary. */
@@ -64,6 +65,27 @@ export function pointerInputOf(
     : type === "pointer-move"
       ? { type, ...base }
       : { type, ...base };
+}
+
+/**
+ * A tool wheel input for a DOM wheel event: line and page deltas normalized to CSS pixels
+ * (`pageHeight` is the view's height), and the Control key reported as a pinch.
+ */
+export function wheelInputOf(
+  e: WheelEvent,
+  viewport: Point<"viewport">,
+  pageHeight: number,
+  platform: "mac" | "other",
+): Extract<ToolInput, { type: "wheel" }> {
+  const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? pageHeight : 1;
+  return {
+    type: "wheel",
+    viewport,
+    deltaX: e.deltaX * scale,
+    deltaY: e.deltaY * scale,
+    pinch: e.ctrlKey,
+    modifiers: modifiersOf(e, platform),
+  };
 }
 
 export interface PointerCapture {

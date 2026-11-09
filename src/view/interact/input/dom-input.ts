@@ -28,7 +28,9 @@ import {
   modifiersOf,
   pointerInputOf,
   pointerTypeOf,
+  wheelInputOf,
 } from "./pointer-input.js";
+import { createTouchPinch, type PinchInput } from "./touch-pinch.js";
 
 export interface DomInputDeps {
   readonly router: ToolRouter;
@@ -168,6 +170,16 @@ export function attachDomInput(
     return route(pointerInputOf(type, e, at, deps.platform));
   }
 
+  // Two-finger pinch zoom: touches go to the pinch first; true when it owns the event.
+  const pinch = createTouchPinch({
+    cancel: () => void cancel("pinch"),
+    viewport: deps.host.viewport,
+  });
+  const pinchTouch = (e: PointerEvent, input: PinchInput): boolean =>
+    e.pointerType === "touch" && pinch.feed(input);
+  const viewportAt = (e: PointerEvent) =>
+    deps.coords(e.clientX, e.clientY)?.viewport;
+
   // The press of the running gesture, until it moves past the drag threshold.
   let press:
     | { pointerId: number; x: number; y: number; dragged: boolean }
@@ -181,6 +193,14 @@ export function attachDomInput(
     // Focus first so keyboard shortcuts follow the pointer; never steal from text fields.
     if (!isTextTarget(doc.activeElement) || doc.activeElement === root) {
       root.focus({ preventScroll: true });
+    }
+    const touchAt = viewportAt(e);
+    if (
+      touchAt &&
+      pinchTouch(e, { type: "down", pointerId: e.pointerId, at: touchAt })
+    ) {
+      e.preventDefault();
+      return;
     }
     const result = pointer("pointer-down", e);
     if (router.activePointer === e.pointerId) {
@@ -197,6 +217,13 @@ export function attachDomInput(
 
   const onPointerMove = (e: PointerEvent): void => {
     track(e);
+    const touchAt = viewportAt(e);
+    if (
+      touchAt &&
+      pinchTouch(e, { type: "move", pointerId: e.pointerId, at: touchAt })
+    ) {
+      return;
+    }
     if (press?.pointerId === e.pointerId && !press.dragged) {
       const limit = dragThreshold(deps.context().options, pointerTypeOf(e));
       press.dragged = distancePx({ x: e.clientX, y: e.clientY }, press) > limit;
@@ -225,6 +252,7 @@ export function attachDomInput(
   };
 
   const onPointerUp = (e: PointerEvent): void => {
+    if (pinchTouch(e, { type: "up", pointerId: e.pointerId })) return;
     pointer("pointer-up", e);
   };
 
@@ -238,6 +266,7 @@ export function attachDomInput(
   };
 
   const onPointerCancel = (e: PointerEvent): void => {
+    pinchTouch(e, { type: "up", pointerId: e.pointerId });
     if (e.pointerId === router.activePointer) cancel("pointercancel");
   };
 
@@ -256,17 +285,9 @@ export function attachDomInput(
   const onWheel = (e: WheelEvent): void => {
     const at = deps.coords(e.clientX, e.clientY);
     if (!at || isOverlayContent(e.target, deps.overlay)) return;
-    // Normalize line and page deltas to CSS pixels.
-    const scale =
-      e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.clientHeight : 1;
-    const result = route({
-      type: "wheel",
-      viewport: at.viewport,
-      deltaX: e.deltaX * scale,
-      deltaY: e.deltaY * scale,
-      pinch: e.ctrlKey,
-      modifiers: modifiers(e),
-    });
+    const result = route(
+      wheelInputOf(e, at.viewport, root.clientHeight, deps.platform),
+    );
     // A wheel that changed the viewport is consumed, and a pinch always is (the browser
     // would zoom the page); otherwise the page scrolls.
     if (result.handled) e.preventDefault();
