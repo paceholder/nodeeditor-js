@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { gridLevel } from "./grid.js";
+import { DEFAULT_THEME } from "../theme/tokens.js";
+import { createPaintFrame } from "./frame.js";
+import { gridLevel, paintGrid } from "./grid.js";
 
 describe("background grid density", () => {
   it("keeps the base step while lines are far enough apart", () => {
@@ -43,5 +45,36 @@ describe("background grid density", () => {
     expect(gridLevel(0, 5, 1)).toBeUndefined();
     expect(gridLevel(Number.NaN, 5, 1)).toBeUndefined();
     expect(gridLevel(20, 5, 0)).toBeUndefined();
+  });
+});
+
+describe("grid lines on device pixels", () => {
+  it("every line sits on a device pixel centre at a pixel ratio of 1.5", () => {
+    const dpr = 1.5;
+    const frame = createPaintFrame(
+      { width: 301, height: 203, dpr },
+      { zoom: 1.37, panX: 13.3, panY: -7.9 },
+      DEFAULT_THEME,
+    );
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const ctx = {
+      setTransform() {},
+      fillRect() {},
+      beginPath() {},
+      stroke() {},
+      moveTo(x: number, y: number) {
+        if (y === 0) xs.push(x);
+        else ys.push(y);
+      },
+      lineTo() {},
+    } as unknown as CanvasRenderingContext2D;
+    paintGrid(ctx, frame);
+    expect(xs.length).toBeGreaterThan(5);
+    expect(ys.length).toBeGreaterThan(5);
+    for (const css of [...xs, ...ys]) {
+      const device = css * dpr;
+      expect(device - Math.floor(device)).toBeCloseTo(0.5, 9);
+    }
   });
 });

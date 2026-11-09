@@ -45,6 +45,14 @@ export function gridLevel(
   return { minorStep, majorEvery, minorAlpha };
 }
 
+/**
+ * A line coordinate in CSS pixels whose device coordinate is the centre of a device pixel,
+ * so a one-device-pixel line stays crisp at fractional ratios (1.25, 1.5).
+ */
+function onDevicePixel(css: number, dpr: number): number {
+  return (Math.round(css * dpr - 0.5) + 0.5) / dpr;
+}
+
 export const paintGrid: BackgroundPainter = (ctx, frame) => {
   const { theme, viewport, width, height, dpr } = frame;
   setMatrix(ctx, frame.viewportToDevice);
@@ -75,15 +83,19 @@ export const paintGrid: BackgroundPainter = (ctx, frame) => {
     ctx.beginPath();
     for (let i = first; i <= last; i++) {
       if ((i % every === 0) !== major) continue;
-      const x =
-        Math.round(i * minorStep * viewport.zoom + viewport.panX) + 0.5 / dpr;
+      const x = onDevicePixel(
+        i * minorStep * viewport.zoom + viewport.panX,
+        dpr,
+      );
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
     for (let j = firstY; j <= lastY; j++) {
       if ((j % every === 0) !== major) continue;
-      const y =
-        Math.round(j * minorStep * viewport.zoom + viewport.panY) + 0.5 / dpr;
+      const y = onDevicePixel(
+        j * minorStep * viewport.zoom + viewport.panY,
+        dpr,
+      );
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
     }
