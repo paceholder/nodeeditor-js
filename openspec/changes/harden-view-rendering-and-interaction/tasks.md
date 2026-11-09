@@ -40,7 +40,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 
 ## 6. Keyboard
 
-- [ ] 6.1 Fall back to the physical key code (D16); verify `keymap.test.ts` (Ctrl+Я on the Z key resolves to undo; AZERTY Z still matches by character)
+- [x] 6.1 Fall back to the physical key code (D16); verify `keymap.test.ts` (Ctrl+Я on the Z key resolves to undo; AZERTY Z still matches by character)
 - [ ] 6.2 Add `KeyBinding.repeat` and ignore repeats of nudge, rotate, mirror and duplicate (D17); verify `keymap.test.ts` and `basic-editing.browser.test.ts` (ten repeated arrow key-downs move once and add one history entry)
 
 ## 7. Mount surface

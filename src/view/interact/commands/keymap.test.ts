@@ -137,3 +137,38 @@ describe("rotate and mirror keys", () => {
     expect(resolve(other, key("r", { altKey: true }))).toBeUndefined();
   });
 });
+
+describe("shortcuts on non-Latin layouts", () => {
+  it("the physical key matches when the character is not an ASCII letter or digit", () => {
+    // Cyrillic layout: the Z key produces "я", the D key "в", the 1 key stays "1".
+    expect(command(other, key("я", { code: "KeyZ", ctrlKey: true }))).toBe(
+      COMMAND_IDS.undo,
+    );
+    expect(command(mac, key("я", { code: "KeyZ", metaKey: true }))).toBe(
+      COMMAND_IDS.undo,
+    );
+    expect(
+      command(other, key("Я", { code: "KeyZ", ctrlKey: true, shiftKey: true })),
+    ).toBe(COMMAND_IDS.redo);
+    expect(command(other, key("в", { code: "KeyD", ctrlKey: true }))).toBe(
+      COMMAND_IDS.duplicate,
+    );
+    // Single-letter shortcuts too: R rotates on a Greek layout ("ρ").
+    expect(command(other, key("ρ", { code: "KeyR" }))).toBe(COMMAND_IDS.rotate);
+  });
+
+  it("a key that produces an ASCII letter matches by that character, not by its position", () => {
+    // AZERTY: the key in the QWERTY W position produces "z".
+    expect(command(other, key("z", { code: "KeyW", ctrlKey: true }))).toBe(
+      COMMAND_IDS.undo,
+    );
+    // The QWERTY Z position produces "w" there: no undo.
+    expect(
+      command(other, key("w", { code: "KeyZ", ctrlKey: true })),
+    ).toBeUndefined();
+    // Named keys are untouched by the fallback.
+    expect(command(other, key("Delete", { code: "Delete" }))).toBe(
+      COMMAND_IDS.delete,
+    );
+  });
+});

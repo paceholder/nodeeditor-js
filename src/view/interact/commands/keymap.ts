@@ -11,6 +11,8 @@ export type Platform = "mac" | "other";
 /** The key event fields the keymap reads; a DOM `KeyboardEvent` fits. */
 export interface KeyLike {
   readonly key: string;
+  /** The physical key (`KeyZ`, `Digit1`); used when `key` is not an ASCII letter or digit. */
+  readonly code?: string;
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
   readonly shiftKey: boolean;
@@ -118,6 +120,18 @@ function parseChord(chord: string): Chord {
   };
 }
 
+/**
+ * The key a chord is compared with: the produced character, lower-cased. On a non-Latin
+ * layout (Cyrillic, Greek) a letter key produces no ASCII letter, so the physical key's
+ * letter or digit is used instead; Latin layouts keep matching what the user sees.
+ */
+function keyOf(e: KeyLike): string {
+  const key = e.key.toLowerCase();
+  if (key.length !== 1 || /^[a-z0-9]$/.test(key)) return key;
+  const physical = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(e.code ?? "");
+  return (physical?.[1] ?? physical?.[2] ?? key).toLowerCase();
+}
+
 function matches(c: Chord, e: KeyLike, platform: Platform): boolean {
   // `Mod` is the platform's primary key (Cmd or Ctrl); a literal `Ctrl` is always the
   // Control key. On macOS they differ; elsewhere both mean Ctrl and Meta stays up.
@@ -127,7 +141,7 @@ function matches(c: Chord, e: KeyLike, platform: Platform): boolean {
       : e.ctrlKey === (c.mod || c.ctrl) && !e.metaKey;
   return (
     modifiers &&
-    e.key.toLowerCase() === c.key &&
+    keyOf(e) === c.key &&
     e.shiftKey === c.shift &&
     e.altKey === c.alt
   );
