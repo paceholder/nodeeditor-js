@@ -36,6 +36,8 @@ const FORBIDDEN_ELEMENTS: ReadonlySet<string> = new Set([
 ]);
 
 const DEFAULT_SIDE = 100;
+/** Longest intrinsic side kept; larger declared sizes are scaled down to it. */
+export const MAX_SVG_SIDE = 4096;
 
 const bad = (reason: string): SvgScreen => ({ ok: false, error: { reason } });
 
@@ -81,7 +83,16 @@ function lengthOf(raw: string | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-function sizeOf(svg: Element): { width: number; height: number } {
+/**
+ * The intrinsic size: `width`/`height`, else the `viewBox`, else a default, scaled down
+ * (keeping the aspect) so the longer side is at most `MAX_SVG_SIDE`. A declared size has
+ * no upper bound otherwise, and it decides the bitmap sizes the cache rasterizes.
+ */
+function sizeOf(svg: Element): {
+  width: number;
+  height: number;
+  declared: { width: number; height: number };
+} {
   const vb = (svg.getAttribute("viewBox") ?? "")
     .trim()
     .split(/[\s,]+/)
@@ -90,7 +101,12 @@ function sizeOf(svg: Element): { width: number; height: number } {
   const vbh = vb.length === 4 && (vb[3] ?? 0) > 0 ? vb[3] : undefined;
   const width = lengthOf(svg.getAttribute("width")) ?? vbw ?? DEFAULT_SIDE;
   const height = lengthOf(svg.getAttribute("height")) ?? vbh ?? DEFAULT_SIDE;
-  return { width, height };
+  const scale = Math.min(1, MAX_SVG_SIDE / Math.max(width, height));
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+    declared: { width, height },
+  };
 }
 
 /**
@@ -111,7 +127,14 @@ export function screenSvg(text: string, maxChars = 1 << 20): SvgScreen {
     const reason = violationOf(el);
     if (reason) return bad(reason);
   }
-  const size = sizeOf(root);
+  const { declared, ...size } = sizeOf(root);
+  // A scaled-down size needs a viewBox, or the picture would be cropped, not scaled.
+  if (
+    !root.hasAttribute("viewBox") &&
+    (size.width !== declared.width || size.height !== declared.height)
+  ) {
+    root.setAttribute("viewBox", `0 0 ${declared.width} ${declared.height}`);
+  }
   root.setAttribute("width", String(size.width));
   root.setAttribute("height", String(size.height));
   if (!root.hasAttribute("xmlns")) {

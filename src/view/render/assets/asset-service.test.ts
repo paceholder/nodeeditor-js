@@ -32,6 +32,7 @@ function fakes(opts: FakeOptions = {}) {
     const decoded: DecodedAsset = {
       width: side,
       height: side,
+      bytes: side * side * 4,
       async rasterize(size) {
         if (opts.failSides?.includes(Math.max(size.width, size.height))) {
           throw new Error("raster failed");

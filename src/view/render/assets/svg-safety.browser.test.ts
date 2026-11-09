@@ -75,3 +75,18 @@ describe("svg safety", () => {
     expect(screenSvg(svg("<rect/>"), 10).ok).toBe(false);
   });
 });
+
+describe("bounded SVG intrinsic size", () => {
+  it("a huge declared size is scaled down to the maximum side, keeping the aspect", () => {
+    const square = screenSvg(svg("<rect/>", 'width="30000" height="30000"'));
+    expect(square.ok && [square.value.width, square.value.height]).toEqual([
+      4096, 4096,
+    ]);
+    const wide = screenSvg(svg("<rect/>", 'viewBox="0 0 20000 5000"'));
+    expect(wide.ok && [wide.value.width, wide.value.height]).toEqual([
+      4096, 1024,
+    ]);
+    // The serialized markup carries the clamped size that is decoded.
+    expect(square.ok && square.value.text).toContain('width="4096"');
+  });
+});

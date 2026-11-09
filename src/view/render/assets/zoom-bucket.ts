@@ -27,9 +27,13 @@ export function bucketExponent(ratio: number, intrinsic: PixelSize): number {
   return exp;
 }
 
-/** Raster size of a bucket; never below one pixel. */
+/**
+ * Raster size of a bucket; never below one pixel, and scaled down (keeping the aspect) so
+ * neither side exceeds `MAX_RASTER_SIDE`, whatever the intrinsic size.
+ */
 export function rasterSize(intrinsic: PixelSize, exp: number): PixelSize {
-  const s = 2 ** exp;
+  const side = Math.max(intrinsic.width, intrinsic.height, 1);
+  const s = Math.min(2 ** exp, MAX_RASTER_SIDE / side);
   return {
     width: Math.max(1, Math.round(intrinsic.width * s)),
     height: Math.max(1, Math.round(intrinsic.height * s)),

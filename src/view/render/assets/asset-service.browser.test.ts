@@ -4,6 +4,7 @@ import { rect } from "../../../core/index.js";
 import { solidSvg, until } from "../../browser-support.js";
 import { type AssetService, createAssetService } from "./asset-service.js";
 import type { AssetOptions } from "./asset-types.js";
+import { screenSvg } from "./svg-safety.js";
 
 const services: AssetService[] = [];
 function service(options?: AssetOptions): AssetService {
@@ -25,6 +26,11 @@ function canvas(w = 100, h = 100) {
 }
 const BOX = rect<"local">(0, 0, 40, 20);
 const red = { kind: "svg", text: solidSvg(40, 20, "#ff0000") } as const;
+/** An SVG source counts two bytes per character of the markup that is decoded. */
+const RED_SOURCE_BYTES = (() => {
+  const r = screenSvg(red.text);
+  return r.ok ? r.value.text.length * 2 : Number.NaN;
+})();
 
 describe("asset service", () => {
   it("no resolver configured: nothing is fetched, a placeholder is requested", async () => {
@@ -114,7 +120,7 @@ describe("asset service", () => {
     await until(() => s.stats().rasterizations === 2);
     await until(() => s.stats().cacheEntries === 1);
     expect(s.stats().cacheBytes).toBeLessThanOrEqual(80 * 40 * 4);
-    expect(s.stats().sourceBytes).toBe(40 * 20 * 4);
+    expect(s.stats().sourceBytes).toBe(RED_SOURCE_BYTES);
     s.dispose();
     expect(s.stats().cacheEntries).toBe(0);
     expect(s.stats().cacheBytes).toBe(0);
@@ -122,8 +128,12 @@ describe("asset service", () => {
   });
 
   it("decoded sources count against the budget; an asset not drawn lately is released whole", async () => {
-    // Each asset costs 3200 (source) + 3200 (bucket); the budget holds one and a bit.
-    const s = service({ resolve: async () => red, budgetBytes: 9000 });
+    // Each asset costs its source text plus 3200 (bucket). The budget holds one asset and
+    // half a source, so evicting a's bitmap alone cannot make room for b.
+    const s = service({
+      resolve: async () => red,
+      budgetBytes: 1.5 * RED_SOURCE_BYTES + 3200,
+    });
     const { ctx } = canvas();
     const draw = (ref: string): boolean => {
       const drawn = s.drawer(ctx, 1).drawAsset(ref, BOX) === "drawn";
@@ -131,15 +141,40 @@ describe("asset service", () => {
       return drawn;
     };
     await until(() => draw("a"));
-    expect(s.stats().sourceBytes).toBe(3200);
+    expect(s.stats().sourceBytes).toBe(RED_SOURCE_BYTES);
     s.endFrame();
     s.endFrame();
     await until(() => draw("b"));
     // "a" was drawn in neither of the last two frames: bucket and source both went.
     expect(s.status("a")).toBe("unrequested");
     expect(s.status("b")).toBe("ready");
-    expect(s.stats().sourceBytes).toBe(3200);
+    expect(s.stats().sourceBytes).toBe(RED_SOURCE_BYTES);
     expect(s.stats().cacheEntries).toBe(1);
+  });
+
+  it("an SVG declaring a huge size counts by its text and evicts nothing else", async () => {
+    const huge = {
+      kind: "svg",
+      text: solidSvg(30000, 30000, "#00ff00"),
+    } as const;
+    const s = service({
+      resolve: async (ref) => (ref === "huge" ? huge : red),
+    });
+    const { ctx } = canvas();
+    const draw = (ref: string, box = BOX): boolean => {
+      const drawn = s.drawer(ctx, 1).drawAsset(ref, box) === "drawn";
+      s.endFrame();
+      return drawn;
+    };
+    await until(() => draw("red"));
+    await until(() => draw("huge"));
+    const hugeText = screenSvg(huge.text);
+    expect(hugeText.ok).toBe(true);
+    const expected =
+      RED_SOURCE_BYTES + (hugeText.ok ? hugeText.value.text.length * 2 : 0);
+    expect(s.stats().sourceBytes).toBe(expected);
+    expect(s.stats().overBudget).toBe(false);
+    expect(s.status("red")).toBe("ready");
   });
 
   it("asset load fails: failed once, not retried per frame, retry is explicit", async () => {

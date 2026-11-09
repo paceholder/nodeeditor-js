@@ -158,3 +158,19 @@ describe("zoom buckets", () => {
     expect(nearestBucket([0, 3], 2)).toBe(3);
   });
 });
+
+describe("bounded SVG intrinsic size", () => {
+  it("no bucket of a large raster asks for a side longer than the maximum", () => {
+    const wide = { width: 40_000, height: 100 };
+    for (let exp = MIN_BUCKET_EXP; exp <= MAX_BUCKET_EXP; exp++) {
+      const size = rasterSize(wide, exp);
+      expect(Math.max(size.width, size.height)).toBeLessThanOrEqual(
+        MAX_RASTER_SIDE,
+      );
+      expect(size.height).toBeGreaterThanOrEqual(1);
+    }
+    // Scaled down keeping the aspect ratio.
+    const s = rasterSize(wide, MIN_BUCKET_EXP);
+    expect(s.width / s.height).toBeGreaterThan(300);
+  });
+});

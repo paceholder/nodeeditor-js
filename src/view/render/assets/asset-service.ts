@@ -158,7 +158,7 @@ export function createAssetService(
       return;
     }
     entry.decoded = decoded.value;
-    entry.sourceBytes = decoded.value.width * decoded.value.height * 4;
+    entry.sourceBytes = decoded.value.bytes;
     cache.reserve(ref, entry.sourceBytes);
     entry.status = "ready";
     diagnostics.delete(ref);

@@ -69,7 +69,10 @@ export interface AssetStats {
   /** Bytes of cached bitmaps. */
   readonly cacheBytes: number;
   readonly cacheEntries: number;
-  /** Estimated bytes of decoded sources (width * height * 4); counted in the budget. */
+  /**
+   * Bytes of decoded sources, counted in the budget: SVG markup at two bytes per
+   * character, raster pixels at four bytes each.
+   */
   readonly sourceBytes: number;
   /** Bytes the current frame needs: its pinned bitmaps and the sources of assets it drew. */
   readonly pinnedBytes: number;

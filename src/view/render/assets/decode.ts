@@ -13,6 +13,11 @@ import type { PixelSize } from "./zoom-bucket.js";
 export interface DecodedAsset {
   readonly width: number;
   readonly height: number;
+  /**
+   * Bytes the source counts against the asset budget: an SVG its markup (two bytes per
+   * character; the decoded image element is the browser's), a raster its pixels.
+   */
+  readonly bytes: number;
   /** Render at the given pixel size into a fresh bitmap. */
   rasterize(size: PixelSize): Promise<ImageBitmap>;
   /** Release the decoded source (revokes the Blob URL, closes the bitmap). */
@@ -74,6 +79,7 @@ async function decodeSvg(
     value: {
       width,
       height,
+      bytes: screened.value.text.length * 2,
       rasterize: (size) => render(img, size),
       release: () => URL.revokeObjectURL(url),
     },
@@ -92,6 +98,7 @@ async function decodeRaster(blob: Blob): Promise<DecodeResult> {
     value: {
       width: bitmap.width,
       height: bitmap.height,
+      bytes: bitmap.width * bitmap.height * 4,
       rasterize: (size) => render(bitmap, size),
       release: () => bitmap.close(),
     },
