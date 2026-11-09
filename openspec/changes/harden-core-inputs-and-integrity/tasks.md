@@ -6,7 +6,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 
 ## 1. Model integrity (core/data)
 
-- [ ] 1.1 Orphaned ports: the patch integrity check rejects a node `ports` update that drops a port still owned by the node, and the store's consistency check re-verifies ports a node used to list; verify `src/core/data/patch/apply-atomic.test.ts` and `src/core/data/model/store.test.ts` cases titled "every port keeps an owning node"
+- [x] 1.1 Orphaned ports: the patch integrity check rejects a node `ports` update that drops a port still owned by the node, and the store's consistency check re-verifies ports a node used to list; verify `src/core/data/patch/apply-atomic.test.ts` and `src/core/data/model/store.test.ts` cases titled "every port keeps an owning node"
 - [ ] 1.2 Own keys only: update fields are checked with `Object.hasOwn`, patch ID cursors must be plain objects of finite numbers or text with no `__proto__` key, and cursor merging defines keys safely (D7); verify `src/core/data/patch/apply.test.ts` cases titled "update fields are the record's own fields"
 - [ ] 1.3 Explicit sequence: bounded to 2^40 and unique per kind among live and staged entities (D11); verify `src/core/data/patch/apply.test.ts` cases titled "explicit insertion sequences are bounded and unique"
 - [ ] 1.4 Record copies: validation returns records with only known fields and copied values, payload by reference (D12); verify `src/core/data/model/validate-records.test.ts` and `src/core/graph-model.test.ts` cases titled "stored records are the model's own copies"

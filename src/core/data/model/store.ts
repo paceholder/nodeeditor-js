@@ -140,6 +140,8 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         live();
         const seq = allocate(record.id, nodes, [ports, connections], o?.seq);
         const old = nodes.get(record.id);
+        // Re-verify the ports it listed before, so one it dropped is caught.
+        for (const p of old?.ports ?? []) touched.add(p);
         if (nodes.size === 0) zBounds = undefined;
         if (old && zBounds && (old.z === zBounds.min || old.z === zBounds.max))
           zDirty = true;
@@ -167,6 +169,7 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
       },
       removeNode(id) {
         const old = nodes.get(id);
+        for (const p of old?.ports ?? []) touched.add(p);
         if (old && zBounds && (old.z === zBounds.min || old.z === zBounds.max))
           zDirty = true;
         return take(nodes, id);

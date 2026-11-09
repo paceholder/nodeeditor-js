@@ -129,3 +129,25 @@ describe("deterministic ordering", () => {
     expect(store.nodes.list().map((n) => n.id)).toEqual(["a", "b"]);
   });
 });
+
+describe("every port keeps an owning node", () => {
+  it("the batch check catches a port its node no longer lists", () => {
+    const store = build();
+    expect(() =>
+      store.batch((tx) => {
+        tx.removeConnection(connectionId("c1"));
+        tx.putNode(mkNode("n2", { ports: [] }));
+      }),
+    ).toThrow(MisuseError);
+  });
+
+  it("the batch check catches a port that outlives its removed node", () => {
+    const store = build();
+    expect(() =>
+      store.batch((tx) => {
+        tx.removeConnection(connectionId("c1"));
+        tx.removeNode(nodeId("n2"));
+      }),
+    ).toThrow(MisuseError);
+  });
+});

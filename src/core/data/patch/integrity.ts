@@ -29,6 +29,19 @@ function checkOp(stage: StagedState, op: PatchOp): Rejection | undefined {
             ]);
           }
         }
+        // A port dropped from the list must be gone too, or it would have no owner.
+        const dropped =
+          op.op === "update"
+            ? op.fields.ports?.old?.find(
+                (p) => !node.ports.includes(p) && stage.getPort(p)?.node === id,
+              )
+            : undefined;
+        if (dropped) {
+          return dangling(`Port ${dropped} is no longer listed by node ${id}`, [
+            id,
+            dropped,
+          ]);
+        }
         return undefined;
       }
       const first = stage.connectionsOfNode(id)[0];

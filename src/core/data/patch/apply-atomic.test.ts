@@ -163,3 +163,53 @@ describe("round trip", () => {
     expect(reader.connections().map((c) => c.id)).toEqual(["c2", "c1"]);
   });
 });
+
+describe("every port keeps an owning node", () => {
+  const dropP3 = {
+    op: "update",
+    entity: "node",
+    id: nodeId("n2"),
+    fields: {
+      ports: { old: [portId("p2"), portId("p3")], new: [portId("p2")] },
+    },
+  } as const;
+  const removeC2 = (seq: number) =>
+    ({
+      op: "remove",
+      entity: "connection",
+      record: mkConn("c2", "n1", "p1", "n2", "p3"),
+      seq,
+    }) as const;
+
+  it("rejects a ports update that drops a port without removing it", () => {
+    const { reader, apply } = seeded();
+    const r = apply({
+      ops: [removeC2(reader.seqOf(connectionId("c2")) ?? 0), dropP3],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.code).toBe("dangling-reference");
+      expect(r.error.entities).toEqual(["n2", "p3"]);
+    }
+    expect(reader.getPort(portId("p3"))?.node).toBe("n2");
+    expect(reader.getNode(nodeId("n2"))?.ports).toEqual(["p2", "p3"]);
+  });
+
+  it("accepts a ports update that also removes the dropped port", () => {
+    const { reader, apply } = seeded();
+    const r = apply({
+      ops: [
+        removeC2(reader.seqOf(connectionId("c2")) ?? 0),
+        dropP3,
+        {
+          op: "remove",
+          entity: "port",
+          record: mkPort("p3", "n2"),
+          seq: reader.seqOf(portId("p3")) ?? 0,
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    expect(reader.getPort(portId("p3"))).toBeUndefined();
+  });
+});
