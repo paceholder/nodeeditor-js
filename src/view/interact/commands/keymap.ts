@@ -17,6 +17,8 @@ export interface KeyLike {
   readonly metaKey: boolean;
   readonly shiftKey: boolean;
   readonly altKey: boolean;
+  /** An auto-repeated key-down of a held key. */
+  readonly repeat?: boolean;
 }
 
 export interface KeyBinding {
@@ -30,12 +32,20 @@ export interface KeyBinding {
    * native clipboard event runs it), so the key-down is not default-prevented.
    */
   readonly native?: boolean;
+  /**
+   * Whether auto-repeated key-downs of a held key run the command again; default true.
+   * The default nudge, rotate, mirror and duplicate bindings say false, so holding the
+   * key acts once and adds one history entry.
+   */
+  readonly repeat?: boolean;
 }
 
 export interface ResolvedKey {
   readonly command: string;
   readonly args: unknown;
   readonly native: boolean;
+  /** Whether a repeated key-down runs it (see `KeyBinding.repeat`). */
+  readonly repeat: boolean;
 }
 
 export interface Keymap {
@@ -61,33 +71,47 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = deepFreeze([
   { chord: "Mod+C", command: COMMAND_IDS.copy, native: true },
   { chord: "Mod+X", command: COMMAND_IDS.cut, native: true },
   { chord: "Mod+V", command: COMMAND_IDS.paste, native: true },
-  { chord: "Mod+D", command: COMMAND_IDS.duplicate },
+  { chord: "Mod+D", command: COMMAND_IDS.duplicate, repeat: false },
   // Single letters are safe: text fields and IME never reach the keymap.
-  { chord: "R", command: COMMAND_IDS.rotate, args: () => ({ turns: 1 }) },
+  {
+    chord: "R",
+    command: COMMAND_IDS.rotate,
+    args: () => ({ turns: 1 }),
+    repeat: false,
+  },
   {
     chord: "Shift+R",
     command: COMMAND_IDS.rotate,
     args: () => ({ turns: -1 }),
+    repeat: false,
   },
   {
     chord: "M",
     command: COMMAND_IDS.mirror,
     args: () => ({ axis: "horizontal" }),
+    repeat: false,
   },
   {
     chord: "Shift+M",
     command: COMMAND_IDS.mirror,
     args: () => ({ axis: "vertical" }),
+    repeat: false,
   },
   ...(["Left", "Right", "Up", "Down"] as const).flatMap((dir) => {
     const dx = dir === "Left" ? -1 : dir === "Right" ? 1 : 0;
     const dy = dir === "Up" ? -1 : dir === "Down" ? 1 : 0;
     return [
-      { chord: `Arrow${dir}`, command: COMMAND_IDS.nudge, args: nudge(dx, dy) },
+      {
+        chord: `Arrow${dir}`,
+        command: COMMAND_IDS.nudge,
+        args: nudge(dx, dy),
+        repeat: false,
+      },
       {
         chord: `Shift+Arrow${dir}`,
         command: COMMAND_IDS.nudge,
         args: nudge(dx, dy, 10),
+        repeat: false,
       },
     ];
   }),
@@ -164,6 +188,7 @@ export function createKeymap(
           command: hit.binding.command,
           args: hit.binding.args?.(step),
           native: hit.binding.native === true,
+          repeat: hit.binding.repeat !== false,
         }
       );
     },

@@ -392,6 +392,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       onKey(event) {
         const resolved = keymap.resolve(event, toolOptions.gridStep ?? 1);
         if (!resolved) return false;
+        // A held key whose binding acts once: the repeat is consumed and runs nothing.
+        if (event.repeat && !resolved.repeat) return true;
         // Clipboard chords: the browser's copy/cut/paste event runs the command.
         if (resolved.native && bridge) return "native";
         commands.run(resolved.command, resolved.args);

@@ -52,11 +52,13 @@ describe("default keymap", () => {
       command: COMMAND_IDS.nudge,
       args: { dx: 20, dy: 0 },
       native: false,
+      repeat: false,
     });
     expect(other.resolve(key("ArrowUp", { shiftKey: true }), 1)).toEqual({
       command: COMMAND_IDS.nudge,
       args: { dx: 0, dy: -10 },
       native: false,
+      repeat: false,
     });
   });
 
@@ -84,15 +86,19 @@ describe("default keymap", () => {
       ["d", COMMAND_IDS.duplicate, false],
     ] as const;
     for (const [k, id, native] of chords) {
+      // Duplicate acts once per press; the clipboard chords are the browser's.
+      const repeat = id !== COMMAND_IDS.duplicate;
       expect(mac.resolve(key(k, { metaKey: true }), 1)).toEqual({
         command: id,
         args: undefined,
         native,
+        repeat,
       });
       expect(other.resolve(key(k, { ctrlKey: true }), 1)).toEqual({
         command: id,
         args: undefined,
         native,
+        repeat,
       });
     }
     expect(command(mac, key("c", { ctrlKey: true }))).toBeUndefined();
@@ -170,5 +176,20 @@ describe("shortcuts on non-Latin layouts", () => {
     expect(command(other, key("Delete", { code: "Delete" }))).toBe(
       COMMAND_IDS.delete,
     );
+  });
+});
+
+describe("one step per held key", () => {
+  it("nudge, rotate, mirror and duplicate bindings say repeats do not run; undo repeats", () => {
+    const repeat = (e: KeyLike) => other.resolve(e, 1)?.repeat;
+    expect(repeat(key("ArrowLeft"))).toBe(false);
+    expect(repeat(key("ArrowDown", { shiftKey: true }))).toBe(false);
+    expect(repeat(key("r"))).toBe(false);
+    expect(repeat(key("m", { shiftKey: true }))).toBe(false);
+    expect(repeat(key("d", { ctrlKey: true }))).toBe(false);
+    expect(repeat(key("z", { ctrlKey: true }))).toBe(true);
+    // A host binding repeats unless it says otherwise.
+    const host = createKeymap("other", [{ chord: "X", command: "host.x" }]);
+    expect(host.resolve(key("x"), 1)?.repeat).toBe(true);
   });
 });

@@ -104,11 +104,13 @@ export function mouse(view: ViewHandle, target: EventTarget = view.element) {
 export function key(
   target: EventTarget,
   name: string,
-  m: Mods & { composing?: boolean } = {},
+  m: Mods & { composing?: boolean; repeat?: boolean; code?: string } = {},
   type: "keydown" | "keyup" = "keydown",
 ): KeyboardEvent {
   const event = new KeyboardEvent(type, {
     key: name,
+    repeat: m.repeat === true,
+    ...(m.code ? { code: m.code } : {}),
     shiftKey: m.shift === true,
     altKey: m.alt === true,
     ctrlKey: m.ctrl === true,
