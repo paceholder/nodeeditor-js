@@ -57,7 +57,15 @@ export type PolicyOutcome =
       readonly kind: "choice";
       readonly alternatives: readonly ConnectionAlternative[];
     }
-  | { readonly kind: "pending"; readonly reason: string };
+  | {
+      readonly kind: "pending";
+      readonly reason: string;
+      /**
+       * The plan awaiting a verdict, when the policy knows it: what a tool passes to the
+       * verdict cache to start the request.
+       */
+      readonly plan?: ConnectionPlan;
+    };
 
 export interface ConnectionPolicy {
   evaluate(proposal: ConnectionProposal, graph: GraphReader): PolicyOutcome;
