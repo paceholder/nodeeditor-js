@@ -20,7 +20,13 @@ export function mergeCursor(current: IdCursor, incoming: IdCursor): IdCursor {
         value > existing);
     if (takes) {
       merged ??= { ...current };
-      merged[key] = value;
+      // Defined, not assigned, so no key can reach the prototype.
+      Object.defineProperty(merged, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
   }
   return merged ?? current;

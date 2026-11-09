@@ -37,6 +37,21 @@ const KNOWN_PREFIXES: ReadonlySet<string> = new Set(
   Object.values(PREFIX_BY_KIND),
 );
 
+/**
+ * Why `value` cannot be an ID cursor, or undefined when it can: a plain object whose own
+ * keys are not `__proto__` and whose values are text or safe integers. Never throws.
+ */
+export function cursorProblem(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return "an ID cursor must be an object";
+  for (const [key, v] of Object.entries(value)) {
+    if (key === "__proto__") return "an ID cursor key may not be __proto__";
+    if (typeof v !== "string" && !Number.isSafeInteger(v))
+      return `ID cursor value ${key} must be text or a safe integer`;
+  }
+  return undefined;
+}
+
 /** The empty cursor of the counter generator. */
 export const EMPTY_CURSOR: IdCursor = {};
 

@@ -6,6 +6,7 @@
  * untouched, so any rejection means "nothing changed". The store itself neither validates
  * nor rolls back, which is why all checks happen first.
  */
+import { cursorProblem } from "../../base/ids/id-generator.js";
 import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
 import {
   err,
@@ -114,6 +115,9 @@ export function applyPatch(
   if (!Array.isArray(patch.ops)) {
     return reject("malformed-record", "Patch ops must be an array");
   }
+  const badCursor =
+    patch.idCursor === undefined ? undefined : cursorProblem(patch.idCursor);
+  if (badCursor) return reject("malformed-record", `Patch ${badCursor}`);
   const stage = createStagedState(reader);
   for (const op of patch.ops) {
     const rejection = applyOp(stage, op);

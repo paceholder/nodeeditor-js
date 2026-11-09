@@ -180,7 +180,7 @@ function update<R extends { readonly id: string }>(
   }
   const next: Record<string, unknown> = { ...current };
   for (const [key, change] of Object.entries(fields)) {
-    if (!(key in kind.fields) || !isObject(change)) {
+    if (!Object.hasOwn(kind.fields, key) || !isObject(change)) {
       return rejectionOf(
         "malformed-record",
         `${kind.label} field ${key} cannot be updated`,
