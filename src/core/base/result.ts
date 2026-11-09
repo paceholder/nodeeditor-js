@@ -40,6 +40,10 @@ export type RejectionCode =
   | "capacity-exhausted"
   | "choice-required"
   | "pending-validation"
+  // Host validator
+  | "validator-failed"
+  | "validator-timeout"
+  | "validator-stale"
   // Capabilities
   | "capability-denied"
   // Snapshots and documents

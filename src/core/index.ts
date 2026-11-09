@@ -159,6 +159,10 @@ export type {
   ConnectionProposal,
   PolicyOutcome,
 } from "./edit/policy/types.js";
+export type {
+  VerdictLookup,
+  VerdictRequestOptions,
+} from "./edit/policy/verdict-cache.js";
 export type { VerdictKey } from "./edit/policy/verdict-key.js";
 export { verdictKey } from "./edit/policy/verdict-key.js";
 export type {
