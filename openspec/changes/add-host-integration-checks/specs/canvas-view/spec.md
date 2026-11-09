@@ -11,6 +11,10 @@ paint input state.
 - **WHEN** two connections of different kinds are painted with a host style function
 - **THEN** each is stroked with its own colour, width and dash
 
+#### Scenario: Dash by kind through theme typeOverrides
+- **WHEN** the host gives one connection kind a dash pattern in the theme's `typeOverrides` record and another kind none
+- **THEN** connections of the first kind are stroked dashed, the others solid, and changing that record through `setTheme` repaints the scene layer with no model change
+
 #### Scenario: Dash setting changed at runtime
 - **WHEN** the host switches all connections from solid to dashed
 - **THEN** the scene layer repaints dashed with no model change and no history entry

@@ -5,8 +5,8 @@ if it fails, the following fix task applies, otherwise mark it "not needed" in `
 
 ## 1. Host style
 
-- [ ] 1.1 Verify in `examples/plain-js` and in `src/view/render/paint/host-style.browser.test.ts` named for the per-connection style at runtime rule, the theme tokens and overrides rule and the targeted invalidation rule: per-connection colour (by kind), width and dash from payload or a host function, runtime solid/dashed switch repaints only the scene layer with no history entry, selected and hovered state reaches a host node painter wrapper, hidden port glyph still paints nothing while its target works, `setTheme` light/dark switches without remount and keeps selection and viewport
-- [ ] 1.2 Fix what 1.1 finds (smallest API: per-entity overrides or a style function); verify the same test passes and `npm run typecheck` is clean
+- [ ] 1.1 Verify in `examples/plain-js` and in `src/view/render/paint/host-style.browser.test.ts` named for the per-connection style at runtime rule, the theme tokens and overrides rule and the targeted invalidation rule: per-connection colour (by kind), width and dash from payload, a host function or the theme's `typeOverrides`, runtime solid/dashed switch repaints only the scene layer with no history entry, selected and hovered state reaches a host node painter wrapper, hidden port glyph still paints nothing while its target works, `setTheme` light/dark switches without remount and keeps selection and viewport
+- [ ] 1.2 Fix what 1.1 finds, starting with dash in the theme override record (a dash pattern next to colour and width in `typeOverrides` and `entityOverrides`, keyed by connection kind), then the smallest further API (per-entity overrides or a style function); verify the same test passes and `npm run typecheck` is clean
 - [ ] 1.3 Document the painter-wrapper pattern and theme mapping in `docs/guide-view.md`; verify `npm run lint`
 
 ## 2. Port targets and normals
