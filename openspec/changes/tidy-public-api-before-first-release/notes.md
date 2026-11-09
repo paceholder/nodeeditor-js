@@ -65,3 +65,14 @@ entry: the affine functions (`affine`, `applyPoint`, `applyVector`, `compose`,
 `MAX_ZOOM`, the rest of the rectangle helpers, `polylinePath`, `polylineVertices`,
 `pathBounds`, `pathPointAt`, `endTangents`, `checkJson`, `jsonEqual`, `sortKeys`.
 A later option is a `core/advanced` entry for geometry math, like the view's.
+
+## Gates (7.1)
+
+Lint, typecheck (including the examples and benchmarks), `npm test` (193 files, 1156
+tests), `npm run test:browser` (73 files, 362 tests), `npm run build`,
+`node scripts/consumer-smoke.mjs` (exit 0) and
+`openspec validate tidy-public-api-before-first-release --strict` (exit 0, valid) pass.
+One `npm test` run during task 2 reported one failed test that did not recur in four
+further runs; it was not identified and looks like an existing timing flake.
+`openspec/config.yaml` still asks for requirement codes in titles, which the project rules
+now forbid; the new requirements follow the project rules.

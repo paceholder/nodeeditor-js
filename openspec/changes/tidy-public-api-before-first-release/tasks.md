@@ -26,4 +26,4 @@
 
 ## 7. Gates
 
-- [ ] 7.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, `node scripts/consumer-smoke.mjs` and `openspec validate tidy-public-api-before-first-release --strict`; record in `notes.md`
+- [x] 7.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, `node scripts/consumer-smoke.mjs` and `openspec validate tidy-public-api-before-first-release --strict`; record in `notes.md`
