@@ -101,6 +101,46 @@ function decodePayloads(
   });
 }
 
+/**
+ * Each external entry needs exactly one end inside the fragment, and that end's port must
+ * belong to that node there; otherwise a paste could duplicate an inner connection or
+ * attach to the wrong port.
+ */
+function checkExternal(
+  external: readonly ExternalConnection[],
+  snapshot: GraphSnapshot,
+  sink: ErrorSink,
+): void {
+  const ports = new Map<string, ReadonlySet<string>>(
+    snapshot.nodes.map((n) => [n.id, new Set(n.ports.map((p) => p.id))]),
+  );
+  external.forEach((c, i) => {
+    const path = `external[${i}]`;
+    const inside = (["from", "to"] as const).filter((side) =>
+      ports.has(c[side].node),
+    );
+    const [side] = inside;
+    if (inside.length !== 1 || side === undefined) {
+      sink.add(
+        "invalid-shape",
+        "An external connection needs exactly one end inside the fragment",
+        path,
+        [c.id],
+      );
+      return;
+    }
+    const end = c[side];
+    if (!ports.get(end.node)?.has(end.port)) {
+      sink.add(
+        "port-node-mismatch",
+        `Port ${end.port} does not belong to node ${end.node} in the fragment`,
+        `${path}.${side}`,
+        [c.id, end.port, end.node],
+      );
+    }
+  });
+}
+
 /** Validate an envelope object and decode its payloads. Never throws. */
 export function readFragment(
   value: unknown,
@@ -152,6 +192,7 @@ function readEnvelope(
     prefixedSink(sink, "fragment"),
   );
   if (!validated) return err(sink.report());
+  checkExternal(external, validated, sink);
   const payloads = decodePayloads(validated, options.codecs, sink);
   if (sink.count() > 0) return err(sink.report());
   return ok({
