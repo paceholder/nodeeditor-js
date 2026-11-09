@@ -6,6 +6,7 @@
  * dispose. Tools never see a DOM type.
  */
 import { type Point, viewportToWorld } from "../../../core/index.js";
+import { distancePx, dragThreshold } from "../tools/thresholds.js";
 import type { GestureChange, ToolRouter } from "../tools/tool-router.js";
 import {
   type CancelReason,
@@ -26,6 +27,7 @@ import {
   type ModifierKeys,
   modifiersOf,
   pointerInputOf,
+  pointerTypeOf,
 } from "./pointer-input.js";
 
 export interface DomInputDeps {
@@ -166,6 +168,11 @@ export function attachDomInput(
     return route(pointerInputOf(type, e, at, deps.platform));
   }
 
+  // The press of the running gesture, until it moves past the drag threshold.
+  let press:
+    | { pointerId: number; x: number; y: number; dragged: boolean }
+    | undefined;
+
   const onPointerDown = (e: PointerEvent): void => {
     track(e);
     if (!BUTTONS.has(e.button) || isOverlayContent(e.target, deps.overlay)) {
@@ -176,12 +183,24 @@ export function attachDomInput(
       root.focus({ preventScroll: true });
     }
     const result = pointer("pointer-down", e);
+    if (router.activePointer === e.pointerId) {
+      press = {
+        pointerId: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        dragged: false,
+      };
+    }
     // Unclaimed presses (right button) keep the browser's default, e.g. the context menu.
     if (result?.handled && e.button !== 2) e.preventDefault();
   };
 
   const onPointerMove = (e: PointerEvent): void => {
     track(e);
+    if (press?.pointerId === e.pointerId && !press.dragged) {
+      const limit = dragThreshold(deps.context().options, pointerTypeOf(e));
+      press.dragged = distancePx({ x: e.clientX, y: e.clientY }, press) > limit;
+    }
     // Host content in the overlay (a popover, the controls) is not the canvas: the pointer
     // moving over it neither picks the node underneath nor ends the current hover, so a
     // popover anchored to a node can be entered.
@@ -207,6 +226,15 @@ export function attachDomInput(
 
   const onPointerUp = (e: PointerEvent): void => {
     pointer("pointer-up", e);
+  };
+
+  // A native menu opened over a press that has not started dragging (macOS Control-click,
+  // a right-click): the browser may never deliver the release, so the press ends now,
+  // whether or not a context-menu listener is registered. A drag is never disturbed.
+  const onContextMenu = (e: MouseEvent): void => {
+    if (isOverlayContent(e.target, deps.overlay)) return;
+    if (router.activePointer === undefined || press?.dragged === true) return;
+    cancel("context-menu");
   };
 
   const onPointerCancel = (e: PointerEvent): void => {
@@ -273,6 +301,7 @@ export function attachDomInput(
     [root, "pointermove", onPointerMove as EventListener],
     [root, "pointerup", onPointerUp as EventListener],
     [root, "pointercancel", onPointerCancel as EventListener],
+    [root, "contextmenu", onContextMenu as EventListener],
     [root, "lostpointercapture", onLostCapture as EventListener],
     [root, "pointerleave", onPointerLeave as EventListener],
     [root, "wheel", onWheel as EventListener, { passive: false }],

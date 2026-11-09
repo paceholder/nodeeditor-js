@@ -31,7 +31,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 ## 5. Pointer, wheel and touch
 
 - [x] 5.1 Add `buttons` to pointer tool input and cancel a gesture whose mouse button is no longer held (D11); verify `gesture-reconcile.test.ts` (a move without the gesture's button cancels the drag or press with nothing submitted; a middle-button pan ends the same way; moves holding the button or without button state keep the gesture)
-- [ ] 5.2 Cancel an undragged press on any `contextmenu` event (D11); verify `tools-lifecycle.browser.test.ts` (Control-click on a node without a menu listener, then a move with no button: the node does not move)
+- [x] 5.2 Cancel an undragged press on any `contextmenu` event (D11); verify `lost-release.browser.test.ts` (Control-click on a node without a menu listener, then moves: the node does not move and nothing is submitted; a drag past the threshold is not disturbed)
 - [ ] 5.3 Cancel a gesture on a change from any origin to an involved entity (D12); verify `tool-router.test.ts` / `select-move-tool.test.ts` (undo during a drag cancels with `entity-changed`; a local host edit during a resize cancels; an unrelated change does not)
 - [ ] 5.4 Zoom on Control-wheel in every mode and always consume it, with `pinchSensitivity` (D13); verify `wheel-zoom.test.ts` (pinch at the limit is handled; pinch zooms in scroll-page mode; delta clamp) and `overlay-wheel.browser.test.ts` (a Control-wheel at the maximum zoom is default-prevented)
 - [ ] 5.5 Add `deltaX` to wheel input and the `wheel: "pan"` mode (D14); verify `wheel-zoom.test.ts` (a diagonal plain wheel pans both ways in pan mode; the modifier zooms; zoom mode unchanged)
