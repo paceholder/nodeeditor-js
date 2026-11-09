@@ -12,8 +12,12 @@
  * values when the patch is applied, so they sort after existing ones; paint order is
  * still driven by `z`. Order among equal-`z` nodes is not represented by any patch field
  * and is therefore not diffed.
+ *
+ * With `codecs`, payloads of a type with a codec are compared as JSON (`diff-payload.ts`);
+ * a codec failure makes the result an error list instead of a patch.
  */
 import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import { err, ok, type Result } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { Payload } from "../../data/model/records.js";
 import type {
@@ -23,9 +27,20 @@ import type {
   PatchOp,
   PortFieldChanges,
 } from "../../data/patch/types.js";
+import { createPayloadDiffer } from "./diff-payload.js";
 import { cloneJson, jsonEqual } from "./json-value.js";
 import { connectionToRecord, nodeToRecord, portToRecord } from "./records.js";
-import type { GraphSnapshot, PortSnapshot } from "./snapshot-types.js";
+import type { PayloadCodecRegistry } from "./snapshot-errors.js";
+import type {
+  GraphSnapshot,
+  PortSnapshot,
+  SnapshotError,
+} from "./snapshot-types.js";
+
+export interface DiffOptions {
+  /** The codecs the model's payloads were loaded with. */
+  readonly codecs?: PayloadCodecRegistry;
+}
 
 type Changes = Record<string, { old?: unknown; new?: unknown }>;
 
@@ -68,9 +83,16 @@ const PORT_KEYS = [
   "label",
   "placement",
 ] as const;
+const NODE_KEYS_BUT_PAYLOAD = NODE_KEYS.filter((k) => k !== "payload");
 const CONNECTION_KEYS = ["kind", "from", "to", "route"] as const;
 
-export function diffSnapshot(from: GraphReader, to: GraphSnapshot): Patch {
+export function diffSnapshot(
+  from: GraphReader,
+  to: GraphSnapshot,
+  options: DiffOptions = {},
+): Result<Patch, readonly SnapshotError[]> {
+  const errors: SnapshotError[] = [];
+  const payloads = createPayloadDiffer(options.codecs, errors);
   const wantNodes = new Map(to.nodes.map((n) => [n.id, n]));
   const wantConnections = new Map(to.connections.map((c) => [c.id, c]));
   const wantPorts = new Map<string, { port: PortSnapshot; owner: string }>();
@@ -118,17 +140,30 @@ export function diffSnapshot(from: GraphReader, to: GraphSnapshot): Patch {
   }
 
   const portAdds: PatchOp[] = [];
-  for (const snap of to.nodes) {
+  to.nodes.forEach((snap, i) => {
     const current = from.getNode(snap.id as NodeId);
+    const at = `nodes[${i}].payload`;
+    const coded = payloads.hasCodec(snap.type);
     if (!current) {
-      adds.push({ op: "add", entity: "node", record: nodeToRecord(snap) });
+      const payload = payloads.added(snap, at);
+      if (payload !== undefined)
+        adds.push({
+          op: "add",
+          entity: "node",
+          record: nodeToRecord(snap, payload),
+        });
     } else {
-      const fields = diffFields(
-        current,
-        nodeToRecord(snap, snap.payload as Payload),
-        NODE_KEYS,
-      );
-      if (fields) {
+      const fields: Changes =
+        diffFields(
+          current,
+          nodeToRecord(snap, snap.payload as Payload),
+          coded ? NODE_KEYS_BUT_PAYLOAD : NODE_KEYS,
+        ) ?? {};
+      const payload = coded
+        ? payloads.changed(current.payload, snap, at)
+        : undefined;
+      if (payload) fields.payload = payload;
+      if (Object.keys(fields).length > 0) {
         updates.push({
           op: "update",
           entity: "node",
@@ -154,7 +189,7 @@ export function diffSnapshot(from: GraphReader, to: GraphSnapshot): Patch {
         });
       }
     }
-  }
+  });
 
   for (const snap of to.connections) {
     const current = from.getConnection(snap.id as ConnectionId);
@@ -182,5 +217,6 @@ export function diffSnapshot(from: GraphReader, to: GraphSnapshot): Patch {
     ...connectionUpdates,
     ...connectionAdds,
   ];
-  return to.idCursor ? { ops, idCursor: to.idCursor } : { ops };
+  if (errors.length > 0) return err(errors);
+  return ok(to.idCursor ? { ops, idCursor: to.idCursor } : { ops });
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nodeId } from "../../base/ids/ids.js";
-import { diffSnapshot } from "./diff.js";
+import { diffSnapshot as diffResult } from "./diff.js";
 import { exportSnapshot } from "./export.js";
 import type { JsonValue } from "./json-value.js";
 import { loadSnapshot } from "./load.js";
@@ -18,6 +18,13 @@ function target(mutate: (s: Record<string, unknown>) => void): GraphSnapshot {
 
 const portsOf = (n: Record<string, unknown> | undefined): unknown[] =>
   (n?.ports as unknown[] | undefined) ?? [];
+
+/** The patch of a diff that cannot fail (no codecs). */
+const diffSnapshot = (...args: Parameters<typeof diffResult>) => {
+  const r = diffResult(...args);
+  if (!r.ok) throw new Error(JSON.stringify(r.error));
+  return r.value;
+};
 
 const nodesOf = (s: Record<string, unknown>) =>
   s.nodes as Record<string, unknown>[];

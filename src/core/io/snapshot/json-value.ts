@@ -85,11 +85,17 @@ export function checkJson(
   return walk(value, path, 0);
 }
 
-/** Deep equality of JSON values; key order is irrelevant. */
+/**
+ * Deep equality of JSON values; key order is irrelevant. Two different objects that are
+ * not plain objects or arrays (a `Date`, a `Map`, a class instance) are unequal, because
+ * their own keys say nothing about their value.
+ */
 export function jsonEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (!Array.isArray(a) && (!isPlainObject(a) || !isPlainObject(b)))
+    return false;
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((x, i) => jsonEqual(x, b[i]));
   }

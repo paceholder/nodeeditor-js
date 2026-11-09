@@ -1,5 +1,6 @@
 // Public snapshot API.
 
+export type { DiffOptions } from "./diff.js";
 export { diffSnapshot } from "./diff.js";
 export type {
   DocumentLoadReport,

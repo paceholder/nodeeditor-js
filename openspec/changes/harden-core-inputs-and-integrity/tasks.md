@@ -39,7 +39,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 
 ## 5. I/O (core/io)
 
-- [ ] 5.1 `diffSnapshot` codecs and strict `jsonEqual` (D14); verify `src/core/io/snapshot/diff.test.ts` and `src/core/io/snapshot/json-value.test.ts` cases titled "snapshot diff honours payload codecs"
+- [x] 5.1 `diffSnapshot` codecs and strict `jsonEqual` (D14); verify `src/core/io/snapshot/diff-codecs.test.ts` cases titled "snapshot diff honours payload codecs"
 - [ ] 5.2 Bounded error lists (D13); verify `src/core/io/snapshot/validate.test.ts` case titled "error lists are bounded"
 - [ ] 5.3 Strict document extras (D16); verify `src/core/io/snapshot/document.test.ts` case titled "document extras are validated as strictly as the graph"
 - [ ] 5.4 Load paths never throw (D17); verify `src/core/io/snapshot/document.test.ts` and `src/core/io/snapshot/validate.test.ts` cases titled "loading never throws"
