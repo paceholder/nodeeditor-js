@@ -85,14 +85,19 @@ index, so previews and commits use the same geometry.
 
 | Quantity           | Range                          | Out of range                       |
 | ------------------ | ------------------------------ | ---------------------------------- |
-| World coordinate   | `|x|, |y| <= 1e7`              | `checkWorldPoint` rejects          |
+| World coordinate   | `|x|, |y| <= 1e7`              | `checkWorldPoint` rejects; record validation rejects node positions and route coordinates (`out-of-range`) |
+| Node size          | width, height `<= 2e7`         | record validation rejects (`out-of-range`) |
 | Zoom               | `1e-3 .. 1e3`                  | clamped by `clampZoom`/`createViewport` |
 | Device pixel ratio | `0.1 .. 16`                    | `deviceMatrix` rejects             |
 | Matrix determinant | `abs(det) >= 1e-12`            | `invert` returns `non-invertible`  |
 
 Non-finite input is rejected with a `Rejection` (`non-finite`, `out-of-range`,
 `non-invertible`). Zero-size rectangles, empty graphs, and coincident anchors are valid and
-never produce NaN.
+never produce NaN. Because record validation enforces the world range, no stored node can
+push the scene's bounds to infinity. As a second line of defence the scene leaves out a
+node or connection whose computed bounds are not finite (a host geometry returning NaN,
+say): it is neither painted nor hit, and the spatial indexes throw `MisuseError` for a
+non-finite box, so one bad entry can never hide the others from queries.
 
 ## Node geometry
 
@@ -101,6 +106,12 @@ A `NodeGeometry` answers, in local space and independent of any painter: `bodyBo
 ), and `anchors` (position plus outward unit normal, in model port order). The
 `GeometryRegistry` maps a node type key to a geometry and falls back to the placeholder
 (a rectangle of the stored size with evenly spaced ports) for unknown types.
+
+A geometry that reads node content, for example a body sized from the title, lists those
+fields in `dependsOn` (`"title"`, `"status"`, `"payload"`, `"capabilities"`). The scene
+then rebuilds the node, and its connections, when one of them changes. Without the
+declaration only geometry fields (position, size, rotation, mirroring, type, ports)
+rebuild a node, so a payload-heavy host pays nothing for edits its geometry ignores.
 
 Hit shapes: rectangle, rounded rectangle, ellipse, polygon, each with exact containment
 and distance.
@@ -249,7 +260,9 @@ families and builds one path deterministically (`orthogonal-pins.ts`):
    `(a, y)`, a horizontal pin by a vertical move. When that move would run backwards
    along the current direction, or two pins of the same orientation follow each other, a
    free perpendicular segment is inserted first, at the midpoint between the current
-   coordinate and the next fixed one (offset by the clearance when they coincide).
+   coordinate and the next fixed one (offset by the clearance when they coincide). The
+   next fixed coordinate of each orientation is computed for every pin in one backward
+   pass, so the walk is linear in the number of pins (a route holds at most 256).
 4. Collinear points merge, and `realized[k]` records which segment of
    `polylineVertices(path)` lies on pin `k` (-1 when a degenerate pin collapsed).
 
@@ -313,13 +326,17 @@ connection, and a query returns it once (the first matching piece wins, no set n
 `SpatialIndex<K>` supports insert, update, remove, rectangle query and point query with
 boundary-inclusive intersection. `createAabbTree` is the default (fat boxes, rotation
 balancing, O(1) update inside the fat box); `createBruteForceIndex` is the test reference.
+A fat box that has become more than twice the size a fresh one would have (an entry that
+shrank a lot) is re-fitted on the next update, so it does not keep matching queries far
+from the entry.
 Result order is unspecified; callers sort keys with `sortKeys` (code-unit comparison).
 
 ## Geometry scene
 
 `createGeometryScene(model)` is a derived cache of node transforms, world bounds, anchors,
 and connection paths. It follows `change` events: a moved node recomputes itself and its
-incident connections only; z-order and other record-only changes recompute nothing;
+incident connections only; z-order and other record-only changes (content fields the
+geometry did not declare in `dependsOn`) recompute nothing;
 `reset` rebuilds everything. `queryRect` returns culling sets by painted bounds in paint
 order (layers bottom to top, default `connection, node, port`; nodes by `(z, seq)`).
 

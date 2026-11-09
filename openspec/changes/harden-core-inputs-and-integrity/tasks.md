@@ -47,5 +47,5 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 
 ## 6. Docs and gates
 
-- [ ] 6.1 Update `docs/guide-core-model.md`, `docs/guide-using-the-model.md`, `docs/geometry.md` and `docs/format.md` where this change alters what they describe; verify `npm run lint`
+- [x] 6.1 Update `docs/guide-core-model.md`, `docs/guide-using-the-model.md`, `docs/geometry.md` and `docs/format.md` where this change alters what they describe; verify `npm run lint`
 - [ ] 6.2 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `openspec validate harden-core-inputs-and-integrity --strict`; record the results in `notes.md`

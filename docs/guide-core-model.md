@@ -71,6 +71,17 @@ const cursor = gen.observe?.("n41", c.cursor) ?? c.cursor;   // { n: 41, p: 1 }
 gen.next("node", cursor).id;                                 // "n42"
 ```
 
+The counters never wrap and never restart. `observe` ignores an ID whose counter is above
+2^50, because counting from 1 can never reach it and tracking it would only use up the
+counter. `next` throws `MisuseError` when the counter is not a non-negative safe integer or
+the next one would pass `Number.MAX_SAFE_INTEGER`, instead of quietly starting again at 1
+and reusing IDs. Cursor values in patches and snapshots must be text or safe integers.
+
+When a patch commits, its cursor is merged into the model's. A host generator can do that
+itself with an optional `merge(current, incoming)`. Without one, a number replaces a
+smaller number and any other incoming value (text, or a change of type) replaces the
+current one, since the generator built the patch's cursor from the one the planner read.
+
 ## 3. Records
 
 ```mermaid
@@ -162,7 +173,16 @@ a user-caused reason.
 
 Removing returns the removed record together with its insertion sequence `seq`, and
 `put` accepts `{ seq }`. That is what lets undo put an entity back in exactly the order
-it had before.
+it had before. A patch that adds an entity with an explicit `seq` is checked first: the
+value must be an integer from 1 to 2^40 and must not be the `seq` of another live entity of
+the same kind, otherwise the patch is rejected with `conflict` (`GraphReader.idWithSeq`
+answers who holds a sequence). The bound keeps the automatic sequences, which count on from
+the largest one seen, exact.
+
+The batch also checks that no port is left without its node: the ports a node listed before
+a replacement or removal are re-checked, so dropping `p2` from a node's `ports` without
+removing `p2` throws. The patch pipeline refuses the same patch earlier with
+`dangling-reference`.
 
 ## 5. Reading
 
@@ -207,6 +227,19 @@ const n1 = graph.getNode(nodeId("n1"));
 
 Production code may pass `createGraphStore({ freezeRecords: false })` to skip the
 freezing cost. The `readonly` types still catch writes at compile time.
+
+Records reach the store through validation (`validateNodeRecord` and its siblings), which
+returns a new record holding only the record's own fields, with copies of positions, sizes,
+port lists, endpoints, placements, overrides and route constraints. So a caller that changes
+the object it submitted changes nothing in the model, and unknown keys are not stored. The
+payload is the exception: it is application data of any size and is kept as given, which
+means the model owns it after the submit (and, with freezing on, freezes it).
+
+Validation also keeps records inside the supported world range: a node position coordinate
+outside plus or minus 1e7, a node width or height above 2e7, or a route constraint outside
+plus or minus 1e7 is rejected with `out-of-range`, and a connection holds at most 256 route
+constraints (`limit-exceeded`). Snapshot load, paste, duplicate and raw patches all go
+through these checks.
 
 ## Where next
 

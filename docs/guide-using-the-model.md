@@ -158,6 +158,11 @@ if (plan.kind === "ready") {
 The convenience methods (`connect`, `createNode`, ...) are shorthand for
 `model.execute({ kind: "connect", ... })`; both give identical results.
 
+`can` and `plan` run the same checks a commit runs, including validators you add later
+with `model.addValidator(...)`. A validator receives the staged graph (as it would be after
+the patch), the patch, and a context whose `before` is the committed graph the patch was
+staged on.
+
 ### When the policy offers a choice
 
 A connection policy can answer "several plans are valid" instead of accepting one, for
@@ -336,6 +341,12 @@ Every other action (`move`, `rotate`, `mirror`, ...) stays allowed by default. A
 is rejected with `capability-denied`, exactly like a locked node. External changes (an
 external adapter, a host snapshot) are not checked: their authority already decided.
 
+Every action of a patch is judged against the node as it was **before** the patch. One
+operation that changes a locked node's type to an unlocked one and also moves it is still
+refused, and so is a patch that clears an override in one operation and moves the node in
+another. A lock that a patch adds does not judge that same patch; it applies from the next
+edit on.
+
 ```ts
 model.resizeNode(t.id, { width: 120, height: 80 });                  // about the centre
 model.resizeNode(t.id, { width: 120, height: 80 }, { x: -1, y: -1 }); // top-left fixed
@@ -482,6 +493,14 @@ model.on("reset", (e) => {
 accepted patch, after the graph is consistent again; a handler never sees a connection
 pointing at a deleted node. `origin` is `"local"`, `"undo"`, `"redo"`, or `"external"`.
 
+An edit made from inside a handler is queued and comes back as `{ status: "queued",
+operationId, settled }`. Queued edits run one after the other once the current dispatch is
+done, and each one's events reach every handler before the next queued edit is applied.
+Commands issued one after another from the same handler get distinct IDs, as if the first
+had already committed. `model.replaceDocument` (and so `loadSnapshot`) cannot run inside a
+handler: it throws `MisuseError`, because it returns the new revision at once; defer it
+with `queueMicrotask` if you need to load in response to an event.
+
 A rejected command emits a `failure` event with `source: "rejection"`, so one central
 handler can show every error instead of each call site checking its result. (A
 `source: "handler"` failure means one of your own handlers threw; the model keeps going.)
@@ -509,6 +528,17 @@ entry.
 
 Unlike `QUndoCommand`, there are no command objects with `redo()`/`undo()` methods. Undo
 applies the inverse patch (section 8), and redo reapplies the original.
+
+Undo and redo go through the same checks as any edit, capabilities included. When one is
+rejected (a `history: "skip"` edit changed the node since, or the inverse is refused by a
+lock the entry itself set), that entry can never apply again, and neither can the entries
+recorded under it. So the model drops that stack, publishes a `history` event, and
+`historyState().undoReason` (or `redoReason`) says why, for example `"Undo is no longer
+possible: Node n1 field position differs from the expected old value"`. The other stack
+is kept.
+
+The history keeps every entry unless you set a limit: `createGraphModel({ historyLimit:
+200 })` keeps the 200 most recent undo steps and drops the oldest.
 
 ```mermaid
 sequenceDiagram
@@ -580,6 +610,11 @@ Points to know:
 - Previews, hover and caches are never saved. Viewport and selection are saved only if
   you pass them via `SaveOptions`.
 - Payloads must be JSON-compatible, or have a codec registered (`createPayloadCodecRegistry`).
+- Validation never throws for bad input, including a host migration or codec that throws.
+  It reports at most 100 errors (`limits.maxErrors`) and then one more `limit-exceeded`
+  entry saying how many were left out.
+- Positions, sizes and route coordinates must lie in the supported world range (plus or
+  minus 1e7); a file outside it fails to load with `out-of-range`.
 
 ```mermaid
 flowchart LR

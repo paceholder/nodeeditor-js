@@ -53,6 +53,8 @@ Rules:
   kinds in one snapshot.
 - `rotation` is a clockwise quarter turn count 0 to 3. Coordinates and sizes are finite
   numbers; sizes are not negative. `limit` is an integer of 0 or more, or `"unlimited"`.
+- Positions lie in the supported world range: each coordinate within plus or minus 1e7,
+  each node width and height at most 2e7. Anything outside fails with `out-of-range`.
 - `payload` is application data. It must be plain JSON (see section 5). Use `null` for none.
 - Unknown fields are rejected, not dropped, so no data is silently lost.
 - The reserved sections must be absent or empty. A non-empty one fails with
@@ -60,7 +62,12 @@ Rules:
 - `route` is an ordered list of pinned segments, `{ "kind": "segment", "orientation":
   "horizontal" | "vertical", "at": <finite number> }`, in world coordinates from the
   `from` end. An unknown kind or orientation or a non-finite `at` fails the
-  load naming the connection. The field is additive, so the format version stays 1.
+  load naming the connection, an `at` outside plus or minus 1e7 fails with
+  `out-of-range`, and a route holds at most 256 entries (`maxRouteConstraints`), counted
+  before any entry is read. The field is additive, so the format version stays 1.
+- The format checks structure only: a connection from a port back to its own node, or two
+  connections between the same ports, loads without complaint. Whether such connections
+  are allowed is the connection policy's decision when they are drawn.
 - Load fills the defaults back in; export omits them.
 
 ### Ordering
@@ -83,6 +90,9 @@ handed out again after save and load. On load the cursor becomes the
 snapshot's cursor and is then advanced past every ID found in the snapshot (through the
 generator's `observe`), so a hand-edited file with a node `n12` and a cursor at 9 still
 cannot cause reuse. A custom generator without `observe` has its cursor used as-is.
+Cursor values must be text or safe integers, and a key named `__proto__` is an error at
+its path (`idCursor.__proto__`), so nothing in a cursor is lost or misread. The default
+generator ignores an observed counter above 2^50, which counting could never reach.
 
 ### Fragments
 
@@ -101,9 +111,12 @@ inside it. Pass `fragment: true` to `validateSnapshot`, or `exportSnapshot(model
 - `saveDocument(model, options)` returns the JSON text. Standard output holds only
   committed durable state. Functions, caches, previews and pending edits are never part
   of it.
-- `viewport` and `selection` are written only when the caller passes them. On load they
-  are validated (finite numbers, positive zoom, selected IDs exist in the graph) and
-  returned in the report; the model never stores them.
+- `viewport` and `selection` are written only when the caller passes them. On save and
+  load they are validated as strictly as the graph: the viewport has only `x`, `y` and
+  `zoom`, its position lies within plus or minus 1e7 and its zoom from 0.001 to 1000
+  (`out-of-range` otherwise), and the selection lists each existing ID once
+  (`duplicate-id` for a repeat). They are returned in the report; the model never stores
+  them.
 - `loadDocument(model, text, options)` checks the text length, parses, checks format
   and version, validates the whole graph, and only then replaces the document. It
   performs no network or file access. Asset references stay plain strings in payloads;
@@ -123,8 +136,11 @@ reported as `unresolved-type` diagnostics, separately from validation errors.
 
 Every error has a `code`, a `message`, the JSON `path` of the offending value
 (`nodes[3].ports[1].id`, `""` for the root), and the affected `entities` (IDs). The
-validator collects all errors it finds, sorted by path. In documents, graph errors have
-the prefix `graph`.
+validator collects the errors it finds, sorted by path, up to `maxErrors` (100); when it
+found more, one last `limit-exceeded` entry at the root path says how many were left out.
+In documents, graph errors have the prefix `graph`. Validation never throws: a host
+migration or codec that throws, or an input object whose property getter throws, becomes
+an error (`invalid-shape`, or `non-json-payload` for a codec).
 
 | Code | Meaning |
 | --- | --- |
@@ -140,6 +156,7 @@ the prefix `graph`.
 | `non-finite` | A coordinate, size or z is not a finite number |
 | `dangling-endpoint` | A connection names a node or port that does not exist |
 | `dangling-reference` | A selection entry names an ID that does not exist |
+| `out-of-range` | A coordinate, size or zoom lies outside the supported range |
 | `port-node-mismatch` | A connection endpoint names a port that belongs to another node |
 | `invalid-limit` | A port limit is not an integer of 0 or more, or `"unlimited"` |
 
@@ -165,6 +182,8 @@ nothing is dropped. Codecs are host code and are never taken from a document.
 | `maxPortsPerNode` | 1 024 |
 | `maxPayloadDepth` | 64 |
 | `maxDocumentChars` | 64 Mi (text length, checked before parsing) |
+| `maxRouteConstraints` | 256 (never above 256, the model's own limit) |
+| `maxErrors` | 100 (errors reported; the rest are counted in one entry) |
 
 ## 7. Migrations
 
@@ -176,11 +195,18 @@ expressions inside a document are never executed.
 
 ## 8. Snapshot diff
 
-`diffSnapshot(reader, target)` returns the patch that turns the current model into a
-validated target snapshot: removes (connections, ports, nodes), then adds, then field
-updates, then in-place connection endpoint updates (connections keep their ID). Equal
-state gives an empty patch. New entities receive fresh insertion sequence numbers when
-the patch is applied. Snapshot-mode adapters will build on this.
+`diffSnapshot(reader, target, { codecs })` returns, as a `Result`, the patch that turns
+the current model into a validated target snapshot: removes (connections, ports, nodes),
+then adds, then field updates, then in-place connection endpoint updates (connections
+keep their ID). Equal state gives an empty patch. New entities receive fresh insertion
+sequence numbers when the patch is applied. Snapshot-mode adapters will build on this.
+
+Pass the codecs the model was loaded with. For a type with a codec the current payload is
+encoded and compared with the snapshot's JSON, and the snapshot payload is decoded only
+for an add or an update; without them, a model holding decoded payloads would differ from
+its own snapshot everywhere. A codec failure makes the result an error list. `jsonEqual`,
+which the diff uses, calls two different objects that are not plain objects or arrays
+(two `Date`s, a `Map` and `{}`) unequal.
 
 ## 9. Clipboard envelope
 
@@ -214,10 +240,12 @@ marker (`FRAGMENT_FORMAT`, `"@paceholder/nodeeditor-js/fragment"`) and version (
    as a graph. That is how ordinary clipboard text is told apart.
 3. A newer envelope version is `unsupported-version`.
 4. `fragment` goes through `validateSnapshot` in fragment mode with the limits; `external`
-   entries are shape-checked; payloads must decode through their codecs.
+   entries are shape-checked, and each must have exactly one end on a node of the
+   fragment, whose port belongs to that node (`invalid-shape` or `port-node-mismatch` at
+   `external[i]`); payloads must decode through their codecs.
 
-Every error is returned, sorted by JSON path (paths start with `fragment.` or
-`external[i]`). `parseFragmentValue` does the same for an object that is already parsed.
+Errors are returned sorted by JSON path (paths start with `fragment.` or
+`external[i]`), up to `maxErrors`. `parseFragmentValue` does the same for an object that is already parsed.
 
 Why plain text and not a custom MIME type: the async Clipboard API only guarantees
 `text/plain`, `text/html` and `image/png`; custom types work in Chromium only, and Safari
