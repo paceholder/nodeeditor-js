@@ -11,9 +11,12 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Viewport } from "../core/index.js";
 import {
   type ConnectionChooser,
   mountView,
+  type SelectedEntity,
+  type SelectionState,
   type ZoomLimits,
 } from "../view/index.js";
 import { devWarn } from "./dev-warning.js";
@@ -27,6 +30,27 @@ import {
 } from "./node-editor-props.js";
 import { sameData } from "./same-data.js";
 import { warnZoomLimitsIgnored, zoomLimitsUsable } from "./zoom-limits-prop.js";
+
+interface CarriedState {
+  /** The model the state belongs to; a different model starts fresh. */
+  readonly model: unknown;
+  readonly viewport?: Viewport;
+  readonly selection?: readonly SelectedEntity[];
+}
+
+/** The selected entities with the primary one last, so `replace` makes it primary again. */
+function selectedEntities(state: SelectionState): SelectedEntity[] {
+  const all: SelectedEntity[] = [
+    ...state.nodes.map((id) => ({ kind: "node" as const, id })),
+    ...state.connections.map((id) => ({ kind: "connection" as const, id })),
+  ];
+  const { primary } = state;
+  if (!primary) return all;
+  return [
+    ...all.filter((e) => e.kind !== primary.kind || e.id !== primary.id),
+    primary,
+  ];
+}
 
 /** Counts how many times the remount keys changed; the effect restarts on each. */
 function useRemountGeneration(keys: readonly unknown[]): number {
@@ -83,6 +107,9 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
   });
   // The lock state of the last view, so an uncontrolled editor keeps it across a remount.
   const carriedLock = useRef<boolean | undefined>(undefined);
+  // Viewport and selection of the last view, recorded at cleanup when they differ from
+  // what that view started with. Used again only for the same model.
+  const carried = useRef<CarriedState>({ model: undefined });
   const generation = useRemountGeneration(remountKeys(props));
   useRemountStormWarning(generation);
   useEffect(() => {
@@ -97,8 +124,15 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     const startLocked = current.locked ?? carriedLock.current;
     const input = current.input === false ? undefined : current.input;
     const options = viewOptionsOf(current);
+    if (carried.current.model !== current.model) {
+      carried.current = { model: current.model };
+    }
+    const keep = carried.current;
+    // A host that owns the selection (`viewState`) keeps it itself.
+    const keepSelection = current.viewState ? undefined : keep.selection;
     const view = mountView(el, {
       ...options,
+      ...(keep.viewport && { initialViewport: keep.viewport }),
       ...(options.input && input?.chooseConnection
         ? { input: { ...input, chooseConnection: chooserTrampoline.current } }
         : {}),
@@ -116,6 +150,10 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
       );
     }
     store.set({ view, model: current.model });
+    if (keepSelection) view.selection.replace(keepSelection);
+    // What the view starts with, to tell later whether anything moved.
+    const startViewport = view.viewport.get();
+    const startSelection = selectedEntities(view.selection.state());
     current.onReady?.(view);
     const offLock = view.on("lock", (e) => {
       const { locked, onLockedChange } = latest.current;
@@ -134,6 +172,19 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     });
     return () => {
       offLock();
+      // Remember what the user changed. A view torn down right after it mounted (Strict
+      // Mode) changed nothing, so the next mount still fits the content.
+      const viewport = view.viewport.get();
+      const selection = selectedEntities(view.selection.state());
+      carried.current = {
+        model: carried.current.model,
+        ...(carried.current.viewport && { viewport: carried.current.viewport }),
+        ...(carried.current.selection && {
+          selection: carried.current.selection,
+        }),
+        ...(!sameData(viewport, startViewport) && { viewport }),
+        ...(!sameData(selection, startSelection) && { selection }),
+      };
       // Another editor may have taken the slot since: only clear what is ours.
       if (store.get().view === view)
         store.set({ view: null, model: undefined });
