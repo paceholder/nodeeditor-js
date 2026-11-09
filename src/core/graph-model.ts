@@ -49,9 +49,13 @@ import { createValidatedPolicy } from "./edit/policy/validated-policy.js";
 import { createPolicyValidator } from "./edit/policy/validator.js";
 import {
   createVerdictCache,
+  type VerdictRequestOptions,
   type VerdictService,
 } from "./edit/policy/verdict-cache.js";
-import type { ConnectionValidator } from "./edit/policy/verdict-types.js";
+import type {
+  ConnectionValidator,
+  VerdictProposal,
+} from "./edit/policy/verdict-types.js";
 import { createFragmentPlanners } from "./io/fragment/plan-paste.js";
 import type {
   PayloadCodecRegistry,
@@ -130,6 +134,15 @@ export interface GraphModel
    * `connectionValidator`. Every view on this model shares them.
    */
   readonly verdicts?: VerdictService;
+  /**
+   * Obtain the missing host verdicts, normally the `missing` list of an `unverified`
+   * result, and resolve once every one has settled, so the same command can be repeated.
+   * Resolves at once for a model without a validator.
+   */
+  verifyConnections(
+    proposals: readonly VerdictProposal[],
+    options?: VerdictRequestOptions,
+  ): Promise<void>;
   /** The codecs paste and duplicate use; copy should pass the same ones. */
   readonly payloadCodecs?: PayloadCodecRegistry;
   /** The fragment limits paste uses. */
@@ -199,6 +212,22 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     ...api,
     ...createConvenience(api),
     registry,
+    async verifyConnections(proposals, requestOptions) {
+      if (!cache) return;
+      await Promise.all(
+        proposals.map((p) =>
+          cache.request(
+            {
+              from: p.from,
+              to: p.to,
+              connectionKind: p.kind,
+              auxiliary: [],
+            },
+            requestOptions,
+          ),
+        ),
+      );
+    },
     dispose() {
       cache?.dispose();
       core.dispose();
