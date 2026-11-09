@@ -22,4 +22,4 @@
 
 ## 6. Gates and tag
 
-- [ ] 6.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, the consumer smoke and `openspec validate add-npm-release --strict`; record in `notes.md`; recreate the local tag `0.1.0` on the final commit (not pushed)
+- [x] 6.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, the consumer smoke and `openspec validate add-npm-release --strict`; record in `notes.md`; recreate the local tag `0.1.0` on the final commit (not pushed)

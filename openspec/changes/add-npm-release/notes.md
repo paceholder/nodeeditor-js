@@ -17,3 +17,11 @@ because trusted publishing needs it and Node 22 ships npm 10. The YAML parses (c
 Ruby's YAML parser); the workflow itself cannot run before a push. The glob would also match a
 pre-release tag such as `1.0.0-rc.1`, which would publish under the `latest` dist-tag; the
 guide tells the owner to avoid such tags until a dist-tag rule is added.
+
+## Gates (6.1)
+
+Lint, typecheck, `npm test` (149 files, 976 tests), `npm run test:browser` (60 files, 321 tests),
+`npm run build` and the consumer smoke pass. `openspec validate add-npm-release --strict`
+reports only the long-requirement warning for the "Published package" requirement (accepted). `npm pack --dry-run` lists 25
+files, 545 kB packed, 2.2 MB unpacked, all under `dist/` plus `package.json`, `README.md`,
+`LICENSE`.
