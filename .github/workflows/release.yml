@@ -1,0 +1,52 @@
+name: Release
+
+# Publishes to npm when a version tag is pushed. Tags in this repository have no "v"
+# prefix (for example 0.1.0).
+#
+# No long-lived npm token is used. Publishing authenticates through npm trusted publishing
+# (OIDC). Trusted publishing must be enabled on npmjs.com for this repository and this
+# workflow file (release.yml) after the first manual publish, because the package has to exist
+# on the registry before a trusted publisher can be configured. See docs/guide-releasing.md.
+
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      # Trusted publishing needs npm 11.5.1 or newer; Node 22 ships an older npm.
+      - run: npm install -g npm@^11.5.1
+
+      - name: Check that the tag equals the package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not equal package.json version $version" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: node scripts/consumer-smoke.mjs
+
+      # prepublishOnly repeats lint, typecheck and tests; the build runs again through prepare.
+      - run: npm publish --provenance --access public

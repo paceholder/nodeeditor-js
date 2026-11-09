@@ -14,7 +14,7 @@
 
 ## 4. Release workflow
 
-- [ ] 4.1 Add `.github/workflows/release.yml` (tag trigger, tag equals version check, gates, smoke, publish with provenance through trusted publishing); verify the YAML parses
+- [x] 4.1 Add `.github/workflows/release.yml` (tag trigger, tag equals version check, gates, smoke, publish with provenance through trusted publishing); verify the YAML parses
 
 ## 5. Documentation
 
