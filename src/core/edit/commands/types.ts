@@ -22,6 +22,7 @@ import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { SubmitResult } from "../adapter/types.js";
 import type { ConnectionPlan, ConnectionPolicy } from "../policy/types.js";
+import type { VerdictProposal } from "../policy/verdict-types.js";
 import type { IdAllocator } from "./id-allocator.js";
 import type { ResolvedSizeLimits } from "./size-limits.js";
 
@@ -200,8 +201,16 @@ export type PlanResult =
       readonly kind: "choice";
       readonly alternatives: readonly ChoiceAlternative[];
     }
-  /** Validation has not finished. */
-  | { readonly kind: "pending"; readonly reason: string }
+  /**
+   * Validation has not finished. `missing` lists, as the plans the host would be
+   * asked about, the connections that still need a verdict, so the caller can obtain them
+   * (`verifyConnections`) and repeat the command.
+   */
+  | {
+      readonly kind: "pending";
+      readonly reason: string;
+      readonly missing: readonly VerdictProposal[];
+    }
   /** Undo and redo are carried out by the history, not by a patch of their own. */
   | {
       readonly kind: "history";
@@ -215,7 +224,12 @@ export type ExecuteResult =
       readonly status: "choice-required";
       readonly alternatives: readonly ChoiceAlternative[];
     }
-  | { readonly status: "unverified"; readonly reason: string };
+  | {
+      readonly status: "unverified";
+      readonly reason: string;
+      /** The plans that lack a host verdict; nothing was created. */
+      readonly missing: readonly VerdictProposal[];
+    };
 
 export type Availability =
   | { readonly available: true }

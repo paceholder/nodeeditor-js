@@ -19,12 +19,29 @@ function describe(from: Endpoint, to: Endpoint): string {
 
 function nonAccept(
   outcome: Exclude<PolicyOutcome, { kind: "accept" }>,
+  proposal: ConnectionProposal,
 ): PlanResult {
   switch (outcome.kind) {
     case "reject":
       return rejectedWith(outcome.reason);
     case "pending":
-      return { kind: "pending", reason: outcome.reason };
+      return {
+        kind: "pending",
+        reason: outcome.reason,
+        missing: [
+          outcome.plan
+            ? {
+                from: outcome.plan.from,
+                to: outcome.plan.to,
+                kind: outcome.plan.connectionKind,
+              }
+            : {
+                from: proposal.from,
+                to: proposal.to,
+                kind: proposal.kind ?? "default",
+              },
+        ],
+      };
     case "choice":
       return {
         kind: "choice",
@@ -54,7 +71,7 @@ export const planConnect: PlannerFor<"connect"> = (command, ctx) => {
       `The policy did not resolve the chosen alternative "${command.choice}"`,
     );
   }
-  if (outcome.kind !== "accept") return nonAccept(outcome);
+  if (outcome.kind !== "accept") return nonAccept(outcome, proposal);
   const { plan } = outcome;
   const ops: PatchOp[] = [
     ...plan.auxiliary,
@@ -83,7 +100,7 @@ export const planReconnect: PlannerFor<"reconnect"> = (command, ctx) => {
     replacing: existing.id,
   };
   const outcome = ctx.policy.evaluate(proposal, ctx.reader);
-  if (outcome.kind !== "accept") return nonAccept(outcome);
+  if (outcome.kind !== "accept") return nonAccept(outcome, proposal);
   const { plan } = outcome;
   const fields: Extract<
     PatchOp,

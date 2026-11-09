@@ -4,7 +4,10 @@
  * Re-evaluates the policy against the staged post-patch state for every connection the
  * patch adds, re-points, or leaves attached to a port whose type or direction changed.
  * Commands, raw patches and undo all pass through here, so no route bypasses the policy.
- * External-origin patches are skipped: their authority has already decided.
+ * External-origin patches are skipped: their authority has already decided. A connection
+ * whose host verdict is missing or pending is refused (`pending-validation`), except for
+ * undo and redo, which restore a state that was accepted before; a cached rejection still
+ * applies to them.
  */
 import type { ConnectionId } from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
@@ -14,6 +17,7 @@ import type { PatchOp } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
 import { hideConnection } from "./hide-connection.js";
 import type { ConnectionPolicy } from "./types.js";
+import type { VerdictProposal } from "./verdict-types.js";
 
 /** Why a stored connection is not acceptable, or undefined if the policy accepts it. */
 export function revalidate(
@@ -75,6 +79,34 @@ function connectionsToCheck(
   return [...found.values()];
 }
 
+/**
+ * The connections among the patch's that still lack a host verdict, as the plans the host
+ * would be asked about. Paste and duplicate use it to tell the caller what to verify before
+ * repeating the command; their connections do not exist yet, so only the staged graph can
+ * name them.
+ */
+export function proposalsAwaitingVerdict(
+  policy: ConnectionPolicy,
+  staged: GraphReader,
+  ops: readonly PatchOp[],
+): readonly VerdictProposal[] {
+  const waiting: VerdictProposal[] = [];
+  for (const c of connectionsToCheck(staged, ops)) {
+    const outcome = policy.evaluate(
+      { from: c.from, to: c.to, kind: c.kind },
+      hideConnection(staged, c.id),
+    );
+    if (outcome.kind !== "pending") continue;
+    const plan = outcome.plan;
+    waiting.push(
+      plan
+        ? { from: plan.from, to: plan.to, kind: plan.connectionKind }
+        : { from: c.from, to: c.to, kind: c.kind },
+    );
+  }
+  return waiting;
+}
+
 export function createPolicyValidator(
   policy: ConnectionPolicy,
 ): PatchValidator {
@@ -83,7 +115,11 @@ export function createPolicyValidator(
       if (context.origin === "external") return undefined;
       for (const c of connectionsToCheck(staged, patch.ops)) {
         const refused = revalidate(policy, staged, c);
-        if (refused) return refused;
+        if (!refused) continue;
+        const restoring =
+          context.origin === "undo" || context.origin === "redo";
+        if (restoring && refused.code === "pending-validation") continue;
+        return refused;
       }
       return undefined;
     },

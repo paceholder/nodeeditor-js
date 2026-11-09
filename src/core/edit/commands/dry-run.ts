@@ -10,20 +10,33 @@ import type { Rejection } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import { applyOp } from "../../data/patch/apply-ops.js";
 import { checkIntegrity } from "../../data/patch/integrity.js";
-import { createStagedState } from "../../data/patch/stage.js";
+import { createStagedState, type StagedState } from "../../data/patch/stage.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
+
+/** The graph as it would be after `patch`, or the rejection of the operation that fails. */
+export function stagedAfter(
+  reader: GraphReader,
+  patch: Patch,
+): StagedState | Rejection {
+  const stage = createStagedState(reader);
+  for (const op of patch.ops) {
+    const refused = applyOp(stage, op);
+    if (refused) return refused;
+  }
+  return stage;
+}
+
+const isRejection = (value: StagedState | Rejection): value is Rejection =>
+  "code" in value;
 
 export function dryRun(
   reader: GraphReader,
   patch: Patch,
   validators: readonly PatchValidator[],
 ): Rejection | undefined {
-  const stage = createStagedState(reader);
-  for (const op of patch.ops) {
-    const refused = applyOp(stage, op);
-    if (refused) return refused;
-  }
+  const stage = stagedAfter(reader, patch);
+  if (isRejection(stage)) return stage;
   const broken = checkIntegrity(stage, patch.ops);
   if (broken) return broken;
   for (const validator of validators) {

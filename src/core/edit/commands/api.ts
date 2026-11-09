@@ -19,7 +19,8 @@ import type {
   SubmitResult,
 } from "../adapter/types.js";
 import type { ConnectionPolicy } from "../policy/types.js";
-import { dryRun } from "./dry-run.js";
+import { proposalsAwaitingVerdict } from "../policy/validator.js";
+import { dryRun, stagedAfter } from "./dry-run.js";
 import { createIdAllocator } from "./id-allocator.js";
 import { planCommand } from "./plan.js";
 import { resolveSizeLimits, type SizeLimitPolicy } from "./size-limits.js";
@@ -99,7 +100,20 @@ export function createCommandApi(
     }
     if (planned.kind !== "ready") return planned;
     const refused = dryRun(host.reader, planned.patch, env.validators);
-    return refused ? { kind: "rejected", error: refused } : planned;
+    if (!refused) return planned;
+    if (refused.code !== "pending-validation") {
+      return { kind: "rejected", error: refused };
+    }
+    // The patch is fine but some connection lacks a host verdict.
+    const staged = stagedAfter(host.reader, planned.patch);
+    return {
+      kind: "pending",
+      reason: refused.message,
+      missing:
+        "code" in staged
+          ? []
+          : proposalsAwaitingVerdict(env.policy, staged, planned.patch.ops),
+    };
   }
 
   return {
@@ -127,7 +141,11 @@ export function createCommandApi(
             alternatives: planned.alternatives,
           };
         case "pending":
-          return { status: "unverified", reason: planned.reason };
+          return {
+            status: "unverified",
+            reason: planned.reason,
+            missing: planned.missing,
+          };
       }
     },
     can(command) {

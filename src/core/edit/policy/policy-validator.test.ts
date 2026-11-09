@@ -187,6 +187,7 @@ describe("structured policy outcomes", () => {
     expect(result).toEqual({
       status: "unverified",
       reason: "validator offline",
+      missing: [{ from: end(a), to: end(b), kind: "default" }],
     });
     expect(model.reader.connections()).toEqual([]);
   });
