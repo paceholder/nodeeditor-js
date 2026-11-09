@@ -58,6 +58,10 @@ known limits written down.
   new option. The view watches the model until it holds a node, fits once, and stops watching;
   any viewport change made before then (user, host or explicit initial viewport) spends the
   fit without moving anything. Unmount removes the watcher.
+- D11 Label hiding reuses the port-hiding mechanism: theme tokens holding a zoom below which
+  the thing is not painted, evaluated by a small pure function beside `portsVisible`. Text is
+  never scaled or clamped, because a clamped font breaks the match between what is drawn and
+  what picking uses. Labels are paint only, so hit-testing is untouched.
 - D7 WebView, pen and touch: browser tests cover synthetic pointer events with
   `pointerType` pen and touch in Chrome; real WebView runs are manual and recorded.
 

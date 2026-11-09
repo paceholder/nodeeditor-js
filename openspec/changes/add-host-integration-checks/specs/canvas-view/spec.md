@@ -48,3 +48,22 @@ The initial fit option SHALL accept a value that fits the view once, when the fi
 #### Scenario: Unmount before content
 - **WHEN** the view is unmounted while the model is still empty and a snapshot is pushed afterwards
 - **THEN** nothing is fitted, no error is raised, and no listener of the view remains
+
+### Requirement: Label hiding by zoom
+Node titles SHALL be left out below a configurable zoom threshold, and port labels below a second configurable threshold, in the same way ports are left out below the port-hiding threshold: both thresholds are theme options, changeable at run time, and a threshold of zero keeps the labels at every zoom. The view SHALL NOT clamp or scale font sizes to keep text readable; a label is either drawn at its normal size or not drawn. Hiding a label SHALL NOT change picking, hit shapes, port capture or selection, and SHALL NOT hide selection, error or junction indicators. This requirement is provisional until the check in the tasks confirms the gap.
+
+#### Scenario: Titles hidden when zoomed out
+- **WHEN** the zoom drops below the title threshold
+- **THEN** no node title is drawn, a press on a node body still picks that node, and the selected node and error indicators remain visible
+
+#### Scenario: Port labels have their own threshold
+- **WHEN** the zoom lies between the port-label threshold and the title threshold
+- **THEN** titles are drawn and port labels are not, or the reverse when the thresholds are the other way round
+
+#### Scenario: Threshold of zero
+- **WHEN** the threshold is zero and the view is zoomed far out
+- **THEN** titles are still drawn at their normal size
+
+#### Scenario: Threshold changed at run time
+- **WHEN** the host changes the title threshold through the theme while the zoom is between the old and new value
+- **THEN** the scene layer repaints with the new setting and no model change or history entry results
