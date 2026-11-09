@@ -63,4 +63,5 @@ this change declares which entities its gesture involves.
   `connection-rejected` and `gesture-cancelled` events, and the pending wait that
   change defines. Apply and archive this change after it. Archive order: async policy, this
   change, `add-docking`, `add-snapshot-sync-adapter`.
+- Apply `add-consumable-package` before this change (a planned order, not a code dependency).
 - Independent of `add-docking` otherwise: neither uses the other's code.

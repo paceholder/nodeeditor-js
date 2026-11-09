@@ -20,13 +20,9 @@ first, then fixes only what fails, and records known limits.
   the screen-space tolerances rule and the built-in route modes rule). Add the image-symbol port normals and capture radius rule with the explicit normal if it cannot be given today.
 - Symbols from host assets: SVG data URIs of different sizes, tinted by the host, each tint
   under its own asset key, placement fractions in the picture's own coordinates.
-- Packaging: verify `dist/` output resolves in a fresh consumer project (Vite + TypeScript,
-  React 19 peer, ESM only, types shipped, `sideEffects: false`); a git dependency pinned to a
-  tag or commit builds `dist/` on install; document that path; `private: true` stays until a
-  registry decision (a temporary decision recorded in the design, not a requirement).
 - Coordinate conversion: verify `view.clientToWorld` in a scrolled, transformed and CSS-scaled
   container and in an embedded WebView; ship one example creating a node at a pointer-up
-  position from outside the view using pointer events only.
+  position from outside the view using pointer events only. Packaging (the consumable build, git install, Node baseline and single React copy) moved to `add-consumable-package`.
 - Fit on first content: `initialFit` gains a value that fits once when the first non-empty
   content appears after mount, for hosts that fill an empty view later (the fit on first content rule, provisional;
   the initial fit and zoom limits rule stays as it is).
@@ -63,21 +59,20 @@ None.
   scenario text to match (both modified); selection change origin and unknown IDs; shortcut unbinding,
   bare keys, focus scope and host predicate; the selection rule gains scenarios for the three marquee
   modes (no default changes).
-- `packaging`: consumable build and git install; external-drop example and
-  coordinate conversion.
+- `packaging`: external-drop example and coordinate conversion (the consumable build rule moved to
+  `add-consumable-package`).
 - `performance`: typical host sizes and a stress size.
 
 Requirements implemented or refined: the theme tokens and overrides rule, the per-connection style at runtime rule, the rule that glyph, target, label and anchor are separate, the image-symbol port normals and capture radius rule, the image-symbol node preset rule and the screen-space tolerances rule,
-the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the group movement and snapping rule, the resize handle rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the ESM package with typed entry points rule, the examples rule and the no global side effects rule,
-the published support and versioning policy rule, the consumable build rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
+the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the group movement and snapping rule, the resize handle rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the examples rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
 
 ## Impact
 
 - Code: small fixes only where a check fails (view render/paint, view input, tools, package.json,
-  tsup config); examples (`examples/plain-js`, one new consumer smoke project under `examples/`);
+  tsup config); examples (`examples/plain-js`);
   tests; docs (`docs/guide-view.md`, `docs/interaction.md`, `docs/architecture.md` known limits).
-- Added requirements other than image-symbol port normals, host-supplied symbol images, selection change origin, shortcut unbinding and consumable build (fit on first content and label hiding by zoom among them) are provisional until the
-  checks confirm a gap; unneeded ones are dropped from the delta before archive. Task 6.2
+- Added requirements other than image-symbol port normals, host-supplied symbol images, selection change origin and shortcut unbinding (fit on first content and label hiding by zoom among them) are provisional until the
+  checks confirm a gap; unneeded ones are dropped from the delta before archive. Task 5.2
   enforces that every requirement left in the delta has a test naming its ID.
 - Touches the React selection hook introduced by `add-react-integration` (it gains the
   origin), so apply this change after that one is archived.
@@ -89,7 +84,7 @@ the published support and versioning policy rule, the consumable build rule, the
 - Components inside nodes, backend protocols, domain connection rules, host theme tokens.
 - Full accessibility (screen-reader parity, keyboard connection); only the existing reduced
   scope is recorded as a known limit.
-- Registry publication and release automation; only the consumption path (git dependency) and
-  metadata decision.
+- Packaging, git install, Node baseline and the tag (see `add-consumable-package`), registry
+  publication and release automation.
 - Safari/Firefox engine runs and real device WebView testing beyond what is available locally;
   results that cannot be obtained are recorded as unverified.

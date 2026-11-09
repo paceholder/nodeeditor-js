@@ -40,10 +40,6 @@ known limits written down.
 - D4 Shortcut scope is per focused root, extended by an optional host predicate.
   Add unbinding and rebinding of any chord or command, and bare-key bindings, only if the
   `keymap` option cannot express them today. A text field's keys never reach graph commands.
-- D5 Packaging smoke: a throwaway consumer project under `examples/` that installs the packed
-  tarball (`npm pack`) and builds with Vite and `tsc`; run by a script, not part of `npm test`.
-  A second run installs from a git URL pinned to a commit into an empty project, which proves
-  the install-time build script produces `dist/`. React 19 stays an optional peer dependency.
 - D6 Performance: record numbers for 50, 200 and 500 node fixtures, plus a 2000-node stress
   fixture, with the existing harness from the React Flow comparison rule; no new budgets unless the result is far outside
   the existing ones. The sizes are planning values to confirm against real documents.
@@ -79,9 +75,6 @@ known limits written down.
 ## Settled Questions
 
 - Origin field: `origin: "user" | "api"`.
-- `private: true` stays until a registry decision; a git dependency works with a private
-  package. This is a temporary decision, recorded here and not as a requirement, so a later
-  registry publication needs no spec change.
 - The benchmark reuses the harness from the React Flow comparison rule; no separate comparison setup.
 
 ## Open Questions
