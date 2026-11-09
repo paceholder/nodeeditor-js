@@ -216,13 +216,17 @@ describe("route editing in a mounted view", () => {
 
   it("hovering a grip of a selected wire shows the resize cursor", async () => {
     const { view, c1 } = await setup();
+    // The cursor of a resting pointer settles on the next frame.
     mouse(view).move(250, 175);
+    await frames(1);
     expect(view.element.style.cursor).toBe("");
     view.selection.replace([selConn(c1)]);
     await frames();
     mouse(view).move(251, 175);
+    await frames(1);
     expect(view.element.style.cursor).toBe("ew-resize");
     mouse(view).move(300, 175);
+    await frames(1);
     expect(view.element.style.cursor).toBe("");
   });
 

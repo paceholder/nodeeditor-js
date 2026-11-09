@@ -36,7 +36,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 - [x] 5.4 Zoom on Control-wheel in every mode and always consume it, with `pinchSensitivity` (D13); verify `wheel-zoom.test.ts` (pinch at the limit is handled; pinch zooms in scroll-page mode; delta clamp) and `wheel-pinch.browser.test.ts` (a Control-wheel at the maximum zoom is default-prevented, a plain wheel there is not)
 - [x] 5.5 Add `deltaX` to wheel input and the `wheel: "pan"` mode (D14); verify `wheel-zoom.test.ts` (a diagonal plain wheel pans both ways in pan mode; the modifier and a pinch zoom; zoom mode unchanged) and `wheel-pinch.browser.test.ts` (two-finger scrolling pans in pan mode)
 - [x] 5.6 Pinch-zoom with two touches (D15); verify `touch-pinch.test.ts` (spreading two touches doubles the zoom about the midpoint; midpoint motion pans; lifting one ends it) and `touch-pinch.browser.test.ts` (a second touch during a node drag cancels it with nothing submitted)
-- [ ] 5.7 Throttle idle cursor work to once per frame (D18); verify `idle-move.browser.test.ts` (twenty moves before a frame run one scene pick)
+- [x] 5.7 Throttle idle cursor work to once per frame (D18); verify `idle-cursor.test.ts` (twenty moves before a frame run one cursor hit test, for the last position; a cancelled request runs nothing) and `route-edit.browser.test.ts` (the grip cursor settles on the next frame)
 
 ## 6. Keyboard
 

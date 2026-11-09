@@ -5,20 +5,19 @@
  * hidden document, dispose) to a tool `cancel`. Attached during mount, removed on
  * dispose. Tools never see a DOM type.
  */
-import { type Point, viewportToWorld } from "../../../core/index.js";
+import { viewportToWorld } from "../../../core/index.js";
 import { distancePx, dragThreshold } from "../tools/thresholds.js";
-import type { GestureChange, ToolRouter } from "../tools/tool-router.js";
 import {
   type CancelReason,
   type CursorKind,
-  type GestureCancellation,
   NO_MODIFIERS,
   type PointerInput,
-  type ToolContext,
   type ToolInput,
 } from "../tools/tool-types.js";
-import { type AutoPanHost, createAutoPanDriver } from "./auto-pan-driver.js";
-import { createEffectRunner, type EffectHost } from "./effect-runner.js";
+import { createAutoPanDriver } from "./auto-pan-driver.js";
+import type { DomInput, DomInputDeps } from "./dom-input-types.js";
+import { createEffectRunner } from "./effect-runner.js";
+import { createIdleCursor } from "./idle-cursor.js";
 import { isOverlayContent, isTextTarget } from "./input-scope.js";
 import { createKeyInput } from "./key-input.js";
 import {
@@ -32,59 +31,7 @@ import {
 } from "./pointer-input.js";
 import { createTouchPinch, type PinchInput } from "./touch-pinch.js";
 
-export interface DomInputDeps {
-  readonly router: ToolRouter;
-  readonly context: () => ToolContext;
-  /** The non-DOM parts of the effect host; capture, release and cursor are added here. */
-  readonly host: Omit<EffectHost, "capture" | "release" | "cursor">;
-  /** Client position to viewport and world points; undefined while not measurable. */
-  readonly coords: (
-    clientX: number,
-    clientY: number,
-  ) => { viewport: Point<"viewport">; world: Point<"world"> } | undefined;
-  readonly overlay: HTMLElement;
-  readonly platform: "mac" | "other";
-  /**
-   * Run the command bound to a key event; true when the key was bound (the key-down is
-   * then default-prevented). `"native"` means the browser's own action carries the
-   * command (clipboard chords), so the key-down keeps its default (D8).
-   */
-  readonly onKey: (event: KeyboardEvent) => boolean | "native";
-  /**
-   * Pointer position reports for hover tracking: every mouse move over the root
-   * (also during a gesture), the pointer leaving, and a gesture ending.
-   */
-  readonly hover: {
-    move(clientX: number, clientY: number): void;
-    leave(): void;
-    gestureEnded(): void;
-  };
-  /** A cursor that wins over the hit-based one for an idle pointer (resize handle). */
-  readonly hoverCursor?: (world: Point<"world">) => CursorKind | undefined;
-  /** Auto-pan during drags: the view's frame clock and CSS size. */
-  readonly autoPan?: AutoPanHost;
-  /** The router went from a running gesture to none, however it ended. */
-  readonly onGestureEnd?: () => void;
-  /** A gesture ended because of a model change or a lock, not the user. */
-  readonly onGestureCancelled?: (cancellation: GestureCancellation) => void;
-}
-
-export interface DomInput {
-  /**
-   * A model change was committed: the gesture in flight is cancelled when an entity it
-   * involves was removed or changed, whatever the change's origin.
-   */
-  modelChanged(change: GestureChange): void;
-  /** A host verdict settled: a gesture showing or waiting on a pending target re-reads it. */
-  verdictSettled(): void;
-  /** Tell the active tool the document was replaced: any gesture in flight cancels. */
-  modelReset(): void;
-  /** Cancel the gesture in flight, if any: nothing is committed. True if one ran. */
-  cancelGesture(reason: CancelReason): boolean;
-  /** World position of the pointer while it is over the root, else undefined. */
-  pointerWorld(): Point<"world"> | undefined;
-  dispose(): void;
-}
+export type { DomInput, DomInputDeps } from "./dom-input-types.js";
 
 export function attachDomInput(
   root: HTMLElement,
@@ -170,6 +117,21 @@ export function attachDomInput(
     return route(pointerInputOf(type, e, at, deps.platform));
   }
 
+  // The resting mouse's cursor: one scene pick per frame, not per move.
+  const idle = createIdleCursor({
+    clock: deps.clock,
+    cursorAt(clientX, clientY) {
+      const at = deps.coords(clientX, clientY);
+      if (!at || router.activePointer !== undefined) return undefined;
+      const top = deps.context().pick(at.world)[0];
+      return (
+        deps.hoverCursor?.(at.world) ??
+        (top?.kind === "port" ? "crosshair" : "default")
+      );
+    },
+    setCursor,
+  });
+
   // Two-finger pinch zoom: touches go to the pinch first; true when it owns the event.
   const pinch = createTouchPinch({
     cancel: () => void cancel("pinch"),
@@ -238,17 +200,11 @@ export function attachDomInput(
       deps.hover.move(e.clientX, e.clientY);
     }
     if (router.activePointer !== undefined) {
+      idle.cancel();
       pointer("pointer-move", e);
       return;
     }
-    if (e.pointerType !== "mouse") return;
-    const at = deps.coords(e.clientX, e.clientY);
-    if (!at) return;
-    const top = deps.context().pick(at.world)[0];
-    setCursor(
-      deps.hoverCursor?.(at.world) ??
-        (top?.kind === "port" ? "crosshair" : "default"),
-    );
+    if (e.pointerType === "mouse") idle.move(e.clientX, e.clientY);
   };
 
   const onPointerUp = (e: PointerEvent): void => {
@@ -279,6 +235,7 @@ export function attachDomInput(
     if (e.pointerType === "mouse" || e.pointerType === "pen") {
       lastClient = undefined;
     }
+    if (e.pointerType === "mouse") idle.cancel();
     if (e.pointerType === "mouse") deps.hover.leave();
   };
 
@@ -371,6 +328,7 @@ export function attachDomInput(
       disposed = true;
       // A gesture in flight ends as a cancel: nothing is committed, previews clear.
       cancel("dispose");
+      idle.dispose();
       driver?.dispose();
       for (const [target, type, fn, opts] of listeners) {
         target.removeEventListener(type, fn, opts);

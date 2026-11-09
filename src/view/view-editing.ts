@@ -404,6 +404,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       },
       hoverCursor: (world) =>
         live?.cursorAt(world) ?? routeCursorAt(world, context()),
+      clock: deps.clock,
       autoPan: { clock: deps.clock, size: deps.size },
       // A pending choice still wants its requests; it ends them itself when it is over.
       onGestureEnd: () => {
