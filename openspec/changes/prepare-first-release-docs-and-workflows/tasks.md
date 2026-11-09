@@ -11,7 +11,7 @@
 - [x] 2.3 Viewport and selection carried across a remount: failing test first
 - [x] 2.4 `ref` form beside `onReady`, with cleanup: failing test first
 - [x] 2.5 Command hooks compare arguments by value: failing test first
-- [ ] 2.6 Hydration test
+- [x] 2.6 Hydration test
 - [ ] 2.7 Recommend `useState(() => ...)` in `examples/react` and `docs/guide-react.md`; document the new behaviour
 
 ## 3. Packaging
