@@ -51,9 +51,11 @@ export type {
 } from "./interact/commands/transform-commands.js";
 export type {
   AvailabilityEvent,
+  ConnectionRejectedEvent,
   ContextMenuEvent,
   ContextMenuInvocation,
   ContextMenuTarget,
+  GestureCancelledEvent,
   ViewEventMap,
 } from "./interact/context-menu/context-menu-types.js";
 export type {

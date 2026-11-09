@@ -71,8 +71,8 @@ export interface DomInput {
   modelChanged(change: GestureChange): void;
   /** Tell the active tool the document was replaced: any gesture in flight cancels. */
   modelReset(): void;
-  /** Cancel the gesture in flight, if any: nothing is committed. */
-  cancelGesture(reason: CancelReason): void;
+  /** Cancel the gesture in flight, if any: nothing is committed. True if one ran. */
+  cancelGesture(reason: CancelReason): boolean;
   /** World position of the pointer while it is over the root, else undefined. */
   pointerWorld(): Point<"world"> | undefined;
   dispose(): void;
@@ -136,8 +136,10 @@ export function attachDomInput(
     return result;
   };
 
-  const cancel = (reason: CancelReason): void => {
-    if (router.activePointer !== undefined) route({ type: "cancel", reason });
+  const cancel = (reason: CancelReason): boolean => {
+    if (router.activePointer === undefined) return false;
+    route({ type: "cancel", reason });
+    return true;
   };
 
   function pointer(type: PointerInput["type"], e: PointerEvent) {

@@ -90,9 +90,15 @@ export type CancelReason =
   /** The view was locked. */
   | "locked";
 
+/** The reasons a gesture ends without the user asking. */
+export type GestureCancelReason = Extract<
+  CancelReason,
+  "entity-removed" | "external-change" | "locked" | "reset"
+>;
+
 /** Why a gesture ended on its own and which entities caused it. */
 export interface GestureCancellation {
-  readonly reason: CancelReason;
+  readonly reason: GestureCancelReason;
   /** The involved entities that were removed or changed; empty for a reset or a lock. */
   readonly ids: readonly string[];
 }

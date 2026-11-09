@@ -6,6 +6,7 @@
  */
 import type {
   GestureCancellation,
+  GestureCancelReason,
   PointerInput,
   PressInfo,
   Tool,
@@ -144,7 +145,7 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
         removed.length === 0 && change.origin === "external"
           ? involved.filter((id) => change.changed.includes(id))
           : [];
-      const reason =
+      const reason: GestureCancelReason | undefined =
         removed.length > 0
           ? "entity-removed"
           : touched.length > 0

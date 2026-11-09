@@ -41,6 +41,7 @@ import {
   DEFAULT_KEYMAP,
   detectPlatform,
 } from "./interact/commands/keymap.js";
+import { observeConnectionRejections } from "./interact/commands/rejection-events.js";
 import {
   createViewCommands,
   type ViewCommandOutcome,
@@ -183,8 +184,18 @@ function hoverId(target: HoverTarget | null): string | undefined {
 export function attachEditing(deps: EditingDeps): Editing {
   const { model, scene, selection, viewport } = deps;
   const lock = createViewLock(deps.locked);
+  const events = createViewEvents<ViewEventMap>();
+  // Pointer gestures commit through `commit` below; everything else is a view command.
+  let gesturing = false;
   const editable: EditableModel | undefined =
-    model && isEditable(model) ? model : undefined;
+    model && isEditable(model)
+      ? observeConnectionRejections(model, (rejection) =>
+          events.emit("connection-rejected", {
+            rejection,
+            source: gesturing ? "gesture" : "command",
+          }),
+        )
+      : undefined;
   const reader: GraphReader | undefined = model?.reader;
   // Fit stays inside the view's zoom limits.
   const zoomLimits = (): { min: number; max: number } => ({
@@ -232,7 +243,6 @@ export function attachEditing(deps: EditingDeps): Editing {
     () => events.emit("availability", { cause: "commands" }),
   );
   const offs: Array<() => void> = [];
-  const events = createViewEvents<ViewEventMap>();
   const menu = createViewContextMenu(deps.root, events);
   let hover: HoverTracker | undefined;
   let input: DomInput | undefined;
@@ -281,7 +291,14 @@ export function attachEditing(deps: EditingDeps): Editing {
     // nothing planned earlier arrives late.
     const can: typeof probe = (action, id) =>
       lock.get() ? LOCKED : probe(action, id);
-    const commit = (command: Command): void => void editable?.execute(command);
+    const commit = (command: Command): void => {
+      gesturing = true;
+      try {
+        editable?.execute(command);
+      } finally {
+        gesturing = false;
+      }
+    };
     const context = createToolContext({
       reader,
       scene,
@@ -356,6 +373,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       hoverCursor: (world) =>
         live?.cursorAt(world) ?? routeCursorAt(world, context()),
       autoPan: { clock: deps.clock, size: deps.size },
+      onGestureCancelled: (cancellation) =>
+        events.emit("gesture-cancelled", cancellation),
     });
     if (clipboard) {
       bridge = attachClipboardEvents(deps.root, {
@@ -417,7 +436,9 @@ export function attachEditing(deps: EditingDeps): Editing {
       if (next) {
         // An open gesture ends with the lock: nothing it was about to do may commit.
         // Unlocking cancels nothing, so a pan or marquee in progress carries on.
-        input?.cancelGesture("locked");
+        if (input?.cancelGesture("locked")) {
+          events.emit("gesture-cancelled", { reason: "locked", ids: [] });
+        }
         choices?.cancel();
         deps.setPreview(null);
       }

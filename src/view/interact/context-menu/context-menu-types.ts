@@ -8,11 +8,12 @@ import type {
   NodeId,
   Point,
   PortId,
+  Rejection,
   Viewport,
 } from "../../../core/index.js";
 import type { HoverEvent } from "../hover/hover-types.js";
 import type { SelectionState } from "../selection/view-selection.js";
-import type { Modifiers } from "../tools/tool-types.js";
+import type { GestureCancellation, Modifiers } from "../tools/tool-types.js";
 
 /** What the menu was opened on: the topmost hit, or the canvas. */
 export type ContextMenuTarget =
@@ -64,7 +65,23 @@ export interface ViewEventMap {
    * limits moved. A toolbar re-reads command availability on it.
    */
   readonly availability: AvailabilityEvent;
+  /**
+   * A connection was refused by a verdict, by the policy or at commit: during a
+   * pointer gesture, or from a view command. The model is unchanged.
+   */
+  readonly "connection-rejected": ConnectionRejectedEvent;
+  /** A gesture ended because of a change to what it involves, or a lock. */
+  readonly "gesture-cancelled": GestureCancelledEvent;
 }
+
+export interface ConnectionRejectedEvent {
+  readonly rejection: Rejection;
+  /** `gesture`: a pointer gesture; `command`: the result of a view command. */
+  readonly source: "gesture" | "command";
+}
+
+/** Why a gesture was cancelled and the involved entities that caused it. */
+export type GestureCancelledEvent = GestureCancellation;
 
 export interface AvailabilityEvent {
   readonly cause: "commands" | "clipboard" | "zoom-limits";

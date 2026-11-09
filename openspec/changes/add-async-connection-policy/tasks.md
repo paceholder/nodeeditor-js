@@ -14,7 +14,7 @@
 ## 2. Gestures and external changes (view/interact)
 
 - [x] 2.1 Add optional `involved?(state)` to `Tool`, implement it for connect, select-move, resize and route-edit, move the router to cancel on removal of an involved entity from any origin and on an external change of one (D9), delete the four per-tool `entities-removed` branches, and add the `"external-change"`, `"entity-removed"` and `"locked"` cancel reasons (lock uses `"locked"`, D10); verify each tool's existing test file still passes and gains an case from the rule that gestures react to changes of the entities they involve naming the involved entities of a running gesture, and `tool-router.test.ts` named for the rule that gestures react to changes of the entities they involve and the rule that external changes are not local undo entries: an unrelated change keeps the gesture, removal cancels with the ids from any origin, an external change of an involved entity cancels, a local change of it does not, a cancelled gesture submits nothing
-- [ ] 2.2 Add the `"connection-rejected"` and `"gesture-cancelled"` entries to `ViewEventMap` (D8, D9) and emit them from the mount layer; verify `view-events.test.ts` named for the rejection delivery to the host rule and the rule that gestures react to changes of the entities they involve and that `src/view/entry-points.test.ts` passes with the new names
+- [x] 2.2 Add the `"connection-rejected"` and `"gesture-cancelled"` entries to `ViewEventMap` (D8, D9) and emit them from the mount layer; verify `view-events.test.ts` named for the rejection delivery to the host rule and the rule that gestures react to changes of the entities they involve and that `src/view/entry-points.test.ts` passes with the new names
 
 ## 3. Connect tool (view/interact)
 
