@@ -11,7 +11,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { mountView, type ZoomLimits } from "../view/index.js";
+import {
+  type ConnectionChooser,
+  mountView,
+  type ZoomLimits,
+} from "../view/index.js";
 import { devWarn } from "./dev-warning.js";
 import { provideStore, useEditorStore } from "./editor-context.js";
 import { createEditorStore } from "./editor-store.js";
@@ -68,6 +72,15 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     toolOptions: undefined as unknown,
     chooser: undefined as unknown,
   });
+  // The one function the view is given. It calls the latest `chooseConnection` prop, so a
+  // new function from every render never reinstalls anything (installing a chooser cancels
+  // a pending choice).
+  const chooserTrampoline = useRef<ConnectionChooser>((request) => {
+    const input = latest.current.input;
+    return input === false || !input
+      ? undefined
+      : input.chooseConnection?.(request);
+  });
   // The lock state of the last view, so an uncontrolled editor keeps it across a remount.
   const carriedLock = useRef<boolean | undefined>(undefined);
   const generation = useRemountGeneration(remountKeys(props));
@@ -82,15 +95,19 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     if (!el) return;
     const current = latest.current;
     const startLocked = current.locked ?? carriedLock.current;
+    const input = current.input === false ? undefined : current.input;
+    const options = viewOptionsOf(current);
     const view = mountView(el, {
-      ...viewOptionsOf(current),
+      ...options,
+      ...(options.input && input?.chooseConnection
+        ? { input: { ...input, chooseConnection: chooserTrampoline.current } }
+        : {}),
       ...(startLocked !== undefined && { locked: startLocked }),
     });
-    const input = current.input === false ? undefined : current.input;
     applied.current = {
       theme: current.theme,
       toolOptions: input?.toolOptions,
-      chooser: input?.chooseConnection,
+      chooser: input?.chooseConnection !== undefined,
     };
     if (store.get().view) {
       devWarn(
@@ -167,13 +184,16 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     store.get().view?.setZoomLimits(limits);
   }, [store, zoomMin, zoomMax]);
 
-  const chooser = input?.chooseConnection;
+  // Only whether a chooser is present matters here: the trampoline reaches the latest one.
+  const hasChooser = input?.chooseConnection !== undefined;
   useEffect(() => {
     const view = store.get().view;
-    if (!view || applied.current.chooser === chooser) return;
-    applied.current.chooser = chooser;
-    view.setConnectionChooser(chooser);
-  }, [store, chooser]);
+    if (!view || applied.current.chooser === hasChooser) return;
+    applied.current.chooser = hasChooser;
+    view.setConnectionChooser(
+      hasChooser ? chooserTrampoline.current : undefined,
+    );
+  }, [store, hasChooser]);
 
   return provideStore(
     store,
