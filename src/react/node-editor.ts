@@ -192,6 +192,20 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     };
   }, [store, generation]);
 
+  // Declared after the mount effect, so on a mount the view is already in the store.
+  const { ref } = props;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `generation` re-runs this after the view was replaced
+  useEffect(() => {
+    const view = store.get().view;
+    if (!view || !ref) return;
+    if (typeof ref === "function") ref(view);
+    else ref.current = view;
+    return () => {
+      if (typeof ref === "function") ref(null);
+      else ref.current = null;
+    };
+  }, [store, generation, ref]);
+
   const { theme } = props;
   useEffect(() => {
     const view = store.get().view;

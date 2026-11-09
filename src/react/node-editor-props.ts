@@ -10,7 +10,7 @@
  *   inline object never costs the view.
  * - `nested`: `input` is split further, see `remountKeys`.
  */
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 import type { InputOptions, ViewHandle, ViewOptions } from "../view/index.js";
 import { warnZoomLimitsIgnored, zoomLimitsUsable } from "./zoom-limits-prop.js";
 
@@ -57,6 +57,12 @@ export interface NodeEditorProps extends ViewOptions {
    * needs the handle but sits outside a provider; elsewhere `useEditor()` is simpler.
    */
   readonly onReady?: (view: ViewHandle) => void;
+  /**
+   * The view handle as a React ref (callback or object). It receives the view each time
+   * one is mounted and `null` when that view is disposed (unmount or remount), so the host
+   * never holds a disposed view. Prefer it to `onReady` when the handle is kept in a ref.
+   */
+  readonly ref?: Ref<ViewHandle>;
   /**
    * Components that read this editor through the hooks, such as `ViewControls` and
    * `NodeOverlay`; they work without an `EditorProvider`. They render next to the
