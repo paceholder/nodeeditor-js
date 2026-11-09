@@ -27,6 +27,9 @@ first, then fixes only what fails, and records known limits.
 - Coordinate conversion: verify `view.clientToWorld` in a scrolled, transformed and CSS-scaled
   container and in an embedded WebView; ship one example creating a node at a pointer-up
   position from outside the view using pointer events only.
+- Fit on first content: `initialFit` gains a value that fits once when the first non-empty
+  content appears after mount, for hosts that fill an empty view later (the fit on first content rule, provisional;
+  the initial fit and zoom limits rule stays as it is).
 - Demo checks: the `marquee` option's three values (`direction` stays the default, `intersect` selects
   partly covered nodes in both drag directions); programmatic selection by ID, the selection `origin` (`"user"`, `"api"` or `"model"`; calls
   default to `"api"`, built-in tools pass `"user"`, removals from the model report `"model"`),
@@ -45,7 +48,8 @@ None.
 
 ### Modified Capabilities
 
-- `canvas-view`: per-connection runtime style by kind; host-supplied symbol images.
+- `canvas-view`: per-connection runtime style by kind; host-supplied symbol images;
+  fit once when the first content appears after mount (provisional).
 - `ports`: explicit normal and capture radius on image-symbol placements.
 - `interaction`: selection change origin and unknown IDs; shortcut unbinding,
   bare keys, focus scope and host predicate; the selection rule gains scenarios for the three marquee
@@ -55,7 +59,7 @@ None.
 - `performance`: typical host sizes and a stress size.
 
 Requirements implemented or refined: the theme tokens and overrides rule, the per-connection style at runtime rule, the rule that glyph, target, label and anchor are separate, the image-symbol port normals and capture radius rule, the image-symbol node preset rule and the screen-space tolerances rule,
-the selection rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the ESM package with typed entry points rule, the examples rule and the no global side effects rule,
+the initial fit and zoom limits rule, the fit on first content rule, the selection rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the ESM package with typed entry points rule, the examples rule and the no global side effects rule,
 the published support and versioning policy rule, the consumable build rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
 
 ## Impact
@@ -63,7 +67,7 @@ the published support and versioning policy rule, the consumable build rule, the
 - Code: small fixes only where a check fails (view render/paint, view input, tools, package.json,
   tsup config); examples (`examples/plain-js`, one new consumer smoke project under `examples/`);
   tests; docs (`docs/guide-view.md`, `docs/interaction.md`, `docs/architecture.md` known limits).
-- Added requirements other than image-symbol port normals, host-supplied symbol images, selection change origin, shortcut unbinding and consumable build are provisional until the
+- Added requirements other than image-symbol port normals, host-supplied symbol images, selection change origin, shortcut unbinding and consumable build (fit on first content among them) are provisional until the
   checks confirm a gap; unneeded ones are dropped from the delta before archive. Task 6.2
   enforces that every requirement left in the delta has a test naming its ID.
 - Touches the React selection hook introduced by `add-react-integration` (it gains the

@@ -54,6 +54,10 @@ known limits written down.
   each port's side gives it and it wins; without one the normal is derived from the nearest
   body edge, as today. Either way it rotates and mirrors with the anchor and the router
   leaves along it.
+- D10 Fit on first content: the existing `initialFit` option gains one more setting (a field on its fit options) rather than a
+  new option. The view watches the model until it holds a node, fits once, and stops watching;
+  any viewport change made before then (user, host or explicit initial viewport) spends the
+  fit without moving anything. Unmount removes the watcher.
 - D7 WebView, pen and touch: browser tests cover synthetic pointer events with
   `pointerType` pen and touch in Chrome; real WebView runs are manual and recorded.
 

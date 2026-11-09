@@ -38,6 +38,10 @@ if it fails, the following fix task applies, otherwise mark it "not needed" in `
 - [ ] 5.7 Performance: run the React Flow comparison bench harness for 50, 200 and 500 nodes plus a 2000-node stress fixture; verify by a report under `bench/report` naming browser, DPR and date; flag results outside budgets to the owner
 - [ ] 5.8 Record known limits (reduced accessibility, WebView and pen unverified, anything left unfixed) in `docs/architecture.md`; verify `npm run lint`
 
+## 5a. Fit on first content
+
+- [ ] 5a.1 Verify named for the fit on first content rule and the initial fit and zoom limits rule in `src/view/initial-fit.browser.test.ts` how `initialFit` behaves today with a model that is empty at mount: add a setting on the fit options (`initialFit` is `FitOptions | true` today; for example `when: "content"`) that fits once when the first non-empty content appears, and cover content arriving in several pushes (one fit only), a viewport already changed by the user or the host before content arrives (the view does not move), and unmount before content arrives (listeners and frames removed, no later fit); verify the same test, the React prop in `src/react/node-editor-options.browser.test.ts` accepts the value, and `docs/guide-view.md` and `docs/guide-react.md` name it; drop the fit on first content rule from the delta if the existing option already covers it
+
 ## 6. Gates
 
 - [ ] 6.1 Run `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run lint`; verify all pass
