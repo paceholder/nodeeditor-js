@@ -325,6 +325,7 @@ export function mountView(
       status: assets.status,
       diagnostics: assets.diagnostics,
       retry: assets.retry,
+      invalidate: assets.invalidate,
       setResolver: assets.setResolver,
       stats: assets.stats,
     },

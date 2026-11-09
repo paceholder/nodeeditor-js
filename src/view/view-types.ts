@@ -235,10 +235,13 @@ export interface ViewHandle {
   ): void;
   /** Replace remote cursors/selections; repaints the interaction layer only. */
   setPresence(entries: readonly PresenceEntry[]): void;
-  /** The view's asset service: diagnostics, retry, resolver replacement. */
+  /**
+   * The view's asset service: diagnostics, retry, invalidation, resolver replacement
+   * Changes repaint the scene.
+   */
   readonly assets: Pick<
     AssetService,
-    "status" | "diagnostics" | "retry" | "setResolver" | "stats"
+    "status" | "diagnostics" | "retry" | "invalidate" | "setResolver" | "stats"
   >;
   /** The zoom range in effect, inside the absolute bounds of the core viewport. */
   zoomLimits(): { readonly min: number; readonly max: number };

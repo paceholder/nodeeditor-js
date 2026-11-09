@@ -49,6 +49,12 @@ export interface AssetService {
   diagnostics(): readonly AssetDiagnostic[];
   /** Forget a failure and load the asset again. */
   retry(ref: string): void;
+  /**
+   * Forget one asset, or every asset without a reference: cached bitmaps, decoded sources
+   * and failures are released, and the next draw asks the resolver again. For a host whose
+   * resolver now returns something else for a reference (a swapped symbol library).
+   */
+  invalidate(ref?: string): void;
   /** Replace the resolver; failed assets become eligible again. */
   setResolver(resolve: AssetResolver["resolve"] | undefined): void;
   /** Called when an asset becomes ready or fails; returns an unsubscribe function. */
@@ -252,6 +258,16 @@ export function createAssetService(
     retry(ref) {
       if (disposed || entries.get(ref)?.status !== "failed") return;
       forget(ref);
+      notify();
+    },
+    invalidate(ref) {
+      if (disposed) return;
+      if (ref === undefined) {
+        for (const known of [...entries.keys()]) forget(known);
+      } else {
+        if (!entries.has(ref)) return;
+        forget(ref);
+      }
       notify();
     },
     setResolver(next) {

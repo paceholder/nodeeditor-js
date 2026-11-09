@@ -74,4 +74,74 @@ describe("asset invalidation", () => {
     expect(s.stats().cacheBytes).toBe(0);
     s.dispose();
   });
+
+  it("invalidating a ready asset asks the resolver again on the next draw", async () => {
+    const f = fakes({ side: 100 });
+    let calls = 0;
+    const s = service(
+      {
+        resolve: async () => {
+          calls++;
+          return SVG;
+        },
+      },
+      { decode: f.decode },
+    );
+    const changes: number[] = [];
+    s.onChange(() => void changes.push(calls));
+    const d = s.drawer(ctx, 1);
+    const box = rect<"local">(0, 0, 100, 100);
+    await drawUntilDrawn(d, "sym", box);
+    await drawUntilDrawn(d, "other", box);
+    expect(calls).toBe(2);
+    changes.length = 0;
+    s.invalidate("sym");
+    expect(changes).toHaveLength(1);
+    expect(s.status("sym")).toBe("unrequested");
+    expect(s.status("other")).toBe("ready");
+    await drawUntilDrawn(d, "sym", box);
+    expect(calls).toBe(3);
+    // Without a reference every asset is forgotten.
+    s.invalidate();
+    expect(s.status("sym")).toBe("unrequested");
+    expect(s.status("other")).toBe("unrequested");
+    expect(s.stats().cacheEntries).toBe(0);
+    expect(s.stats().sourceBytes).toBe(0);
+    s.dispose();
+  });
+
+  it("invalidating a failed asset clears its failure", async () => {
+    let fail = true;
+    const s = service(
+      {
+        resolve: async () => {
+          if (fail) throw new Error("offline");
+          return SVG;
+        },
+      },
+      { decode: fakes().decode },
+    );
+    const d = s.drawer(ctx, 1);
+    const box = rect<"local">(0, 0, 100, 100);
+    d.drawAsset("sym", box);
+    await settle();
+    expect(s.status("sym")).toBe("failed");
+    fail = false;
+    s.invalidate("sym");
+    expect(s.diagnostics()).toEqual([]);
+    await drawUntilDrawn(d, "sym", box);
+    s.dispose();
+  });
 });
+
+async function drawUntilDrawn(
+  d: ReturnType<ReturnType<typeof createAssetService>["drawer"]>,
+  ref: string,
+  box: ReturnType<typeof rect<"local">>,
+): Promise<void> {
+  for (let i = 0; i < 20; i++) {
+    if (d.drawAsset(ref, box) === "drawn") return;
+    await settle();
+  }
+  throw new Error(`${ref} was never drawn`);
+}
