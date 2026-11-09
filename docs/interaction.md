@@ -393,13 +393,16 @@ the mouse adds the growing step, so copies cascade instead of stacking.
   document becoming hidden, a model `reset` (the whole document replaced, for example by
   `loadSnapshot`), a context menu opened on a press that has not started dragging
   (`"context-menu"`, section 7a), and `dispose()`. Each ends the gesture with nothing committed.
-  A committed removal is different: the tool is told which IDs left the model and cancels
-  only if its gesture uses one of them.
+  A committed model change is different: each tool says which nodes, ports and connections
+  its running gesture involves (`Tool.involved(state)`), and the router cancels the gesture
+  when one of them is removed (from any origin) or changed by an external change. A change
+  of anything else, or a local change of an involved entity, leaves the gesture running.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
 
 All cancellation sources meet in the router, and they only matter while a gesture runs.
-Model reset and removal are not DOM events: the view forwards them from the model's
-`reset` and `change` events (`view-editing.ts`).
+Model reset and change are not DOM events: the view forwards them from the model's
+`reset` and `change` events (`view-editing.ts`). A lock ends a gesture with the reason
+`"locked"`.
 
 ```mermaid
 flowchart LR
@@ -411,10 +414,10 @@ flowchart LR
   dispose["dispose()"] --> cancel
   esc["Escape key-down"] --> router
   cancel["cancel(reason)"] --> router["tool router"]
-  removed["committed removal"] -- "entities-removed(ids)" --> router
+  changed["committed change"] -- "changed(removed, touched, origin)" --> router
   router --> tool{"active tool"}
-  tool -- "any cancel, or a removed<br/>ID the gesture uses" --> idle["idle: preview cleared,<br/>nothing committed"]
-  tool -- "removed IDs not in use" --> goes["gesture continues"]
+  tool -- "any cancel, a removed ID the gesture<br/>involves, or an external change of one" --> idle["idle: preview cleared,<br/>nothing committed"]
+  tool -- "other changes" --> goes["gesture continues"]
 ```
 
 ## 7a. Context menu
@@ -554,9 +557,11 @@ change.
 
 A tool is `Tool<S>`: `idle` state, `accepts(press, ctx)`, `transition(state, input, ctx)`
 returning `{ state, effects }`, `isIdle(state)`, and optionally `autoPans(state)` (true
-in the states that drag something the view should auto-pan for). The tool context is
+in the states that drag something the view should auto-pan for), and `involved(state)`: the
+IDs of the nodes, ports and connections a gesture in that state reads or will write, so the
+router can cancel it when one of them is removed or changed externally. The tool context is
 read-only: `pick`, `reader`, `scene`, `selection`, `zoom`, `can(action, id)`,
 `sizeLimits(id)`, `evaluateConnection(from, to)` and `options`. Commit at most one command per gesture and always return to idle on
-commit, cancel or removal of an entity the gesture uses. The tool contract is public but
+commit or cancel; the router cancels for you when an entity you listed in `involved` goes away. The tool contract is public but
 experimental until Slice B adds routing tools. The headless harness
 (`src/view/test-support/tool-harness.ts`) drives tools against a real model and scene.

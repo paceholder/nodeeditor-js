@@ -5,6 +5,7 @@
  * it returns effects and never executes them.
  */
 import type {
+  GestureCancellation,
   PointerInput,
   PressInfo,
   Tool,
@@ -26,6 +27,8 @@ export interface Gesture {
   isIdle(): boolean;
   /** The tool's `autoPans` for the current state. */
   autoPans(): boolean;
+  /** The entities the gesture involves in its current state. */
+  involved(): readonly string[];
 }
 
 export function toolSlot<S>(tool: Tool<S>): ToolSlot {
@@ -42,6 +45,7 @@ export function toolSlot<S>(tool: Tool<S>): ToolSlot {
         },
         isIdle: () => tool.isIdle(state),
         autoPans: () => tool.autoPans?.(state) === true,
+        involved: () => tool.involved?.(state) ?? [],
       };
     },
   };
@@ -54,6 +58,17 @@ export interface RouteResult {
    * unclaimed press (context menu), or a wheel that did not change the viewport.
    */
   readonly handled: boolean;
+  /** Set when the router ended the gesture itself because of a model change. */
+  readonly cancelled?: GestureCancellation;
+}
+
+/** What a committed model change means to a running gesture. */
+export interface GestureChange {
+  /** IDs of the entities the change removed. */
+  readonly removed: readonly string[];
+  /** IDs of every entity the change added, removed or updated. */
+  readonly changed: readonly string[];
+  readonly origin: "local" | "undo" | "redo" | "external";
 }
 
 export interface ToolRouter {
@@ -64,6 +79,12 @@ export interface ToolRouter {
   readonly spaceHeld: boolean;
   /** Whether the active gesture wants auto-pan near the view edge now. */
   autoPanning(): boolean;
+  /**
+   * A model change was committed: cancels the gesture when an entity it involves was
+   * removed (any origin) or changed by an external change. Anything else leaves
+   * the gesture running.
+   */
+  changed(change: GestureChange, ctx: ToolContext): RouteResult;
 }
 
 const IGNORED: RouteResult = { effects: [], handled: false };
@@ -114,6 +135,28 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
       return space;
     },
     autoPanning: () => active?.gesture.autoPans() === true,
+    changed(change, ctx) {
+      if (!active) return IGNORED;
+      const involved = active.gesture.involved();
+      if (involved.length === 0) return IGNORED;
+      const removed = involved.filter((id) => change.removed.includes(id));
+      const touched =
+        removed.length === 0 && change.origin === "external"
+          ? involved.filter((id) => change.changed.includes(id))
+          : [];
+      const reason =
+        removed.length > 0
+          ? "entity-removed"
+          : touched.length > 0
+            ? "external-change"
+            : undefined;
+      if (!reason) return IGNORED;
+      const result = feed({ type: "cancel", reason }, ctx);
+      return {
+        ...result,
+        cancelled: { reason, ids: removed.length > 0 ? removed : touched },
+      };
+    },
     handle(input, ctx) {
       switch (input.type) {
         case "pointer-down":
@@ -137,7 +180,6 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
           if (input.key === " ") space = false;
           return IGNORED;
         case "cancel":
-        case "entities-removed":
           return feed(input, ctx);
       }
     },

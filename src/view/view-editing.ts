@@ -72,6 +72,7 @@ import {
 } from "./interact/lock/view-lock.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
+import { gestureChangeOf } from "./interact/tools/gesture-change.js";
 import { createResizeHandles } from "./interact/tools/resize-handles.js";
 import { routeCursorAt } from "./interact/tools/route-edit-tool.js";
 import {
@@ -395,9 +396,8 @@ export function attachEditing(deps: EditingDeps): Editing {
     });
     offs.push(
       model.on("change", (e) => {
-        const removed = removedIds(e.patch.ops);
-        dom.entitiesRemoved(removed);
-        hover?.entitiesRemoved(removed);
+        dom.modelChanged(gestureChangeOf(e));
+        hover?.entitiesRemoved(removedIds(e.patch.ops));
       }),
       model.on("reset", () => {
         dom.modelReset();
@@ -417,7 +417,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       if (next) {
         // An open gesture ends with the lock: nothing it was about to do may commit.
         // Unlocking cancels nothing, so a pan or marquee in progress carries on.
-        input?.cancelGesture("escape");
+        input?.cancelGesture("locked");
         choices?.cancel();
         deps.setPreview(null);
       }

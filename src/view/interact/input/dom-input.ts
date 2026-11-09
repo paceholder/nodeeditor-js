@@ -6,10 +6,11 @@
  * dispose. Tools never see a DOM type.
  */
 import { type Point, viewportToWorld } from "../../../core/index.js";
-import type { ToolRouter } from "../tools/tool-router.js";
+import type { GestureChange, ToolRouter } from "../tools/tool-router.js";
 import {
   type CancelReason,
   type CursorKind,
+  type GestureCancellation,
   NO_MODIFIERS,
   type PointerInput,
   type ToolContext,
@@ -58,11 +59,16 @@ export interface DomInputDeps {
   readonly hoverCursor?: (world: Point<"world">) => CursorKind | undefined;
   /** Auto-pan during drags: the view's frame clock and CSS size. */
   readonly autoPan?: AutoPanHost;
+  /** A gesture ended because of a model change or a lock, not the user. */
+  readonly onGestureCancelled?: (cancellation: GestureCancellation) => void;
 }
 
 export interface DomInput {
-  /** Tell the active tool that entities left the model (it cancels if it uses them). */
-  entitiesRemoved(ids: readonly string[]): void;
+  /**
+   * A model change was committed: the gesture in flight is cancelled when an entity it
+   * involves was removed, or changed externally.
+   */
+  modelChanged(change: GestureChange): void;
   /** Tell the active tool the document was replaced: any gesture in flight cancels. */
   modelReset(): void;
   /** Cancel the gesture in flight, if any: nothing is committed. */
@@ -262,13 +268,21 @@ export function attachDomInput(
 
   let disposed = false;
   return {
-    entitiesRemoved(ids) {
-      if (router.activePointer !== undefined && ids.length > 0) {
-        route({ type: "entities-removed", ids });
+    modelChanged(change) {
+      const wasActive = router.activePointer !== undefined;
+      const result = router.changed(change, deps.context());
+      if (!result.cancelled) return;
+      run(result.effects);
+      driver?.update({ type: "cancel", reason: result.cancelled.reason });
+      if (wasActive && router.activePointer === undefined) {
+        deps.hover.gestureEnded();
       }
+      deps.onGestureCancelled?.(result.cancelled);
     },
     modelReset() {
+      if (router.activePointer === undefined) return;
       cancel("reset");
+      deps.onGestureCancelled?.({ reason: "reset", ids: [] });
     },
     cancelGesture: cancel,
     pointerWorld() {

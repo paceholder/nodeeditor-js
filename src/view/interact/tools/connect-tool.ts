@@ -89,10 +89,6 @@ function idle(input: ToolInput, ctx: ToolContext): Transition<ConnectState> {
   };
 }
 
-function removed(ids: readonly string[], source: Endpoint): boolean {
-  return ids.includes(source.node) || ids.includes(source.port);
-}
-
 export const connectTool: Tool<ConnectState> = {
   id: "connect",
   idle: IDLE,
@@ -100,16 +96,14 @@ export const connectTool: Tool<ConnectState> = {
     input.button === 0 && !spaceHeld && portAt(hits) !== undefined,
   isIdle: (state) => state.kind === "idle",
   autoPans: (state) => state.kind === "dragging",
+  involved: (state) =>
+    state.kind === "idle" ? [] : [state.source.node, state.source.port],
   transition(state, input, ctx) {
     if (state.kind === "idle") return idle(input, ctx);
     const own =
       (input.type === "pointer-move" || input.type === "pointer-up") &&
       input.pointerId === state.pointerId;
     if (input.type === "cancel") {
-      return { state: IDLE, effects: state.kind === "dragging" ? END : [] };
-    }
-    if (input.type === "entities-removed") {
-      if (!removed(input.ids, state.source)) return { state, effects: [] };
       return { state: IDLE, effects: state.kind === "dragging" ? END : [] };
     }
     if (!own) return { state, effects: [] };

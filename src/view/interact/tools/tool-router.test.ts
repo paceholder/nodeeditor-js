@@ -137,6 +137,75 @@ describe("tool router", () => {
   });
 });
 
+describe("the router ends a gesture whose entities changed", () => {
+  const drag = () => {
+    const h = fixture();
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 60, y: 10 });
+    return h;
+  };
+
+  it("an unrelated change keeps the gesture and its commit", () => {
+    const h = drag();
+    h.change({ removed: [], changed: ["b"], origin: "external" });
+    h.model.execute({ kind: "deleteEntities", nodes: [nodeId("b")] });
+    expect(h.router.activeTool).toBe("select-move");
+    expect(h.cancellations).toEqual([]);
+    h.up({ x: 60, y: 10 });
+    expect(h.log.commits).toHaveLength(1);
+  });
+
+  it("removal of an involved entity cancels from any origin and commits nothing", () => {
+    for (const origin of ["local", "undo", "redo", "external"] as const) {
+      const h = drag();
+      h.change({ removed: ["a"], changed: ["a"], origin });
+      expect(h.router.activeTool).toBeUndefined();
+      expect(h.cancellations).toEqual([
+        { reason: "entity-removed", ids: ["a"] },
+      ]);
+      expect(h.log.commits).toEqual([]);
+      expect(h.log.previews.at(-1)).toBeNull();
+      expect(h.log.releases).toEqual([1]);
+    }
+  });
+
+  it("a real removal from the model cancels the same way", () => {
+    const h = drag();
+    h.model.execute({ kind: "deleteEntities", nodes: [nodeId("a")] });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
+  });
+
+  it("an external change of an involved entity cancels; a local one does not", () => {
+    const h = drag();
+    h.change({ removed: [], changed: ["a"], origin: "local" });
+    h.change({ removed: [], changed: ["a"], origin: "undo" });
+    expect(h.router.activeTool).toBe("select-move");
+    h.change({ removed: [], changed: ["a"], origin: "external" });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    expect(h.log.commits).toEqual([]);
+  });
+
+  it("a change committed by the gesture itself never cancels it", () => {
+    const h = drag();
+    h.up({ x: 60, y: 10 });
+    expect(h.log.commits).toHaveLength(1);
+    expect(h.cancellations).toEqual([]);
+  });
+
+  it("a pan involves nothing: changes during it leave it running", () => {
+    const h = fixture();
+    h.down({ x: 500, y: 500 });
+    expect(h.router.activeTool).toBe("empty-pan");
+    h.change({ removed: ["a"], changed: ["a"], origin: "external" });
+    expect(h.router.activeTool).toBe("empty-pan");
+    expect(h.cancellations).toEqual([]);
+  });
+});
+
 describe("resize and connect", () => {
   /** Node `a` has a port on its bottom-right corner, right under the handle. */
   const cornerPort = () => {

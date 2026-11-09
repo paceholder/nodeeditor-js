@@ -82,7 +82,20 @@ export type CancelReason =
   /** The whole document was replaced (a `reset` event). */
   | "reset"
   /** A context menu opened for a press that had not started dragging. */
-  | "context-menu";
+  | "context-menu"
+  /** An entity the gesture involves was removed from the model. */
+  | "entity-removed"
+  /** An external change touched an entity the gesture involves. */
+  | "external-change"
+  /** The view was locked. */
+  | "locked";
+
+/** Why a gesture ended on its own and which entities caused it. */
+export interface GestureCancellation {
+  readonly reason: CancelReason;
+  /** The involved entities that were removed or changed; empty for a reset or a lock. */
+  readonly ids: readonly string[];
+}
 
 export type ToolInput =
   | PointerInput
@@ -98,8 +111,7 @@ export type ToolInput =
       readonly key: string;
       readonly modifiers: Modifiers;
     }
-  | { readonly type: "cancel"; readonly reason: CancelReason }
-  | { readonly type: "entities-removed"; readonly ids: readonly string[] };
+  | { readonly type: "cancel"; readonly reason: CancelReason };
 
 export type ViewportOp =
   | { readonly kind: "panBy"; readonly dx: number; readonly dy: number }
@@ -194,4 +206,10 @@ export interface Tool<S> {
    * Omitted: never. Pan tools never do.
    */
   autoPans?(state: S): boolean;
+  /**
+   * The IDs of the nodes, ports and connections a gesture in this state reads or will
+   * write. The router cancels the gesture when one of them is removed, or changed
+   * by an external change. Omitted: the gesture involves nothing (pan, marquee).
+   */
+  involved?(state: S): readonly string[];
 }

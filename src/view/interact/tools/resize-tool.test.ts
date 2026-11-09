@@ -11,6 +11,7 @@ import {
   type HarnessOptions,
 } from "../../test-support/tool-harness.js";
 import { nodeKey } from "../selection/selection-model.js";
+import { resizeTool } from "./resize-tool.js";
 
 const N = (id: string): NodeId => nodeId(id);
 
@@ -93,13 +94,33 @@ describe("resize tool", () => {
     }
   });
 
+  it("an external change of the resized node cancels; other changes do not", () => {
+    const h = fixture();
+    h.selection.replace([nodeKey(N("a"))]);
+    h.down({ x: 38, y: 18 });
+    h.move({ x: 60, y: 30 });
+    expect(resizeTool.involved?.({ kind: "idle" })).toEqual([]);
+    h.change({ removed: [], changed: ["b"], origin: "external" });
+    h.change({ removed: [], changed: ["a"], origin: "local" });
+    expect(h.router.activeTool).toBe("resize");
+    expect(h.cancellations).toEqual([]);
+    h.change({ removed: [], changed: ["a"], origin: "external" });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    expect(h.log.previews.at(-1)).toBeNull();
+    expect(h.log.commits).toEqual([]);
+  });
+
   it("removal of the node discards the preview", () => {
     const h = fixture();
     h.selection.replace([nodeKey(N("a"))]);
     h.down({ x: 38, y: 18 });
     h.move({ x: 60, y: 30 });
-    h.send({ type: "entities-removed", ids: ["a"] });
+    h.model.execute({ kind: "deleteEntities", nodes: [N("a")] });
     expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
     expect(h.log.previews.at(-1)).toBeNull();
   });
 

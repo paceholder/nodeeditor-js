@@ -241,6 +241,7 @@ export function createRouteEditTool(): Tool<RouteEditState> {
       routeTargetAt(input.world, hits, ctx) !== undefined,
     isIdle: (state) => state.kind === "idle",
     autoPans: (state) => state.kind === "dragging",
+    involved: (state) => (state.kind === "idle" ? [] : [state.connection]),
     transition(state, input, ctx) {
       switch (state.kind) {
         case "idle": {
@@ -260,11 +261,7 @@ export function createRouteEditTool(): Tool<RouteEditState> {
           if (input.type === "pointer-up" && own(input, state)) {
             return releaseClick(state, input, ctx);
           }
-          if (
-            input.type === "cancel" ||
-            (input.type === "entities-removed" &&
-              input.ids.includes(state.connection))
-          ) {
+          if (input.type === "cancel") {
             return { state: IDLE, effects: [DEFAULT_CURSOR] };
           }
           return { state, effects: [] };
@@ -276,11 +273,7 @@ export function createRouteEditTool(): Tool<RouteEditState> {
           if (input.type === "pointer-up" && own(input, state)) {
             return releaseDrag(state, ctx);
           }
-          if (
-            input.type === "cancel" ||
-            (input.type === "entities-removed" &&
-              input.ids.includes(state.connection))
-          ) {
+          if (input.type === "cancel") {
             return { state: IDLE, effects: [CLEAR_PREVIEW, DEFAULT_CURSOR] };
           }
           return { state, effects: [] };

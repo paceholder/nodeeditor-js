@@ -33,6 +33,7 @@ import {
   type SelectionModel,
 } from "../interact/selection/selection-model.js";
 import { defaultToolSlots } from "../interact/tools/default-tools.js";
+import { gestureChangeOf } from "../interact/tools/gesture-change.js";
 import type { ToolOptions } from "../interact/tools/thresholds.js";
 import {
   capabilityProbe,
@@ -40,6 +41,7 @@ import {
 } from "../interact/tools/tool-context.js";
 import {
   createToolRouter,
+  type GestureChange,
   type RouteResult,
   type ToolRouter,
   type ToolSlot,
@@ -47,6 +49,7 @@ import {
 import {
   type ChoiceRelease,
   type CursorKind,
+  type GestureCancellation,
   type Modifiers,
   NO_MODIFIERS,
   type ToolInput,
@@ -95,6 +98,13 @@ export interface ToolHarness {
   };
   /** Feed one input and execute its effects. */
   send(input: ToolInput): RouteResult;
+  /** Gestures the router ended because of a model change, in order. */
+  readonly cancellations: GestureCancellation[];
+  /**
+   * Report a change as if the model had committed it, for origins a local model cannot
+   * produce (an external change).
+   */
+  change(change: GestureChange): RouteResult;
   /** Pointer helpers take world coordinates. */
   down(world: Point<"world">, extra?: PointerExtra): RouteResult;
   move(world: Point<"world">, extra?: PointerExtra): RouteResult;
@@ -196,6 +206,19 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     choose: (request) => void log.chooses.push(request),
   });
 
+  // Like the mounted view: every committed change tells the router.
+  const cancellations: GestureCancellation[] = [];
+  const change = (c: GestureChange): RouteResult => {
+    const result = router.changed(c, context());
+    run(result.effects);
+    if (result.cancelled) cancellations.push(result.cancelled);
+    return result;
+  };
+  const stopChanges = model.on(
+    "change",
+    (e) => void change(gestureChangeOf(e)),
+  );
+
   let time = 0;
   const send = (input: ToolInput): RouteResult => {
     const result = router.handle(input, context());
@@ -224,12 +247,15 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     applyViewport,
     log,
     send,
+    cancellations,
+    change,
     down: pointer("pointer-down"),
     move: pointer("pointer-move"),
     up: pointer("pointer-up"),
     key: (key, type = "key-down", mods = NO_MODIFIERS) =>
       send({ type, key, modifiers: mods }),
     dispose() {
+      stopChanges();
       stopBinding();
       selection.dispose();
       scene.dispose();

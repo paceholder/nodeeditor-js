@@ -53,6 +53,20 @@ function setup(opts: {
 const routeOf = (h: ToolHarness, id: ConnectionId) =>
   h.model.reader.getConnection(id)?.route;
 
+describe("route-edit tool: entities a drag involves", () => {
+  it("a drag involves its connection: removing it cancels with nothing committed", () => {
+    const { h, id } = setup({});
+    h.down({ x: 120, y: 50 });
+    h.move({ x: 140, y: 50 });
+    expect(h.router.activeTool).toBe("route-edit");
+    h.model.execute({ kind: "disconnect", connection: id });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: [id] }]);
+    expect(h.log.previews.at(-1)).toBeNull();
+    expect(h.log.commits).toEqual([]);
+  });
+});
+
 describe("route-edit tool: drag", () => {
   it("a drag on a handle previews each move and commits one setRoute", () => {
     const { h, id } = setup({});

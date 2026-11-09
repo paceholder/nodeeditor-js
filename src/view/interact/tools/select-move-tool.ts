@@ -195,6 +195,16 @@ export const selectMoveTool: Tool<SelectMoveState> = {
     input.button === 0 && !spaceHeld && targetOf(hits) !== undefined,
   isIdle: (state) => state.kind === "idle",
   autoPans: (state) => state.kind === "dragging",
+  involved(state) {
+    switch (state.kind) {
+      case "idle":
+        return [];
+      case "pressed":
+        return [state.target.id];
+      case "dragging":
+        return [...state.movable.map((m) => m.id), ...state.locked];
+    }
+  },
   transition(state, input, ctx) {
     switch (state.kind) {
       case "idle": {
@@ -228,12 +238,6 @@ export const selectMoveTool: Tool<SelectMoveState> = {
           };
         }
         if (input.type === "cancel") return { state: IDLE, effects: [] };
-        if (
-          input.type === "entities-removed" &&
-          input.ids.includes(state.target.id)
-        ) {
-          return { state: IDLE, effects: [] };
-        }
         return { state, effects: [] };
       }
       case "dragging": {
@@ -250,14 +254,6 @@ export const selectMoveTool: Tool<SelectMoveState> = {
           return release(state);
         }
         if (input.type === "cancel") {
-          return { state: IDLE, effects: [CLEAR_PREVIEW] };
-        }
-        if (
-          input.type === "entities-removed" &&
-          [...state.movable.map((m) => m.id), ...state.locked].some((id) =>
-            input.ids.includes(id),
-          )
-        ) {
           return { state: IDLE, effects: [CLEAR_PREVIEW] };
         }
         return { state, effects: [] };

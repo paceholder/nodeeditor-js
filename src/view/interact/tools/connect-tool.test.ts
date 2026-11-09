@@ -12,6 +12,7 @@ import {
   createToolHarness,
 } from "../../test-support/tool-harness.js";
 import { nodeKey } from "../selection/selection-model.js";
+import { connectTool } from "./connect-tool.js";
 import { createToolContext } from "./tool-context.js";
 import type { ToolPreview } from "./tool-types.js";
 
@@ -116,19 +117,30 @@ describe("connect tool", () => {
     h.down({ x: 40, y: 10 });
     h.move({ x: 120, y: 10 });
     h.model.execute({ kind: "deleteEntities", nodes: [nodeId("a")] });
-    h.send({ type: "entities-removed", ids: ["a", "aL", "aR"] });
     expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([
+      { reason: "entity-removed", ids: ["a", "aR"] },
+    ]);
     h.up({ x: 200, y: 10 });
     expect(h.log.commits).toEqual([]);
     expect(h.model.reader.connections()).toHaveLength(0);
+  });
+
+  it("a running gesture involves its source node and port", () => {
+    const source = { node: nodeId("a"), port: portId("aR") };
+    expect(connectTool.involved?.({ kind: "idle" })).toEqual([]);
+    expect(
+      connectTool.involved?.({ kind: "dragging", pointerId: 1, source }),
+    ).toEqual(["a", "aR"]);
   });
 
   it("unrelated removals do not cancel the gesture", () => {
     const h = pair();
     h.down({ x: 40, y: 10 });
     h.move({ x: 120, y: 10 });
-    h.send({ type: "entities-removed", ids: ["c"] });
+    h.model.execute({ kind: "deleteEntities", nodes: [nodeId("c")] });
     expect(h.router.activeTool).toBe("connect");
+    expect(h.cancellations).toEqual([]);
   });
 });
 

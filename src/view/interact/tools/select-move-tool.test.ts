@@ -6,6 +6,7 @@ import {
   createToolHarness,
 } from "../../test-support/tool-harness.js";
 import { connectionKey, nodeKey } from "../selection/selection-model.js";
+import { selectMoveTool } from "./select-move-tool.js";
 
 const N = (id: string): NodeId => nodeId(id);
 
@@ -145,12 +146,24 @@ describe("select/move tool: move", () => {
     const h = three();
     h.down({ x: 20, y: 10 });
     h.move({ x: 80, y: 10 });
-    h.send({ type: "entities-removed", ids: ["c"] });
+    h.model.execute({ kind: "deleteEntities", nodes: [N("c")] });
     expect(h.router.activeTool).toBe("select-move");
-    h.send({ type: "entities-removed", ids: ["a"] });
+    h.model.execute({ kind: "deleteEntities", nodes: [N("a")] });
     expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
+    expect(h.log.previews.at(-1)).toBeNull();
     expect(h.log.commits).toEqual([]);
-    expect(pos(h, "a")).toEqual({ x: 0, y: 0 });
+  });
+
+  it("every node of a multi-node drag is involved; a connection press involves the connection", () => {
+    const h = three();
+    h.selection.replace([nodeKey(N("a")), nodeKey(N("c"))]);
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 80, y: 10 });
+    h.model.execute({ kind: "deleteEntities", nodes: [N("c")] });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["c"] }]);
+    expect(selectMoveTool.involved?.({ kind: "idle" })).toEqual([]);
   });
 
   it("a mixed selection previews the locked node as not moving and commits only the rest", () => {

@@ -146,6 +146,7 @@ export const resizeTool: Tool<ResizeState> = {
     input.button === 0 && !spaceHeld && gripAt(input.world, ctx) !== undefined,
   isIdle: (state) => state.kind === "idle",
   autoPans: (state) => state.kind === "dragging",
+  involved: (state) => (state.kind === "idle" ? [] : [state.node]),
   transition(state, input, ctx) {
     switch (state.kind) {
       case "idle": {
@@ -173,8 +174,7 @@ export const resizeTool: Tool<ResizeState> = {
         }
         if (
           (input.type === "pointer-up" && own(input, state)) ||
-          input.type === "cancel" ||
-          (input.type === "entities-removed" && input.ids.includes(state.node))
+          input.type === "cancel"
         ) {
           return { state: IDLE, effects: [DEFAULT_CURSOR] };
         }
@@ -187,10 +187,7 @@ export const resizeTool: Tool<ResizeState> = {
         if (input.type === "pointer-up" && own(input, state)) {
           return release(state);
         }
-        if (
-          input.type === "cancel" ||
-          (input.type === "entities-removed" && input.ids.includes(state.node))
-        ) {
+        if (input.type === "cancel") {
           return { state: IDLE, effects: [CLEAR_PREVIEW, DEFAULT_CURSOR] };
         }
         return { state, effects: [] };
