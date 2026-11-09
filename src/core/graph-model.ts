@@ -187,7 +187,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     {
       reader: adapter.reader,
       idGenerator: adapter.idGenerator,
-      idCursor: () => adapter.idCursor(),
+      idCursor: () => adapter.planningCursor(),
       submit: (patch, o) => core.submit(patch, o),
       undo: () => adapter.undo(),
       redo: () => adapter.redo(),

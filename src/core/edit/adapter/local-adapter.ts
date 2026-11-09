@@ -61,6 +61,11 @@ export interface LocalAdapter extends ModelAdapter {
   validators(): readonly PatchValidator[];
   /** Current ID cursor; only ever moves forward. */
   idCursor(): IdCursor;
+  /**
+   * The cursor planners should allocate from: the committed cursor, advanced past every
+   * submission still queued, so commands issued from one handler do not collide.
+   */
+  planningCursor(): IdCursor;
   revision(): Revision;
   mintOperationId(): OperationId;
   /**
@@ -92,6 +97,9 @@ export function createLocalAdapter(
   const history = createLocalHistory();
   const validators: PatchValidator[] = [];
   let cursor: IdCursor = EMPTY_CURSOR;
+  // Cursor past the queued submissions; dropped when none is left.
+  let reserved: IdCursor | undefined;
+  let queuedSubmits = 0;
   let operations = 0;
   let disposed = false;
 
@@ -237,6 +245,7 @@ export function createLocalAdapter(
     },
     validators: () => validators,
     idCursor: () => cursor,
+    planningCursor: () => reserved ?? cursor,
     revision,
     mintOperationId: mint,
     replaceDocument(replacement) {
@@ -268,9 +277,18 @@ export function createLocalAdapter(
       ) {
         throw new MisuseError("submit expects a submission with a patch");
       }
-      return hub.isDispatching()
-        ? deferred(sub.operationId, () => run(sub, recordLocal(sub)))
-        : run(sub, recordLocal(sub));
+      if (!hub.isDispatching()) return run(sub, recordLocal(sub));
+      // Reserve the queued patch's IDs now, so the next plan continues after them.
+      reserved = advanceCursor(generator, reserved ?? cursor, sub.patch);
+      queuedSubmits += 1;
+      return deferred(sub.operationId, () => {
+        try {
+          return run(sub, recordLocal(sub));
+        } finally {
+          queuedSubmits -= 1;
+          if (queuedSubmits === 0) reserved = undefined;
+        }
+      });
     },
     undo: () => stepOrQueue("undo"),
     redo: () => stepOrQueue("redo"),
