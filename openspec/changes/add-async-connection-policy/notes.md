@@ -30,6 +30,10 @@ Decisions taken while applying the change, where the design left room.
   free because the request joins one in flight and a known verdict is not pending.
 - **A new press while waiting** cancels with the reason `new-press`, which is not reported
   to the host as a cancelled gesture (it is the user's own action).
+- **The pending cue needed no new painter.** The target-state painter already drew a pending
+  state with its own glyph and a dashed provisional wire, but no policy could produce it. The
+  work was making a pending target reachable and testing that its glyph differs in shape from
+  compatible, incompatible and choice-required with every state set to one colour.
 - **A picked alternative is judged like a pending target.** Decision: the choice
   controller (outside the router, because no pointer is down while the host picks) owns the
   wait, rather than putting the connect tool back into `awaiting`. After a pick it plans the

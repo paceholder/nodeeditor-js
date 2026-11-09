@@ -41,6 +41,7 @@ const STATES: readonly CandidateState[] = [
 function pixels(
   state: CandidateState,
   occupiedMark: boolean,
+  theme: typeof DEFAULT_THEME = DEFAULT_THEME,
 ): Uint8ClampedArray {
   const model = buildModel([
     twoPortNode("a", 40, 50),
@@ -57,7 +58,7 @@ function pixels(
   const frame = createPaintFrame(
     { width: 220, height: 100, dpr: 1 },
     viewport,
-    DEFAULT_THEME,
+    theme,
   );
   const target = { node: nodeId("b"), port: portId("bL") };
   const preview: ToolPreview = {
@@ -108,6 +109,22 @@ describe("connect preview", () => {
     const choice = pixels("choice", false);
     for (const other of ["compatible", "incompatible", "pending"] as const) {
       expect(differs(choice, pixels(other, false)), other).toBe(true);
+    }
+  });
+
+  it("pending is distinct from compatible, incompatible and choice-required in shape, not only in color", () => {
+    // One color for every state: whatever differs is the glyph.
+    const mono = {
+      ...DEFAULT_THEME,
+      connectionColor: "#336699",
+      error: "#336699",
+      warning: "#336699",
+      textColor: "#336699",
+    };
+    const pending = pixels("pending", false, mono);
+    expect(pending.some((v) => v !== 0)).toBe(true);
+    for (const other of ["compatible", "incompatible", "choice"] as const) {
+      expect(differs(pending, pixels(other, false, mono)), other).toBe(true);
     }
   });
 

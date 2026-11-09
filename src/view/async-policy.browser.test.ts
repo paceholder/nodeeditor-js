@@ -120,6 +120,25 @@ describe("pending target resolution in a mounted view", () => {
     expect(model.reader.connections()).toHaveLength(0);
   });
 
+  it("the pending cue is painted, and the verdict repaints the target without a pointer move", async () => {
+    const { calls, first } = setup();
+    await frames();
+    const canvas = first.view.canvases.interaction;
+    const snapshot = () =>
+      canvas.getContext("2d")?.getImageData(0, 0, canvas.width, canvas.height)
+        .data;
+    dragTo(first.pointer, false);
+    await frames(3);
+    const pending = snapshot();
+    expect(pending?.some((v) => v !== 0)).toBe(true);
+    await calls[0]?.answer({ valid: true });
+    await frames(3);
+    const compatible = snapshot();
+    expect(compatible?.some((v) => v !== 0)).toBe(true);
+    expect(pending?.some((v, i) => v !== compatible?.[i])).toBe(true);
+    first.pointer.up(...TO);
+  });
+
   it("releasing while pending commits nothing until the verdict, then connects once", async () => {
     const { model, calls, first } = setup();
     const { pointer } = first;
