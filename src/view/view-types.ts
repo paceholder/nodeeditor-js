@@ -118,6 +118,11 @@ export interface ViewOptions {
    */
   readonly locked?: boolean;
   /**
+   * The accessible name of the view's root, announced by assistive technology for the
+   * editor. Defaults to "Node editor"; pass a localized or more specific name.
+   */
+  readonly label?: string;
+  /**
    * Fit the content once, after the container is first measurable. `true` uses
    * the default padding and cap. Ignored when `initialViewport` is given.
    */
@@ -259,6 +264,8 @@ export interface ViewHandle {
    * patches no longer count.
    */
   setTheme(theme: ThemeInput, opts?: { readonly replace?: boolean }): void;
+  /** Rename the root for assistive technology; without a label it is "Node editor". */
+  setLabel(label?: string): void;
   /** Mark layers for repaint on the next frame. */
   invalidate(...layers: readonly LayerName[]): void;
   /** Cheap counters and timings for debugging and benchmarks. */
@@ -273,8 +280,8 @@ export interface ViewHandle {
   /** CSS size and pixel ratio the backing stores currently use. */
   metrics(): { width: number; height: number; dpr: number };
   /**
-   * The view's root. It has the role `application` and the accessible name "Node editor";
-   * set its `aria-label` to a localized or more specific name.
+   * The view's root. It has the role `application` and the accessible name given by the
+   * `label` option ("Node editor" by default); its `aria-label` may also be set directly.
    */
   readonly element: HTMLElement;
   readonly overlayElement: HTMLElement;

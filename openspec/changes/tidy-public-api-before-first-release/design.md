@@ -114,9 +114,11 @@ ID from being passed where an entity ID is expected, and the constructor is one 
 ### D5. `label` mount option and `NodeEditor` prop
 
 `ViewOptions.label` sets the root's `aria-label`; without it the name is "Node editor",
-as before. The React prop is `live`: a change updates the attribute of the mounted view
-without a remount, and dropping the prop restores the default. Writing the attribute on
-`view.element` keeps working for hosts that prefer it.
+as before. A runtime setter `view.setLabel(label?)` renames the mounted root, and without
+an argument restores the default; it keeps the default text inside the view instead of
+exporting a constant. The React prop is `live` and uses that setter: a change renames the
+mounted view without a remount, and dropping the prop restores the default. Writing the
+attribute on `view.element` keeps working for hosts that prefer it.
 
 ### D6. Public surface review lists candidates; removals are rare
 

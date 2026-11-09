@@ -224,6 +224,16 @@ export function NodeEditor(props: NodeEditorProps): ReactNode {
     view.setToolOptions(toolOptions ?? {}, { replace: true });
   }, [store, toolOptions]);
 
+  const { label } = props;
+  const mountedLabel = useRef(label);
+  useEffect(() => {
+    const view = store.get().view;
+    // The mount already applied the first label; only a change renames the root.
+    if (!view || mountedLabel.current === label) return;
+    mountedLabel.current = label;
+    view.setLabel(label);
+  }, [store, label]);
+
   const { locked } = props;
   useEffect(() => {
     const view = store.get().view;

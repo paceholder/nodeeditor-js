@@ -14,7 +14,7 @@
 
 ## 4. Accessible name option and prop
 
-- [ ] 4.1 Add `ViewOptions.label` and the live `label` prop in `src/react/node-editor-props.ts`; tests in `src/view/mount-view.browser.test.ts` ("accessible name option") and `src/react/accessible-name.browser.test.ts` ("accessible name prop"); verify lint, typecheck, `npm test`, `npm run test:browser`
+- [x] 4.1 Add `ViewOptions.label`, `view.setLabel` and the live `label` prop in `src/react/node-editor-props.ts`; tests in `src/view/mount-view.browser.test.ts` ("accessible name option") and `src/react/accessible-name.browser.test.ts` ("accessible name prop"); verify lint, typecheck, `npm test`, `npm run test:browser`
 
 ## 5. Public surface review
 

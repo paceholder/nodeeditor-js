@@ -100,3 +100,26 @@ describe("accessible root", () => {
     again.dispose();
   });
 });
+
+describe("accessible name option", () => {
+  it("the label mount option names the root", () => {
+    const view = mountView(host(), { label: "Circuit diagram" });
+    expect(view.element.getAttribute("aria-label")).toBe("Circuit diagram");
+    view.dispose();
+  });
+
+  it("without the option the root is named Node editor", () => {
+    const view = mountView(host(), {});
+    expect(view.element.getAttribute("aria-label")).toBe("Node editor");
+    view.dispose();
+  });
+
+  it("setLabel renames the mounted root, and no label restores Node editor", () => {
+    const view = mountView(host(), { label: "Circuit diagram" });
+    view.setLabel("Pump schematic");
+    expect(view.element.getAttribute("aria-label")).toBe("Pump schematic");
+    view.setLabel();
+    expect(view.element.getAttribute("aria-label")).toBe("Node editor");
+    view.dispose();
+  });
+});

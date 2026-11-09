@@ -21,7 +21,10 @@ import {
   type ContainerMetrics,
   observeContainer,
 } from "./platform/dom/container-metrics.js";
-import { createLayerStack } from "./platform/dom/layer-stack.js";
+import {
+  createLayerStack,
+  DEFAULT_VIEW_LABEL,
+} from "./platform/dom/layer-stack.js";
 import {
   createFrameScheduler,
   type FrameClock,
@@ -63,7 +66,7 @@ export function mountView(
   const win = container.ownerDocument.defaultView;
   if (!win) throw new Error("mountView needs an attached document");
   const zoomLimits = createZoomLimits(options.zoomLimits);
-  const stack = createLayerStack(container);
+  const stack = createLayerStack(container, options.label);
   let disposed = false;
   let backing = { width: 0, height: 0, dpr: 0 };
 
@@ -381,6 +384,9 @@ export function mountView(
     setTheme(patch, opts) {
       theme = mergeTheme(opts?.replace ? DEFAULT_THEME : theme, patch);
       markDirty("background", "scene");
+    },
+    setLabel(label) {
+      stack.root.setAttribute("aria-label", label ?? DEFAULT_VIEW_LABEL);
     },
     viewport: {
       get: viewport.get,

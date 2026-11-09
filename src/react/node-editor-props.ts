@@ -34,6 +34,7 @@ export const OPTION_KIND: { readonly [K in keyof ViewOptions]-?: OptionKind } =
     zoomLimits: "live",
     theme: "live",
     locked: "live",
+    label: "live",
     input: "nested",
   };
 
