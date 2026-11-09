@@ -38,3 +38,11 @@ Known: CI still runs on Node 22. The tests were run on Node 20 once by hand for 
 dedupe step. Checked by hand with npm 10.9.9: a git dependency installed with `--omit=dev`
 and with `--ignore-scripts` still builds `dist/` (npm builds git packages itself). Other package
 managers were not checked.
+
+## Gates (4.1)
+
+Typecheck, lint, `npm test` (148 files, 972 tests), `npm run test:browser` (60 files, 321 tests)
+and `node scripts/consumer-smoke.mjs` pass. `openspec validate add-consumable-package` passes;
+with `--strict` it reports only the warning that the "Consumable build" requirement text is longer than 500
+characters (the same strict warning appears for the other open changes). The text was moved
+here unchanged, so it was not edited; the owner accepted the warning.

@@ -20,5 +20,5 @@ it fails, the following fix task applies, otherwise mark it "not needed" in `not
 
 ## 4. Gates and tag
 
-- [ ] 4.1 Run `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run lint` and `node scripts/consumer-smoke.mjs`; verify all pass; update `notes.md`; verify `openspec validate add-consumable-package --strict`
+- [x] 4.1 Run `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run lint` and `node scripts/consumer-smoke.mjs`; verify all pass; update `notes.md`; verify `openspec validate add-consumable-package --strict`
 - [ ] 4.2 Once 4.1 is verified and the work is committed, create the local tag `0.1.0` on that commit (`git tag 0.1.0`); do not push it, the owner approves pushing separately; verify `git tag --list 0.1.0` names the commit
