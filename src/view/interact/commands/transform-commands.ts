@@ -5,6 +5,7 @@
  * nodes.nudge does; with none left the command is unavailable with the first refusal's
  * reason. Each is one model command, so shortcut and API give identical patches.
  */
+
 import {
   type Command,
   err,
@@ -13,6 +14,7 @@ import {
   type Rejection,
   rejectionOf,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { capabilityProbe } from "../tools/tool-context.js";
 import {
   type CommandContext,
@@ -21,10 +23,10 @@ import {
   outcomeOf,
 } from "./command-registry.js";
 
-export const TRANSFORM_COMMAND_IDS = {
+export const TRANSFORM_COMMAND_IDS = deepFreeze({
   rotate: "nodes.rotate",
   mirror: "nodes.mirror",
-} as const;
+} as const);
 
 /** Clockwise quarter turns. */
 export interface RotateArgs {

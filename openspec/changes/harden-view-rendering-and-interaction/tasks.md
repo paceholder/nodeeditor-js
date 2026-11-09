@@ -25,7 +25,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 
 ## 4. Shared state
 
-- [ ] 4.1 Freeze exported constants deeply (D10); verify `constants-frozen.test.ts` (every constant object or array exported from the view entries is deeply frozen)
+- [x] 4.1 Freeze exported constants deeply (D10); verify `constants-frozen.test.ts` (every constant object or array exported from the view entries is deeply frozen)
 - [ ] 4.2 Wrap every change subscription per call (D10); verify `painters.test.ts`, `route-editor-registry.test.ts`, `asset-service.test.ts` and `selection-model.test.ts` (one handler subscribed twice survives one unsubscribe)
 
 ## 5. Pointer, wheel and touch

@@ -10,7 +10,9 @@
  * left every band once or moved closer to an edge than where it started, so grabbing a
  * node near the edge does not scroll the view.
  */
+
 import type { Point, Vec2 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 
 export interface AutoPanOptions {
   /** Width of the band along each view edge, CSS pixels. */
@@ -19,10 +21,10 @@ export interface AutoPanOptions {
   readonly maxSpeedPxPerSecond: number;
 }
 
-export const DEFAULT_AUTO_PAN: AutoPanOptions = {
+export const DEFAULT_AUTO_PAN: AutoPanOptions = deepFreeze({
   edgePx: 32,
   maxSpeedPxPerSecond: 600,
-};
+});
 
 export interface ViewSize {
   readonly width: number;

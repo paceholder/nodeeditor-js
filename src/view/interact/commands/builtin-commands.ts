@@ -5,6 +5,7 @@
  * over the model's command API or the view-local services, so a shortcut and an API call
  * produce identical patches on equal models.
  */
+
 import {
   type Availability,
   type Command,
@@ -15,6 +16,7 @@ import {
   type Rejection,
   rejectionOf,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import {
   CLIPBOARD_COMMAND_IDS,
   registerClipboardCommands,
@@ -42,7 +44,7 @@ export interface NudgeArgs {
   readonly dy: number;
 }
 
-export const COMMAND_IDS = {
+export const COMMAND_IDS = deepFreeze({
   delete: "edit.delete",
   undo: "history.undo",
   redo: "history.redo",
@@ -58,7 +60,7 @@ export const COMMAND_IDS = {
   resetView: "view.resetView",
   reveal: "view.reveal",
   ...CLIPBOARD_COMMAND_IDS,
-} as const;
+} as const);
 
 interface Refusal {
   readonly available: false;

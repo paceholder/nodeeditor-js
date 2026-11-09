@@ -6,7 +6,9 @@
  * each other. A native `contextmenu` for an armed touch counts as the fire (Chrome on
  * Android sends one), and one after the fire is swallowed: one event per touch.
  */
+
 import type { Point } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { distancePx } from "../tools/thresholds.js";
 import type { PointerType } from "../tools/tool-types.js";
 
@@ -52,7 +54,7 @@ export interface LongPressStep {
   readonly action: LongPressAction;
 }
 
-export const LONG_PRESS_IDLE: LongPressState = { kind: "idle" };
+export const LONG_PRESS_IDLE: LongPressState = deepFreeze({ kind: "idle" });
 
 const step = (
   state: LongPressState,

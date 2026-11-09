@@ -68,8 +68,11 @@ describe("painter registries", () => {
 
   it("new port glyph only: other painters and geometry unchanged", () => {
     const { deps, painters, scene } = fixture();
-    const nodeSpy = vi.spyOn(fallbackNodePainter, "paint");
-    const connSpy = vi.spyOn(fallbackConnectionPainter, "paint");
+    // Counting painters for nodes and connections (the shipped fallbacks are frozen).
+    const nodeSpy = vi.fn(fallbackNodePainter.paint);
+    const connSpy = vi.fn(fallbackConnectionPainter.paint);
+    painters.nodes.replace("t", { paint: nodeSpy });
+    painters.connections.replace("default", { paint: connSpy });
     const before = scene.node("a" as never)?.paintedBounds;
     const glyphs: string[] = [];
     const glyph: PortGlyphPainter = {
@@ -81,8 +84,6 @@ describe("painter registries", () => {
     expect(nodeSpy).toHaveBeenCalledTimes(2);
     expect(connSpy).toHaveBeenCalledTimes(1);
     expect(scene.node("a" as never)?.paintedBounds).toEqual(before);
-    nodeSpy.mockRestore();
-    connSpy.mockRestore();
   });
 
   it("reuse painter with new geometry: same painter, new bounds", () => {

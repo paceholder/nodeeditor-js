@@ -2,6 +2,7 @@
  * Interaction thresholds and tool options (D4). Every distance here is in CSS
  * pixels of viewport space and does not change with zoom or device pixel ratio.
  */
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { type AutoPanOptions, DEFAULT_AUTO_PAN } from "./auto-pan.js";
 
 export interface ToolOptions {
@@ -40,7 +41,7 @@ export interface ToolOptions {
   readonly doubleClickMs: number;
 }
 
-export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
+export const DEFAULT_TOOL_OPTIONS: ToolOptions = deepFreeze({
   dragThresholdPx: { mouse: 3, touch: 6 },
   pickTolerancePx: 4,
   gridStep: undefined,
@@ -51,7 +52,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = {
   autoPan: DEFAULT_AUTO_PAN,
   longPressMs: 500,
   doubleClickMs: 500,
-};
+});
 
 export function resolveToolOptions(
   over: Partial<ToolOptions> = {},

@@ -3,6 +3,7 @@
  * placeholder box, a round port dot, and a stroked path. Presets replace them later;
  * they exist so an unconfigured view still shows the graph.
  */
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { placeholderNodePainter } from "../primitives/placeholder.js";
 import { tracePath } from "../primitives/trace-path.js";
 import type {
@@ -15,7 +16,7 @@ import type {
 export const fallbackNodePainter: NodePainter = placeholderNodePainter;
 
 /** A plain rounded box with a centered title; handy for hosts and tests. */
-export const boxNodePainter: NodePainter = {
+export const boxNodePainter: NodePainter = deepFreeze({
   paint(ctx, { node, bounds, style, detail, unit }) {
     ctx.beginPath();
     ctx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, style.nodeRadius);
@@ -36,9 +37,9 @@ export const boxNodePainter: NodePainter = {
       );
     }
   },
-};
+});
 
-export const fallbackPortGlyphPainter: PortGlyphPainter = {
+export const fallbackPortGlyphPainter: PortGlyphPainter = deepFreeze({
   paint(ctx, { position, style, unit }) {
     const r = style.portRadius * unit;
     ctx.beginPath();
@@ -53,9 +54,9 @@ export const fallbackPortGlyphPainter: PortGlyphPainter = {
     ctx.strokeStyle = style.portStroke;
     ctx.stroke();
   },
-};
+});
 
-export const fallbackConnectionPainter: ConnectionPainter = {
+export const fallbackConnectionPainter: ConnectionPainter = deepFreeze({
   paint(ctx, { path, style, unit }) {
     ctx.beginPath();
     tracePath(ctx, path);
@@ -71,4 +72,4 @@ export const fallbackConnectionPainter: ConnectionPainter = {
     ctx.arc(path.p1.x, path.p1.y, r, 0, Math.PI * 2);
     ctx.fill();
   },
-};
+});

@@ -6,6 +6,7 @@
  * thresholds) and the override tables. Each view owns its theme, so two views of one
  * model never affect each other.
  */
+import { deepFreeze } from "../../platform/deep-freeze.js";
 
 export type PortShape = "circle" | "square";
 
@@ -72,7 +73,7 @@ export interface ThemeInput
   readonly entityOverrides?: OverridePatch;
 }
 
-export const DEFAULT_THEME: ThemeTokens = {
+export const DEFAULT_THEME: ThemeTokens = deepFreeze({
   nodeFill: "#2f3540",
   nodeStroke: "#8a94a6",
   nodeLineWidth: 1.5,
@@ -101,7 +102,7 @@ export const DEFAULT_THEME: ThemeTokens = {
   lodHidePortsBelow: 0.25,
   typeOverrides: {},
   entityOverrides: {},
-};
+});
 
 function mergeOverrides(
   base: ThemeTokens["typeOverrides"],

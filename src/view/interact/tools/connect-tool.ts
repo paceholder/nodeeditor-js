@@ -9,7 +9,9 @@
  * removed source, or any other cancellation submits nothing.
  * A press-release below the threshold selects the port's node instead.
  */
+
 import { type Endpoint, type Point, rejectionOf } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { nodeKey, type SelectionChange } from "../selection/selection-model.js";
 import { connectPreview, portAt } from "./connect-candidates.js";
 import { distancePx, dragThreshold } from "./thresholds.js";
@@ -222,7 +224,7 @@ function awaiting(
   return settle(source, target, evaluation, state.at, ctx);
 }
 
-export const connectTool: Tool<ConnectState> = {
+export const connectTool: Tool<ConnectState> = deepFreeze({
   id: "connect",
   idle: IDLE,
   accepts: ({ input, hits, spaceHeld }) =>
@@ -313,4 +315,4 @@ export const connectTool: Tool<ConnectState> = {
     }
     return settle(state.source, target, evaluation, input.world, ctx);
   },
-};
+});

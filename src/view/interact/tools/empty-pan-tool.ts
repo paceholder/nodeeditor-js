@@ -4,7 +4,9 @@
  * so a click there still clears the selection as it does in marquee mode. Shift or the
  * primary modifier leaves the press to the marquee.
  */
+
 import type { Point } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { distancePx, dragThreshold } from "./thresholds.js";
 import type { PointerType, Tool, ToolEffect } from "./tool-types.js";
 
@@ -32,7 +34,7 @@ function panBy(from: Point<"viewport">, to: Point<"viewport">): ToolEffect {
   };
 }
 
-export const emptyPanTool: Tool<EmptyPanState> = {
+export const emptyPanTool: Tool<EmptyPanState> = deepFreeze({
   id: "empty-pan",
   idle: IDLE,
   accepts: ({ input, spaceHeld }, ctx) =>
@@ -108,4 +110,4 @@ export const emptyPanTool: Tool<EmptyPanState> = {
         };
     }
   },
-};
+});

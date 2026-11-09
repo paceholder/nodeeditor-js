@@ -5,6 +5,7 @@
  *
  * Experimental: the contract is public but may change before Slice B adds routing tools.
  */
+
 import type {
   Availability,
   CapabilityAction,
@@ -20,6 +21,7 @@ import type {
   ResolvedSizeLimits,
   Viewport,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import type {
   ConnectionEvaluation,
   ToolPreview,
@@ -48,7 +50,11 @@ export interface Modifiers {
   readonly mod: boolean;
 }
 
-export const NO_MODIFIERS: Modifiers = { shift: false, alt: false, mod: false };
+export const NO_MODIFIERS: Modifiers = deepFreeze({
+  shift: false,
+  alt: false,
+  mod: false,
+});
 
 export type PointerType = "mouse" | "touch" | "pen";
 

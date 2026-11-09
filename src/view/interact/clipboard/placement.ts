@@ -12,7 +12,9 @@
  * A new copy, or a paste of a different fragment, starts the count again. Pure functions:
  * the clipboard service keeps the state.
  */
+
 import type { Placement, Vec2 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 
 export interface PlacementState {
   /** The text of the fragment last pasted or copied; identifies "the same fragment". */
@@ -23,13 +25,13 @@ export interface PlacementState {
   readonly lastPoint: Vec2 | undefined;
 }
 
-export const INITIAL_PLACEMENT: PlacementState = {
+export const INITIAL_PLACEMENT: PlacementState = deepFreeze({
   fragment: undefined,
   pastes: 0,
   lastPoint: undefined,
-};
+});
 
-export const DEFAULT_PASTE_STEP: Vec2 = { x: 20, y: 20 };
+export const DEFAULT_PASTE_STEP: Vec2 = deepFreeze({ x: 20, y: 20 });
 
 /** The state right after copying `fragment`: the count starts again. */
 export function copiedPlacement(fragment: string): PlacementState {

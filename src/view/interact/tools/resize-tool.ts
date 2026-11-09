@@ -8,6 +8,7 @@
  * commits one `resizeNode` with the opposite corner fixed; below the threshold nothing
  * is committed. Every cancel, and removal of the node, discards the preview.
  */
+
 import type {
   NodeId,
   Point,
@@ -15,6 +16,7 @@ import type {
   Size,
   Vec2,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import {
   hitsResizeHandle,
   type LocalCorner,
@@ -139,7 +141,7 @@ function release(
 const own = (input: PointerInput, state: Grip): boolean =>
   input.pointerId === state.pointerId;
 
-export const resizeTool: Tool<ResizeState> = {
+export const resizeTool: Tool<ResizeState> = deepFreeze({
   id: "resize",
   idle: IDLE,
   accepts: ({ input, spaceHeld }, ctx) =>
@@ -194,4 +196,4 @@ export const resizeTool: Tool<ResizeState> = {
       }
     }
   },
-};
+});

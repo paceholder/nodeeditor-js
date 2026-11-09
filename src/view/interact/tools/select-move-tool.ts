@@ -6,6 +6,7 @@
  * submitted until release, which commits one `moveNodes` command for the permitted
  * nodes. Locked nodes stay in place and are marked in the preview.
  */
+
 import {
   type ConnectionId,
   type HitCandidate,
@@ -14,6 +15,7 @@ import {
   type Point,
   type Vec2,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import {
   applySelectionChange,
   connectionKey,
@@ -188,7 +190,7 @@ function release(state: Dragging): Transition<SelectMoveState> {
   return { state: IDLE, effects };
 }
 
-export const selectMoveTool: Tool<SelectMoveState> = {
+export const selectMoveTool: Tool<SelectMoveState> = deepFreeze({
   id: "select-move",
   idle: IDLE,
   accepts: ({ input, hits, spaceHeld }) =>
@@ -260,4 +262,4 @@ export const selectMoveTool: Tool<SelectMoveState> = {
       }
     }
   },
-};
+});

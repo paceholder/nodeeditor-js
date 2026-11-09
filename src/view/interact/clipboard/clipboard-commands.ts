@@ -4,6 +4,7 @@
  * native clipboard events and API calls all run these, so every route gives the same
  * patch. Availability explains each refusal.
  */
+
 import {
   type Availability,
   err,
@@ -13,6 +14,7 @@ import {
   type Result,
   rejectionOf,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import type {
   CommandContext,
   CommandOutcome,
@@ -21,12 +23,12 @@ import type {
 } from "../commands/command-registry.js";
 import type { ClipboardService, TextSink } from "./clipboard-service.js";
 
-export const CLIPBOARD_COMMAND_IDS = {
+export const CLIPBOARD_COMMAND_IDS = deepFreeze({
   copy: "edit.copy",
   cut: "edit.cut",
   paste: "edit.paste",
   duplicate: "edit.duplicate",
-} as const;
+} as const);
 
 /** Arguments of edit.copy and edit.cut: the native event's text sink, if any. */
 export interface CopyArgs {

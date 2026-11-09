@@ -3,6 +3,7 @@
  * command as the API. `Mod` is Cmd on macOS and Ctrl elsewhere; the platform is injected
  * (detection reads `navigator` only when the host asks, never at import: the server rendering safety rule).
  */
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { COMMAND_IDS } from "./builtin-commands.js";
 
 export type Platform = "mac" | "other";
@@ -47,7 +48,7 @@ const nudge =
     dy: dy * step * scale,
   });
 
-export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
+export const DEFAULT_KEYMAP: readonly KeyBinding[] = deepFreeze([
   { chord: "Delete", command: COMMAND_IDS.delete },
   { chord: "Backspace", command: COMMAND_IDS.delete },
   { chord: "Mod+Z", command: COMMAND_IDS.undo },
@@ -88,7 +89,7 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
       },
     ];
   }),
-];
+]);
 
 export function detectPlatform(
   nav: { readonly platform?: string } | undefined,

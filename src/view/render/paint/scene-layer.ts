@@ -22,6 +22,7 @@ import {
   type SceneLayer,
   transformRect,
 } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import { rethrowLater } from "../../platform/rethrow-later.js";
 import type { AssetService } from "../assets/asset-service.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
@@ -59,10 +60,10 @@ export interface ViewState {
   isHidden?(id: string): boolean;
 }
 
-export const EMPTY_VIEW_STATE: ViewState = {
+export const EMPTY_VIEW_STATE: ViewState = deepFreeze({
   isSelected: () => false,
   isHovered: () => false,
-};
+});
 
 export interface SceneLayerDeps {
   readonly reader: GraphReader;
@@ -96,11 +97,11 @@ export interface ScenePaintStats {
   readonly connections: number;
 }
 
-export const DEFAULT_Z_ORDER: readonly SceneLayer[] = [
+export const DEFAULT_Z_ORDER: readonly SceneLayer[] = deepFreeze([
   "connection",
   "node",
   "port",
-];
+]);
 
 function paintConnections(
   ctx: CanvasRenderingContext2D,

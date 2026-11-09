@@ -4,7 +4,9 @@
  * mark and a label, drawn over the node's real bounds so ports and connections stay
  * where the geometry puts them. It only draws: the node record is never touched.
  */
+
 import type { Rect } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import type { DetailPolicy } from "../paint/level-of-detail.js";
 import type { NodePainter } from "../registries/painter-types.js";
 import type { ResolvedStyle } from "../theme/resolve-style.js";
@@ -67,11 +69,11 @@ export function drawPlaceholder(
 }
 
 /** Painter for node types nobody registered a painter for. */
-export const placeholderNodePainter: NodePainter = {
+export const placeholderNodePainter: NodePainter = deepFreeze({
   paint(ctx, { node, bounds, style, detail, unit }) {
     drawPlaceholder(ctx, bounds, style, detail, unit, {
       mark: "?",
       label: node.title ?? node.type,
     });
   },
-};
+});

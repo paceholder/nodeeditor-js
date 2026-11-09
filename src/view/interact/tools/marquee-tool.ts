@@ -5,7 +5,9 @@
  * anything the rectangle touches (dashed outline). Shift adds, the primary modifier
  * toggles, and a click without drag clears the selection.
  */
+
 import { type Point, rectFromPoints } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import type { SelectionChange } from "../selection/selection-model.js";
 import { marqueeKeys } from "./marquee-select.js";
 import { distancePx, dragThreshold } from "./thresholds.js";
@@ -81,7 +83,7 @@ function finish(
   };
 }
 
-export const marqueeTool: Tool<MarqueeState> = {
+export const marqueeTool: Tool<MarqueeState> = deepFreeze({
   id: "marquee",
   idle: IDLE,
   // With `emptyDrag: "pan"` a plain drag pans, so the marquee needs Shift or Mod.
@@ -143,4 +145,4 @@ export const marqueeTool: Tool<MarqueeState> = {
         return { state, effects: [] };
     }
   },
-};
+});

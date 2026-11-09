@@ -2,7 +2,9 @@
  * Pan tool: middle-button drag, or Space plus primary-button drag. Applies
  * viewport deltas only; the model is never touched.
  */
+
 import type { Point } from "../../../core/index.js";
+import { deepFreeze } from "../../platform/deep-freeze.js";
 import type { Tool } from "./tool-types.js";
 
 export type PanState =
@@ -15,7 +17,7 @@ export type PanState =
 
 const IDLE: PanState = { kind: "idle" };
 
-export const panTool: Tool<PanState> = {
+export const panTool: Tool<PanState> = deepFreeze({
   id: "pan",
   idle: IDLE,
   accepts: ({ input, spaceHeld }) =>
@@ -66,4 +68,4 @@ export const panTool: Tool<PanState> = {
         return { state, effects: [] };
     }
   },
-};
+});
