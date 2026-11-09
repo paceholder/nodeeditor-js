@@ -26,7 +26,16 @@ export interface PortAnchor {
   readonly captureRadiusPx: number;
 }
 
+/** Node content fields a geometry may read; any other content never moves geometry. */
+export type NodeContentField = "title" | "status" | "payload" | "capabilities";
+
 export interface NodeGeometry {
+  /**
+   * Content fields the answers below depend on (for example a body sized from the
+   * title). The scene rebuilds the node when one of them changes; geometry fields
+   * (position, size, rotation, mirroring, type, ports) always rebuild it.
+   */
+  readonly dependsOn?: readonly NodeContentField[];
   bodyBounds(view: NodeView): Rect<"local">;
   /** Precise hit shape. */
   hitShape(view: NodeView): Shape;

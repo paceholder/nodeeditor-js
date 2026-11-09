@@ -2,7 +2,8 @@
  * Incremental scene updates from committed patches.
  *
  * The patch tells which entities were touched. Geometry-relevant node and port field
- * changes rebuild that node and its incident connections; z-order and other changes only
+ * changes, and changes of content fields the node's geometry declared (`dependsOn`),
+ * rebuild that node and its incident connections; z-order and other changes only
  * refresh the cached record. Connection ops rebuild just that connection. Work is done in
  * first-touched order, so results do not depend on incidental iteration order.
  */
@@ -21,6 +22,8 @@ export interface SceneOps {
   setConnection(id: ConnectionId): boolean;
   removeConnection(id: ConnectionId): void;
   nodesOfType(type: string): readonly NodeId[];
+  /** Content fields the node's geometry declared it depends on. */
+  contentDependencies(id: NodeId): readonly string[];
   /** Connections of `kind` that have an entry, in model order. */
   connectionsOfKind(kind: string): readonly ConnectionId[];
 }
@@ -54,7 +57,11 @@ export function applyChange(
     switch (op.entity) {
       case "node":
         if (op.op !== "update") geometry.add(op.record.id);
-        else if (touches(op.fields, NODE_GEOMETRY_FIELDS)) geometry.add(op.id);
+        else if (
+          touches(op.fields, NODE_GEOMETRY_FIELDS) ||
+          touches(op.fields, ops.contentDependencies(op.id))
+        )
+          geometry.add(op.id);
         else records.add(op.id);
         break;
       case "port": {

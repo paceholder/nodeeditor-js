@@ -33,6 +33,7 @@ export {
   MIN_ZOOM,
 } from "./limits.js";
 export type {
+  NodeContentField,
   NodeGeometry,
   NodeView,
   PortAnchor,

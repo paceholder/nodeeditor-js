@@ -180,6 +180,10 @@ export function createGeometryScene(
         .filter((c) => c.kind === kind && connections.has(c.id))
         .map((c) => c.id);
     },
+    contentDependencies(id) {
+      const record = reader.getNode(id);
+      return (record && registry.get(record.type).dependsOn) ?? [];
+    },
     nodesOfType(type) {
       return [...nodes.values()]
         .filter((e) => e.record.type === type)
