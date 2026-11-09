@@ -50,6 +50,23 @@ describe("published package", () => {
     expect(pkg.engines?.node).toBeTruthy();
   });
 
+  it("names an author and the public repository", () => {
+    expect(pkg.author?.name).toBeTruthy();
+    expect(pkg.repository.url).toBe(
+      "git+https://github.com/paceholder/nodeeditor-js.git",
+    );
+    expect(pkg.homepage).toBe(
+      "https://github.com/paceholder/nodeeditor-js#readme",
+    );
+  });
+
+  it("declares React and its types as optional peers", () => {
+    for (const name of ["react", "react-dom", "@types/react"]) {
+      expect(pkg.peerDependencies[name], name).toBeTruthy();
+      expect(pkg.peerDependenciesMeta[name]?.optional, name).toBe(true);
+    }
+  });
+
   it("publishConfig does not force provenance, which only works in CI", () => {
     expect(pkg.publishConfig.provenance).toBeUndefined();
   });
