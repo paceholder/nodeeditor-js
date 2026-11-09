@@ -126,8 +126,10 @@ export function createSelectionModel(): SelectionModel {
     toggle: (k) => model.apply({ mode: "toggle", keys: k }),
     clear: () => model.apply({ mode: "clear" }),
     on(handler) {
-      handlers.add(handler);
-      return () => void handlers.delete(handler);
+      // A wrapper per subscription, so subscribing one function twice unsubscribes once.
+      const entry = (event: SelectionEvent): void => handler(event);
+      handlers.add(entry);
+      return () => void handlers.delete(entry);
     },
     bindToModel(source) {
       const prune = (): void => {

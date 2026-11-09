@@ -289,8 +289,10 @@ export function createAssetService(
       cache.endFrame();
     },
     onChange(handler) {
-      handlers.add(handler);
-      return () => handlers.delete(handler);
+      // A wrapper per subscription, so subscribing one function twice unsubscribes once.
+      const entry = (): void => handler();
+      handlers.add(entry);
+      return () => void handlers.delete(entry);
     },
     stats: () => ({
       ...counts,

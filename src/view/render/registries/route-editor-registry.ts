@@ -115,8 +115,10 @@ export function createRouteEditorRegistry(): RouteEditorRegistry {
       notify(kind);
     },
     onChange(handler) {
-      handlers.add(handler);
-      return () => handlers.delete(handler);
+      // A wrapper per subscription, so subscribing one function twice unsubscribes once.
+      const entry = (kind: string): void => handler(kind);
+      handlers.add(entry);
+      return () => void handlers.delete(entry);
     },
   };
 }

@@ -75,8 +75,10 @@ function createRegistry<T>(fallback: T): PainterRegistry<T> {
       notify();
     },
     onChange(handler) {
-      handlers.add(handler);
-      return () => handlers.delete(handler);
+      // A wrapper per subscription, so subscribing one function twice unsubscribes once.
+      const entry = (): void => handler();
+      handlers.add(entry);
+      return () => void handlers.delete(entry);
     },
   };
 }
@@ -91,8 +93,10 @@ function createSlot<T>(initial: T): PainterSlot<T> {
       for (const h of [...handlers]) h();
     },
     onChange(handler) {
-      handlers.add(handler);
-      return () => handlers.delete(handler);
+      // A wrapper per subscription, so subscribing one function twice unsubscribes once.
+      const entry = (): void => handler();
+      handlers.add(entry);
+      return () => void handlers.delete(entry);
     },
   };
 }
