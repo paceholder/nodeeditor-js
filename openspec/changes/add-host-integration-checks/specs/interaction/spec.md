@@ -69,3 +69,69 @@ The view SHALL support single, additive, and toggle selection, clear selection, 
 #### Scenario: Clear selection
 - **WHEN** the user clicks empty canvas without modifiers
 - **THEN** the selection becomes empty
+
+### Requirement: Group movement with snapping
+Moving selected nodes SHALL be one gesture preserving their relative positions. Grid snapping SHALL be controlled by one library-wide grid step setting that applies to node moves and to resizes: it SHALL be off by default (no grid step), and the host SHALL be able to turn it on, change it and turn it off at run time through the tool options, taking effect from the next input event. No modifier key SHALL turn snapping off for a gesture; a host that wants free placement turns the grid step off. Locked nodes SHALL follow their capability policy, and mixed selections SHALL show which nodes will not move.
+
+#### Scenario: Multi-node drag keeps layout
+- **WHEN** three selected nodes are dragged by 40 world units
+- **THEN** all three move by the same offset in one committed command
+
+#### Scenario: Snapping off by default
+- **WHEN** a view is mounted without a grid step and a node is dragged by an offset that is not a multiple of any grid
+- **THEN** the node lands exactly at the dragged position
+
+#### Scenario: Grid step set at run time
+- **WHEN** the host sets a grid step of 20 through the tool options while the view is mounted and then drags a node
+- **THEN** the node position snaps to multiples of 20, and setting the step to nothing makes later drags exact again
+
+#### Scenario: Snap suppression
+- **WHEN** a grid step is set and the user holds Alt, Shift or Ctrl while dragging a node
+- **THEN** the position is still snapped, because snapping has no per-gesture override
+
+#### Scenario: Mixed locked selection
+- **WHEN** a selection contains one locked and two unlocked nodes and is dragged
+- **THEN** the preview marks the locked node as not moving and the commit moves only the permitted nodes
+
+### Requirement: Resize handle
+When exactly one node is selected and it may be resized, the view SHALL show one resize handle at the node's bottom-right corner as seen on screen, whatever its rotation and mirroring. Dragging it SHALL resize the node with the diagonally opposite screen corner fixed; Shift SHALL keep the aspect ratio. The handle SHALL have a fixed screen size and be picked geometrically, and a press on it SHALL resize, never connect. A completed resize SHALL be one command and one history entry.
+
+#### Scenario: Corner drag keeps the opposite corner
+- **WHEN** the handle of a selected, resizable 100-by-60 node is dragged by 40 world units right and 20 down and released
+- **THEN** the node is 140 by 80, its top-left corner is where it was, and the history gains exactly one entry
+
+#### Scenario: Shift keeps the aspect ratio
+- **WHEN** the handle of a 100-by-50 node is dragged with Shift held
+- **THEN** every preview and the committed size keep a width-to-height ratio of 2
+
+#### Scenario: Handle on a rotated and mirrored node
+- **WHEN** a non-square resizable node rotated by one quarter turn and mirrored is selected
+- **THEN** the handle sits on the body corner that is lowest and rightmost on screen, dragging it right and down grows the node on screen to the right and down, and the screen top-left corner stays in place
+
+#### Scenario: Clamped while dragging
+- **WHEN** the handle is dragged so that the width would fall below the node's minimum
+- **THEN** the preview stops at the minimum width, the opposite corner stays in place, and the committed size equals the minimum
+
+#### Scenario: Grid snapping only when enabled
+- **WHEN** the handle is dragged with no grid step configured
+- **THEN** the size follows the pointer exactly; with a grid step configured the moving corner snaps to the grid, and no modifier key turns the snapping off for a gesture
+
+#### Scenario: Resize and connect are exclusive
+- **WHEN** a port anchor lies on the corner under the handle of the selected node and the user presses there
+- **THEN** a resize starts and no connection gesture starts; a press on any other part of that port's capture area starts a connection
+
+#### Scenario: No handle for several nodes
+- **WHEN** two resizable nodes are selected
+- **THEN** no resize handle is shown and a press on a node's corner starts a move
+
+#### Scenario: No handle without the capability
+- **WHEN** the only selected node belongs to a type that did not opt in to resizing, or its resize capability is denied
+- **THEN** no resize handle is shown
+
+#### Scenario: Cancel a resize
+- **WHEN** Escape is pressed or pointer capture is lost while the handle is being dragged
+- **THEN** the preview is discarded, no command is submitted, and the node keeps its committed size and position
+
+#### Scenario: Preview is not submitted
+- **WHEN** the handle is dragged across 100 pointer move events and released
+- **THEN** the adapter receives exactly one resize command

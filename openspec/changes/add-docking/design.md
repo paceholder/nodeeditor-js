@@ -87,8 +87,10 @@ under the whole atomic plan; the atomic dock commit rule restores the prior stat
 `autoPan: AutoPanOptions | false` pattern. The default is `false`: docking is off and the
 move tool takes no new code path. `DockingOptions` is `{ mode: "snap" | "connect";
 radiusPx; hysteresisPx; suppress: modifier; onPendingRelease }` with defaults `snap`, 40 CSS
-px, 6 CSS px, Alt (the same key that already means "place freely" for grid snapping in the group movement and snapping rule)
-and `move-only`. There is no separate `enabled` flag: an object turns docking on and
+px, 6 CSS px, Alt and `move-only`. Alt no longer has a snapping meaning: the Alt override of grid
+snapping is removed (see `add-host-integration-checks`), so Alt only suppresses docking
+here (and bypasses a wire-end grip in the reconnect tool). The modifier stays configurable
+through `DockingOptions.suppress`. There is no separate `enabled` flag: an object turns docking on and
 `false` turns it off. `resolveToolOptions` merges only the top level, so it is extended to
 fill nested defaults: a host that passes `{ mode: "connect" }` still gets the radius,
 hysteresis, modifier and release behavior defaults.
@@ -105,12 +107,11 @@ lists the waiting connection's two ports. The rule that gestures react to change
 the gesture when one of them is removed or changed externally; docking adds no rule of its
 own.
 
-## Open Questions
+## Settled Questions
 
-- Alt means "place freely" for grid snapping and also suppresses docking, so a user
-  cannot drop off-grid next to a port while docking stays active. If that matters, a
-  separate suppression modifier for docking is a small change to the option. Not decided;
-  the default stays Alt.
+- Decided: Alt is no longer overloaded. Grid snapping has no per-gesture override (the Alt
+  override is removed by `add-host-integration-checks`), so Alt means only "do not dock" for a
+  move, and the docking modifier stays configurable through `DockingOptions.suppress`.
 
 ## Risks / Trade-offs
 

@@ -33,6 +33,10 @@ first, then fixes only what fails, and records known limits.
 - Label legibility: node titles and port labels are left out below configurable zoom
   thresholds, the way ports already are; no font-size clamping and no effect on
   picking (provisional).
+- Snapping: one library-wide `gridStep` setting, off by default and changeable at run time
+  through the tool options; the Alt "suppress snapping" override on node moves and resizes
+  is removed (the group movement and snapping rule and the resize handle rule are modified; Alt keeps docking suppression and the wire-end
+  grip bypass).
 - Demo checks: the `marquee` option's three values (`direction` stays the default, `intersect` selects
   partly covered nodes in both drag directions); programmatic selection by ID, the selection `origin` (`"user"`, `"api"` or `"model"`; calls
   default to `"api"`, built-in tools pass `"user"`, removals from the model report `"model"`),
@@ -55,7 +59,8 @@ None.
   fit once when the first content appears after mount (provisional); titles from the label hiding by zoom rule and
   port labels hidden below configurable zoom thresholds (provisional).
 - `ports`: explicit normal and capture radius on image-symbol placements.
-- `interaction`: selection change origin and unknown IDs; shortcut unbinding,
+- `interaction`: snapping by one run-time grid step, no per-gesture override, and the resize handle rule
+  scenario text to match (both modified); selection change origin and unknown IDs; shortcut unbinding,
   bare keys, focus scope and host predicate; the selection rule gains scenarios for the three marquee
   modes (no default changes).
 - `packaging`: consumable build and git install; external-drop example and
@@ -63,7 +68,7 @@ None.
 - `performance`: typical host sizes and a stress size.
 
 Requirements implemented or refined: the theme tokens and overrides rule, the per-connection style at runtime rule, the rule that glyph, target, label and anchor are separate, the image-symbol port normals and capture radius rule, the image-symbol node preset rule and the screen-space tolerances rule,
-the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the ESM package with typed entry points rule, the examples rule and the no global side effects rule,
+the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the group movement and snapping rule, the resize handle rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the ESM package with typed entry points rule, the examples rule and the no global side effects rule,
 the published support and versioning policy rule, the consumable build rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
 
 ## Impact

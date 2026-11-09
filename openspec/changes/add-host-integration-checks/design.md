@@ -62,6 +62,12 @@ known limits written down.
   the thing is not painted, evaluated by a small pure function beside `portsVisible`. Text is
   never scaled or clamped, because a clamped font breaks the match between what is drawn and
   what picking uses. Labels are paint only, so hit-testing is untouched.
+- D13 Snapping: `gridStep` already exists as a tool option and is unset by default, so the
+  work is to prove that, to prove run-time change through `setToolOptions`, and to remove the
+  Alt override from moves and resizes. A per-gesture override made grid behavior depend on
+  which key happened to be held and collided with Alt meaning docking suppression and the
+  wire-end grip bypass. A host that wants free placement turns the grid step off. The docking
+  modifier stays configurable (`DockingOptions.suppress`).
 - D7 WebView, pen and touch: browser tests cover synthetic pointer events with
   `pointerType` pen and touch in Chrome; real WebView runs are manual and recorded.
 
