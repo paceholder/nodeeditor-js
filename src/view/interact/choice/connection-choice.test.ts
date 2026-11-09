@@ -5,7 +5,10 @@ import {
   nodeId,
   portId,
 } from "../../../core/index.js";
-import type { ChoiceRelease } from "../tools/tool-types.js";
+import type {
+  ChoiceRelease,
+  GestureCancellation,
+} from "../tools/tool-types.js";
 import type {
   ConnectionChoiceRequest,
   ConnectionChooser,
@@ -194,5 +197,178 @@ describe("pending connection choice", () => {
     s.choice.open(release);
     expect(s.choice.pending()).toBe(false);
     expect(s.clears()).toBe(1);
+  });
+});
+
+/** A choice whose picked alternative waits for a host verdict the test settles. */
+function verifying() {
+  const commits: Command[] = [];
+  const requested: Command[] = [];
+  const log: string[] = [];
+  const cancellations: GestureCancellation[] = [];
+  let awaiting = true;
+  let clears = 0;
+  const d = deferred();
+  const choice = createConnectionChoice(
+    {
+      commit: (c) => {
+        commits.push(c);
+        log.push("commit");
+      },
+      clearPreview: () => void clears++,
+      cancelled: (c) => void cancellations.push(c),
+      verification: {
+        awaiting: () => awaiting,
+        request: (c) => void requested.push(c),
+        showPending: () => void log.push("pending"),
+        ended: () => void log.push("ended"),
+      },
+      place: (w) => ({ client: w, viewport: { x: w.x, y: w.y } }),
+    },
+    d.chooser,
+  );
+  return {
+    choice,
+    commits,
+    requested,
+    log,
+    cancellations,
+    d,
+    clears: () => clears,
+    settle: () => {
+      awaiting = false;
+      choice.verdictSettled();
+    },
+  };
+}
+
+describe("a picked alternative waits for its host verdict", () => {
+  it("the pick asks for the verdict, shows pending, and commits once when it settles", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.d.resolve("slow");
+    await flush();
+    expect(s.commits).toEqual([]);
+    expect(s.requested).toEqual([
+      {
+        kind: "connect",
+        from: source,
+        to: target,
+        connectionKind: "slow",
+        choice: "slow",
+      },
+    ]);
+    expect(s.choice.pending()).toBe(true);
+    expect(s.clears()).toBe(0);
+    expect(s.d.requests[0]?.signal.aborted).toBe(false);
+    s.choice.verdictSettled();
+    expect(s.commits).toEqual([]);
+    s.settle();
+    expect(s.commits).toHaveLength(1);
+    expect(s.choice.pending()).toBe(false);
+    // The commit comes before the end, so a failed verdict is still seen by it.
+    expect(s.log).toEqual(["pending", "commit", "ended"]);
+    s.settle();
+    expect(s.commits).toHaveLength(1);
+  });
+
+  it("a pick that needs no verdict commits at once and ends nothing", async () => {
+    const s = verifying();
+    s.settle();
+    s.choice.open(release);
+    s.d.resolve("fast");
+    await flush();
+    expect(s.commits).toHaveLength(1);
+    expect(s.log).toEqual(["commit", "ended"]);
+  });
+
+  it("cancelling, removal of an involved port, a new chooser and dispose end the wait with nothing committed", async () => {
+    for (const end of [
+      (s: ReturnType<typeof verifying>) => s.choice.cancel(),
+      (s: ReturnType<typeof verifying>) => s.choice.entitiesRemoved(["bL"]),
+      (s: ReturnType<typeof verifying>) => s.choice.setChooser(undefined),
+      (s: ReturnType<typeof verifying>) => s.choice.dispose(),
+    ]) {
+      const s = verifying();
+      s.choice.open(release);
+      s.d.resolve("fast");
+      await flush();
+      end(s);
+      expect(s.choice.pending()).toBe(false);
+      expect(s.log).toEqual(["pending", "ended"]);
+      s.settle();
+      expect(s.commits).toEqual([]);
+    }
+  });
+
+  it("removing an involved port or node cancels the wait and tells the host; an unrelated removal does not", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.d.resolve("fast");
+    await flush();
+    s.choice.entitiesRemoved(["zzz"]);
+    expect(s.choice.pending()).toBe(true);
+    expect(s.cancellations).toEqual([]);
+    s.choice.entitiesRemoved(["x", "bL", "a"]);
+    expect(s.choice.pending()).toBe(false);
+    expect(s.cancellations).toEqual([
+      { reason: "entity-removed", ids: ["bL", "a"] },
+    ]);
+    expect(s.d.requests[0]?.signal.aborted).toBe(true);
+    expect(s.log).toEqual(["pending", "ended"]);
+    s.settle();
+    expect(s.commits).toEqual([]);
+  });
+
+  it("an external change of an involved entity cancels the wait and tells the host; an unrelated one does not", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.d.resolve("fast");
+    await flush();
+    s.choice.externallyChanged(["zzz"]);
+    expect(s.choice.pending()).toBe(true);
+    s.choice.externallyChanged(["aR", "other"]);
+    expect(s.choice.pending()).toBe(false);
+    expect(s.cancellations).toEqual([
+      { reason: "external-change", ids: ["aR"] },
+    ]);
+    expect(s.d.requests[0]?.signal.aborted).toBe(true);
+    expect(s.log).toEqual(["pending", "ended"]);
+    s.settle();
+    expect(s.commits).toEqual([]);
+  });
+
+  it("the commit of the choice itself is not a cancellation", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.d.resolve("fast");
+    await flush();
+    s.settle();
+    // The commit's own change arrives after the choice is over.
+    s.choice.entitiesRemoved(["bL"]);
+    s.choice.externallyChanged(["aR"]);
+    expect(s.commits).toHaveLength(1);
+    expect(s.cancellations).toEqual([]);
+  });
+
+  it("a choice the host is still deciding is not told about external changes", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.choice.externallyChanged(["aR"]);
+    expect(s.choice.pending()).toBe(true);
+    s.choice.entitiesRemoved(["bL"]);
+    expect(s.choice.pending()).toBe(false);
+    expect(s.cancellations).toEqual([]);
+  });
+
+  it("a second release during the wait replaces it", async () => {
+    const s = verifying();
+    s.choice.open(release);
+    s.d.resolve("fast");
+    await flush();
+    s.choice.open(release);
+    expect(s.log).toEqual(["pending", "ended"]);
+    s.settle();
+    expect(s.commits).toEqual([]);
   });
 });

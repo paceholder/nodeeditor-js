@@ -59,6 +59,8 @@ export interface DomInputDeps {
   readonly hoverCursor?: (world: Point<"world">) => CursorKind | undefined;
   /** Auto-pan during drags: the view's frame clock and CSS size. */
   readonly autoPan?: AutoPanHost;
+  /** The router went from a running gesture to none, however it ended. */
+  readonly onGestureEnd?: () => void;
   /** A gesture ended because of a model change or a lock, not the user. */
   readonly onGestureCancelled?: (cancellation: GestureCancellation) => void;
 }
@@ -109,15 +111,29 @@ export function attachDomInput(
 
   const modifiers = (e: ModifierKeys) => modifiersOf(e, deps.platform);
 
-  const send = (input: ToolInput) => {
-    const wasActive = router.activePointer !== undefined;
-    const result = router.handle(input, deps.context());
-    run(result.effects);
-    if (wasActive && router.activePointer === undefined) {
-      deps.hover.gestureEnded();
+  /** Run `step`; tell the host when it ended the gesture that was running (or replaced it). */
+  const watchEnd = <T>(step: () => T): T => {
+    const tool = router.activeTool;
+    const generation = router.generation;
+    const result = step();
+    if (
+      tool !== undefined &&
+      (router.activeTool === undefined || router.generation !== generation)
+    ) {
+      deps.onGestureEnd?.();
     }
     return result;
   };
+  const send = (input: ToolInput) =>
+    watchEnd(() => {
+      const wasActive = router.activePointer !== undefined;
+      const result = router.handle(input, deps.context());
+      run(result.effects);
+      if (wasActive && router.activePointer === undefined) {
+        deps.hover.gestureEnded();
+      }
+      return result;
+    });
   const driver = deps.autoPan
     ? createAutoPanDriver({
         clock: deps.autoPan.clock,
@@ -137,7 +153,7 @@ export function attachDomInput(
   };
 
   const cancel = (reason: CancelReason): boolean => {
-    if (router.activePointer === undefined) return false;
+    if (router.activeTool === undefined) return false;
     route({ type: "cancel", reason });
     return true;
   };
@@ -271,18 +287,20 @@ export function attachDomInput(
   let disposed = false;
   return {
     modelChanged(change) {
-      const wasActive = router.activePointer !== undefined;
-      const result = router.changed(change, deps.context());
-      if (!result.cancelled) return;
-      run(result.effects);
-      driver?.update({ type: "cancel", reason: result.cancelled.reason });
-      if (wasActive && router.activePointer === undefined) {
-        deps.hover.gestureEnded();
-      }
-      deps.onGestureCancelled?.(result.cancelled);
+      watchEnd(() => {
+        const wasActive = router.activePointer !== undefined;
+        const result = router.changed(change, deps.context());
+        if (!result.cancelled) return;
+        run(result.effects);
+        driver?.update({ type: "cancel", reason: result.cancelled.reason });
+        if (wasActive && router.activePointer === undefined) {
+          deps.hover.gestureEnded();
+        }
+        deps.onGestureCancelled?.(result.cancelled);
+      });
     },
     modelReset() {
-      if (router.activePointer === undefined) return;
+      if (router.activeTool === undefined) return;
       cancel("reset");
       deps.onGestureCancelled?.({ reason: "reset", ids: [] });
     },

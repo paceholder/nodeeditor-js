@@ -3,7 +3,7 @@
  * adapter supplies pointer capture and cursor, everything else goes to view services.
  * A `commit` goes through the host's command path, the same one the API uses.
  */
-import type { Command } from "../../../core/index.js";
+import type { Command, Endpoint, Rejection } from "../../../core/index.js";
 import type { SelectionModel } from "../selection/selection-model.js";
 import type {
   ChoiceRelease,
@@ -24,6 +24,10 @@ export interface EffectHost {
   viewport(op: ViewportOp): void;
   /** Hand a choice release to the choice controller; omitted: ignored. */
   choose?(request: ChoiceRelease): void;
+  /** Start the host validator for a pair without a verdict; omitted: ignored. */
+  requestVerdict?(source: Endpoint, target: Endpoint): void;
+  /** A connection was refused during the gesture; omitted: ignored. */
+  rejected?(rejection: Rejection): void;
 }
 
 export function createEffectRunner(
@@ -55,6 +59,14 @@ export function createEffectRunner(
           break;
         case "choose":
           host.choose?.(effect.request);
+          break;
+        case "request-verdict":
+        case "validate-wait":
+          // A wait asks too, in case the pair became pending only at the release.
+          host.requestVerdict?.(effect.source, effect.target);
+          break;
+        case "reject":
+          host.rejected?.(effect.rejection);
           break;
       }
     }

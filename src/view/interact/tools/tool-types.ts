@@ -16,6 +16,7 @@ import type {
   HitCandidate,
   NodeId,
   Point,
+  Rejection,
   ResolvedSizeLimits,
   Viewport,
 } from "../../../core/index.js";
@@ -88,7 +89,9 @@ export type CancelReason =
   /** An external change touched an entity the gesture involves. */
   | "external-change"
   /** The view was locked. */
-  | "locked";
+  | "locked"
+  /** A press started a new gesture while one waited for a host verdict. */
+  | "new-press";
 
 /** The reasons a gesture ends without the user asking. */
 export type GestureCancelReason = Extract<
@@ -117,7 +120,12 @@ export type ToolInput =
       readonly key: string;
       readonly modifiers: Modifiers;
     }
-  | { readonly type: "cancel"; readonly reason: CancelReason };
+  | { readonly type: "cancel"; readonly reason: CancelReason }
+  /**
+   * A host verdict settled, or one a tool may have read went away: evaluations
+   * are dropped and a gesture that shows or waits on a pending target re-reads it.
+   */
+  | { readonly type: "verdict" };
 
 export type ViewportOp =
   | { readonly kind: "panBy"; readonly dx: number; readonly dy: number }
@@ -150,7 +158,24 @@ export type ToolEffect =
   | { readonly type: "viewport"; readonly op: ViewportOp }
   | { readonly type: "cursor"; readonly cursor: CursorKind }
   /** Ask the host chooser to pick a policy alternative; the preview stays. */
-  | { readonly type: "choose"; readonly request: ChoiceRelease };
+  | { readonly type: "choose"; readonly request: ChoiceRelease }
+  /**
+   * Start the host validator for this pair if it has no verdict yet; evaluating never
+   * does. Safe to repeat: a request in flight is joined.
+   */
+  | {
+      readonly type: "request-verdict";
+      readonly source: Endpoint;
+      readonly target: Endpoint;
+    }
+  /** The gesture now waits for this pair's verdict, and asks for it if none is on its way. */
+  | {
+      readonly type: "validate-wait";
+      readonly source: Endpoint;
+      readonly target: Endpoint;
+    }
+  /** A connection was refused during the gesture; the host may show the reason. */
+  | { readonly type: "reject"; readonly rejection: Rejection };
 
 /** What a release on a choice target hands to the choice controller. */
 export interface ChoiceRelease {
@@ -182,6 +207,11 @@ export interface ToolContext {
   readonly options: ToolOptions;
   /** A host connection chooser is installed. */
   readonly chooserInstalled: boolean;
+  /**
+   * A host validator can answer pending connections. Without one a pending
+   * target is never waited for, since no verdict would ever arrive.
+   */
+  readonly verdictsInstalled: boolean;
   /** Route editor per connection kind. */
   readonly routeEditors: Pick<RouteEditorRegistry, "get">;
   /** Re-route a connection entry through other constraints; none: undefined. */
@@ -218,4 +248,9 @@ export interface Tool<S> {
    * by an external change. Omitted: the gesture involves nothing (pan, marquee).
    */
   involved?(state: S): readonly string[];
+  /**
+   * True while the gesture waits for an answer with no pointer down. A press
+   * then cancels it first and starts normally, and no pointer counts as active.
+   */
+  awaiting?(state: S): boolean;
 }

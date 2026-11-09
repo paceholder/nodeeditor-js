@@ -55,10 +55,13 @@ export function connectPreview(
       endpoint: e,
       evaluation: ctx.evaluateConnection(source, e),
     }));
-  // The release target: the first candidate the policy accepts or offers a choice for.
+  // The release target: the first candidate the policy accepts, offers a choice for, or,
+  // when a host validator is installed, has not been answered yet.
   const target = candidates.find(
     (c) =>
-      c.evaluation.state === "compatible" || c.evaluation.state === "choice",
+      c.evaluation.state === "compatible" ||
+      c.evaluation.state === "choice" ||
+      (c.evaluation.state === "pending" && ctx.verdictsInstalled),
   );
   return {
     kind: "connect",
@@ -66,5 +69,35 @@ export function connectPreview(
     pointer: at,
     target: target?.endpoint,
     candidates,
+  };
+}
+
+/**
+ * The preview of a picked alternative that waits for its host verdict: the
+ * release-point preview with the target drawn as pending instead of choice-required.
+ */
+export function pendingPreview(
+  source: Endpoint,
+  target: Endpoint,
+  at: Point<"world">,
+  ctx: ToolContext,
+): ConnectPreview {
+  const preview = connectPreview(source, at, ctx);
+  return {
+    ...preview,
+    target,
+    candidates: preview.candidates.map((c) =>
+      sameEndpoint(c.endpoint, target)
+        ? {
+            ...c,
+            evaluation: {
+              state: "pending",
+              occupiedMark: false,
+              reason: undefined,
+              code: undefined,
+            },
+          }
+        : c,
+    ),
   };
 }

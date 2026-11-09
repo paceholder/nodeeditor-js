@@ -206,6 +206,29 @@ describe("the router ends a gesture whose entities changed", () => {
   });
 });
 
+describe("the verdict input", () => {
+  it("a verdict leaves a move, a pan, a marquee and an idle router as they are", () => {
+    const h = fixture();
+    expect(h.send({ type: "verdict" }).handled).toBe(false);
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 60, y: 10 });
+    const before = h.log.previews.length;
+    h.send({ type: "verdict" });
+    expect(h.router.activeTool).toBe("select-move");
+    expect(h.log.previews).toHaveLength(before);
+    h.up({ x: 60, y: 10 });
+    expect(h.log.commits).toHaveLength(1);
+
+    h.down({ x: 500, y: 500 });
+    h.send({ type: "verdict" });
+    expect(h.router.activeTool).toBe("empty-pan");
+    h.up({ x: 500, y: 500 });
+    h.down({ x: 500, y: 500 }, { modifiers: { shift: true } });
+    h.send({ type: "verdict" });
+    expect(h.router.activeTool).toBe("marquee");
+  });
+});
+
 describe("resize and connect", () => {
   /** Node `a` has a port on its bottom-right corner, right under the handle. */
   const cornerPort = () => {

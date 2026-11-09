@@ -14,6 +14,7 @@ import {
   type GraphModelOptions,
   nodeId,
   type Point,
+  type Rejection,
   type RouteRegistry,
   type Vec2,
   type Viewport,
@@ -56,6 +57,7 @@ import {
   type ToolPreview,
   type ViewportOp,
 } from "../interact/tools/tool-types.js";
+import { createVerdictDriver } from "../interact/verdicts/verdict-driver.js";
 import { rerouteEntry } from "../render/paint/previews/ghost-entries.js";
 import type { RouteEditorRegistry } from "../render/registries/route-editor-registry.js";
 
@@ -95,6 +97,8 @@ export interface ToolHarness {
     readonly cursors: CursorKind[];
     /** Releases handed to the connection chooser. */
     readonly chooses: ChoiceRelease[];
+    /** Connection refusals reported to the host during gestures. */
+    readonly rejections: Rejection[];
   };
   /** Feed one input and execute its effects. */
   send(input: ToolInput): RouteResult;
@@ -158,6 +162,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     ...(opts.options ? { options: opts.options } : {}),
     chooserInstalled: () => opts.chooser === true,
     ...(opts.routeEditors ? { routeEditors: opts.routeEditors } : {}),
+    verdictsInstalled: () => model.verdicts !== undefined,
     reroute: (entry, route) =>
       rerouteEntry(entry, route, { reader: model.reader, scene, routes }),
     ...(opts.hidePortsBelow !== undefined
@@ -172,6 +177,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     releases: [],
     cursors: [],
     chooses: [],
+    rejections: [],
   };
   function applyViewport(op: ViewportOp): void {
     switch (op.kind) {
@@ -192,7 +198,22 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
         break;
     }
   }
+  // Like the mounted view: pending targets ask the model's validator, and every settled
+  // verdict drops cached evaluations and tells a running gesture.
+  const verdictDriver = model.verdicts
+    ? createVerdictDriver({
+        verdicts: model.verdicts,
+        plan: model.plan,
+        gestureActive: () => router.activeTool === "connect",
+        settled() {
+          context.invalidate();
+          send({ type: "verdict" });
+        },
+      })
+    : undefined;
   const run = createEffectRunner({
+    requestVerdict: (source, target) => verdictDriver?.request(source, target),
+    rejected: (rejection) => void log.rejections.push(rejection),
     capture: (id) => void log.captures.push(id),
     release: (id) => void log.releases.push(id),
     cursor: (c) => void log.cursors.push(c),
@@ -208,23 +229,39 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
 
   // Like the mounted view: every committed change tells the router.
   const cancellations: GestureCancellation[] = [];
-  const change = (c: GestureChange): RouteResult => {
-    const result = router.changed(c, context());
-    run(result.effects);
-    if (result.cancelled) cancellations.push(result.cancelled);
-    return result;
-  };
+  const change = (c: GestureChange): RouteResult =>
+    watchEnd(() => {
+      const result = router.changed(c, context());
+      run(result.effects);
+      if (result.cancelled) cancellations.push(result.cancelled);
+      return result;
+    });
   const stopChanges = model.on(
     "change",
     (e) => void change(gestureChangeOf(e)),
   );
 
   let time = 0;
-  const send = (input: ToolInput): RouteResult => {
-    const result = router.handle(input, context());
-    run(result.effects);
+  /** Run `step`; when it ends the running gesture, let the verdict driver clean up. */
+  const watchEnd = <T>(step: () => T): T => {
+    const tool = router.activeTool;
+    const generation = router.generation;
+    const result = step();
+    if (
+      tool !== undefined &&
+      (router.activeTool === undefined || router.generation !== generation)
+    ) {
+      verdictDriver?.gestureEnded();
+    }
     return result;
   };
+  function send(input: ToolInput): RouteResult {
+    return watchEnd(() => {
+      const result = router.handle(input, context());
+      run(result.effects);
+      return result;
+    });
+  }
   const pointer =
     (type: "pointer-down" | "pointer-move" | "pointer-up") =>
     (world: Point<"world">, extra: PointerExtra = {}): RouteResult =>
@@ -255,6 +292,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     key: (key, type = "key-down", mods = NO_MODIFIERS) =>
       send({ type, key, modifiers: mods }),
     dispose() {
+      verdictDriver?.dispose();
       stopChanges();
       stopBinding();
       selection.dispose();

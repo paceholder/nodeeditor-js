@@ -55,6 +55,8 @@ export interface ToolContextDeps {
   readonly zoomRange?: { readonly min: number; readonly max: number };
   /** Whether a host connection chooser is installed; omitted: none. */
   readonly chooserInstalled?: () => boolean;
+  /** Whether a host validator answers pending connections; omitted: none. */
+  readonly verdictsInstalled?: () => boolean;
   /** Route editors per connection kind; omitted: none. */
   readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
   /** Re-routes an entry through other constraints; omitted: never. */
@@ -75,7 +77,12 @@ export function sizeLimitsOf(model: object): SizeLimitsLookup | undefined {
     : undefined;
 }
 
-export function createToolContext(deps: ToolContextDeps): () => ToolContext {
+/** The context factory; `invalidate` drops cached evaluations that depend on host verdicts. */
+export type ToolContextProvider = (() => ToolContext) & {
+  invalidate(): void;
+};
+
+export function createToolContext(deps: ToolContextDeps): ToolContextProvider {
   const source = deps.options;
   let resolvedFrom: Partial<ToolOptions> | undefined;
   let options = resolveToolOptions();
@@ -112,7 +119,7 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
   };
   const sizeLimits = (id: NodeId): ResolvedSizeLimits =>
     deps.sizeLimits?.(id) ?? DEFAULT_SIZE_LIMITS;
-  return () => {
+  const provide = (): ToolContext => {
     const viewport = deps.viewport();
     const options = currentOptions();
     const ports = viewport.zoom >= (deps.hidePortsBelow?.() ?? 0);
@@ -134,10 +141,17 @@ export function createToolContext(deps: ToolContextDeps): () => ToolContext {
       evaluateConnection,
       options,
       chooserInstalled: deps.chooserInstalled?.() === true,
+      verdictsInstalled: deps.verdictsInstalled?.() === true,
       routeEditors: deps.routeEditors ?? NO_ROUTE_EDITORS,
       reroute: deps.reroute ?? (() => undefined),
     };
   };
+  // A verdict settles without changing the model revision, so the cache is dropped by hand.
+  return Object.assign(provide, {
+    invalidate() {
+      cache = new Map();
+    },
+  });
 }
 
 /**

@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { mkNode, mkPort } from "../../../core/data/model/test-helpers.js";
 import {
+  type ConnectionValidator,
+  type ConnectionVerdict,
   createGraphModel,
   type GraphModel,
   nodeId,
   portId,
+  rejectionOf,
+  type VerdictRequest,
 } from "../../../core/index.js";
 import { graphOps } from "../../../core/space/scene/scene-fixtures.js";
 import {
@@ -130,7 +134,13 @@ describe("connect tool", () => {
     const source = { node: nodeId("a"), port: portId("aR") };
     expect(connectTool.involved?.({ kind: "idle" })).toEqual([]);
     expect(
-      connectTool.involved?.({ kind: "dragging", pointerId: 1, source }),
+      connectTool.involved?.({
+        kind: "dragging",
+        pointerId: 1,
+        source,
+        at: { x: 0, y: 0 },
+        asked: undefined,
+      }),
     ).toEqual(["a", "aR"]);
   });
 
@@ -327,5 +337,276 @@ describe("ports hidden when zoomed out", () => {
     const h = harness(0);
     h.down({ x: 60, y: 10 });
     expect(h.router.activeTool).toBe("connect");
+  });
+});
+
+/** A validator the test answers by hand, one call at a time. */
+function slowValidator() {
+  const calls: Array<
+    VerdictRequest & {
+      answer(verdict: ConnectionVerdict): Promise<void>;
+      fail(error: Error): Promise<void>;
+    }
+  > = [];
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const validator: ConnectionValidator = (request) =>
+    new Promise((resolve, reject) => {
+      calls.push({
+        ...request,
+        answer: async (verdict) => {
+          resolve(verdict);
+          await settle();
+        },
+        fail: async (error) => {
+          reject(error);
+          await settle();
+        },
+      });
+    });
+  return { validator, calls };
+}
+
+const validated = () => {
+  const { validator, calls } = slowValidator();
+  const h = createToolHarness({
+    modelOptions: { connectionValidator: validator },
+    nodes: [
+      cornerNode("a", 0, 0),
+      cornerNode("b", 200, 0),
+      cornerNode("c", 200, 90),
+    ],
+  });
+  return { h, calls };
+};
+
+describe("connect tool waits for a host verdict", () => {
+  it("a pending target is shown during the drag, asked about once, and turns compatible when the verdict arrives", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    for (let x = 60; x <= 200; x += 20) h.move({ x, y: 10 });
+    let preview = lastConnect(h.log.previews);
+    expect(preview?.candidates[0]?.evaluation.state).toBe("pending");
+    expect(preview?.target).toEqual({ node: nodeId("b"), port: portId("bL") });
+    expect(h.log.cursors.at(-1)).toBe("crosshair");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.proposal.to.port).toBe("bL");
+
+    await calls[0]?.answer({ valid: true });
+    // No pointer movement: the verdict itself refreshes the preview.
+    preview = lastConnect(h.log.previews);
+    expect(preview?.candidates[0]?.evaluation.state).toBe("compatible");
+    expect(calls).toHaveLength(1);
+    expect(h.log.commits).toEqual([]);
+  });
+
+  it("a change that drops the verdict of the hovered target makes it pending and asked about again", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.move({ x: 200, y: 10 });
+    await calls[0]?.answer({ valid: true });
+    expect(lastConnect(h.log.previews)?.candidates[0]?.evaluation.state).toBe(
+      "compatible",
+    );
+    expect(calls).toHaveLength(1);
+    h.model.execute({
+      kind: "moveNodes",
+      moves: [{ node: nodeId("b"), position: { x: 224, y: 10 } }],
+    });
+    expect(calls).toHaveLength(2);
+    expect(lastConnect(h.log.previews)?.candidates[0]?.evaluation.state).toBe(
+      "pending",
+    );
+    await calls[1]?.answer({ valid: true });
+    expect(lastConnect(h.log.previews)?.candidates[0]?.evaluation.state).toBe(
+      "compatible",
+    );
+    h.send({ type: "cancel", reason: "escape" });
+  });
+
+  it("a verdict discarded as stale is not asked for again when the target port is gone", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.move({ x: 200, y: 10 });
+    expect(calls).toHaveLength(1);
+    h.model.execute({ kind: "deleteEntities", nodes: [nodeId("b")] });
+    await calls[0]?.answer({ valid: true });
+    expect(calls).toHaveLength(1);
+    expect(h.model.reader.connections()).toHaveLength(0);
+    h.send({ type: "cancel", reason: "escape" });
+  });
+
+  it("release on a pending target waits with the preview kept, then one connect on an accepted verdict", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    expect(h.router.activeTool).toBe("connect");
+    expect(h.router.activePointer).toBeUndefined();
+    expect(h.log.releases).toEqual([1]);
+    expect(h.log.commits).toEqual([]);
+    expect(h.log.previews.at(-1)?.kind).toBe("connect");
+    expect(h.log.cursors.at(-1)).toBe("default");
+
+    await calls[0]?.answer({ valid: true });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.log.commits.map((c) => c.kind)).toEqual(["connect"]);
+    expect(h.log.submits[0]?.status).toBe("accepted");
+    expect(h.model.reader.connections()).toHaveLength(1);
+    expect(h.log.previews.at(-1)).toBeNull();
+    expect(h.model.historyState().undoLabel).toBeDefined();
+  });
+
+  it("a rejected verdict after the release commits nothing, clears the preview and reports the reason", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    const reason = rejectionOf("type-mismatch", "Not on this host", [
+      "aR",
+      "bL",
+    ]);
+    await calls[0]?.answer({ valid: false, reason });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.log.commits).toEqual([]);
+    expect(h.log.previews.at(-1)).toBeNull();
+    expect(h.log.rejections).toEqual([
+      expect.objectContaining({
+        code: "type-mismatch",
+        message: "Not on this host",
+      }),
+    ]);
+    expect(h.model.reader.connections()).toHaveLength(0);
+  });
+
+  it("Escape while waiting aborts the request and ignores a later verdict", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    expect(calls[0]?.signal.aborted).toBe(false);
+    h.key("Escape");
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.log.previews.at(-1)).toBeNull();
+    expect(calls[0]?.signal.aborted).toBe(true);
+    await calls[0]?.answer({ valid: true });
+    expect(h.log.commits).toEqual([]);
+    expect(h.model.reader.connections()).toHaveLength(0);
+  });
+
+  it("dispose cancels the wait like any other gesture", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    h.send({ type: "cancel", reason: "dispose" });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(calls[0]?.signal.aborted).toBe(true);
+    await calls[0]?.answer({ valid: true });
+    expect(h.log.commits).toEqual([]);
+  });
+
+  it("a new press while waiting cancels the wait and starts a new connect gesture", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    expect(h.router.activePointer).toBeUndefined();
+    // c's left port.
+    h.down({ x: 200, y: 100 });
+    expect(h.router.activeTool).toBe("connect");
+    expect(h.router.activePointer).toBe(1);
+    expect(h.log.captures).toEqual([1, 1]);
+    await calls[0]?.answer({ valid: true });
+    expect(h.log.commits).toEqual([]);
+    expect(h.model.reader.connections()).toHaveLength(0);
+    h.send({ type: "cancel", reason: "escape" });
+  });
+
+  it("a wait has no pointer: blur, a hidden tab and a lost capture do not end it", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    for (const reason of [
+      "blur",
+      "hidden",
+      "lost-capture",
+      "pointercancel",
+    ] as const) {
+      h.send({ type: "cancel", reason });
+      expect(h.router.activeTool).toBe("connect");
+    }
+    expect(calls[0]?.signal.aborted).toBe(false);
+    await calls[0]?.answer({ valid: true });
+    expect(h.log.commits.map((c) => c.kind)).toEqual(["connect"]);
+  });
+
+  it("removing the target while waiting cancels the wait and aborts the request", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    h.up({ x: 200, y: 10 });
+    h.model.execute({ kind: "deleteEntities", nodes: [nodeId("b")] });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.cancellations[0]?.reason).toBe("entity-removed");
+    expect(h.cancellations[0]?.ids).toEqual(["b", "bL"]);
+    expect(calls[0]?.signal.aborted).toBe(true);
+    await calls[0]?.answer({ valid: true });
+    expect(h.log.commits).toEqual([]);
+  });
+
+  it("a release over a port the policy refuses reports the reason and commits nothing", () => {
+    const h = pair();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 20, y: 40 });
+    h.move({ x: 0, y: 10 });
+    h.up({ x: 0, y: 10 });
+    expect(h.log.commits).toEqual([]);
+    expect(h.log.rejections.map((r) => r.code)).toEqual(["self-loop"]);
+    expect(h.log.rejections[0]?.entities).toEqual(["aR", "aL"]);
+  });
+
+  it("without a validator a pending target is not waited for", () => {
+    const h = createToolHarness({
+      modelOptions: {
+        connectionPolicy: {
+          evaluate: () => ({ kind: "pending", reason: "elsewhere" }),
+        },
+      },
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+    });
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 200, y: 10 });
+    expect(lastConnect(h.log.previews)?.target).toBeUndefined();
+    h.up({ x: 200, y: 10 });
+    expect(h.router.activeTool).toBeUndefined();
+    expect(h.log.commits).toEqual([]);
+  });
+
+  it("a failing validator refuses the pair while the gesture runs and is asked again by the next one", async () => {
+    const { h, calls } = validated();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.move({ x: 200, y: 10 });
+    await calls[0]?.fail(new Error("host down"));
+    expect(lastConnect(h.log.previews)?.candidates[0]?.evaluation.code).toBe(
+      "validator-failed",
+    );
+    h.up({ x: 200, y: 10 });
+    expect(h.log.rejections.map((r) => r.code)).toEqual(["validator-failed"]);
+    expect(h.log.commits).toEqual([]);
+
+    // The failure does not outlive its gesture: the same pair is pending again.
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.move({ x: 200, y: 10 });
+    expect(calls).toHaveLength(2);
+    expect(lastConnect(h.log.previews)?.candidates[0]?.evaluation.state).toBe(
+      "pending",
+    );
+    h.send({ type: "cancel", reason: "escape" });
   });
 });

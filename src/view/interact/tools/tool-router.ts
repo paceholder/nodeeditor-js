@@ -30,6 +30,8 @@ export interface Gesture {
   autoPans(): boolean;
   /** The entities the gesture involves in its current state. */
   involved(): readonly string[];
+  /** The tool's `awaiting` for the current state. */
+  awaiting(): boolean;
 }
 
 export function toolSlot<S>(tool: Tool<S>): ToolSlot {
@@ -47,6 +49,7 @@ export function toolSlot<S>(tool: Tool<S>): ToolSlot {
         isIdle: () => tool.isIdle(state),
         autoPans: () => tool.autoPans?.(state) === true,
         involved: () => tool.involved?.(state) ?? [],
+        awaiting: () => tool.awaiting?.(state) === true,
       };
     },
   };
@@ -76,6 +79,9 @@ export interface ToolRouter {
   /** Tools are consulted in this order on pointer-down. */
   handle(input: ToolInput, ctx: ToolContext): RouteResult;
   readonly activeTool: string | undefined;
+  /** Counts the gestures started, so a caller can tell one ended even if another began. */
+  readonly generation: number;
+  /** The pointer of the running gesture; none while it waits with no pointer down. */
   readonly activePointer: number | undefined;
   readonly spaceHeld: boolean;
   /** Whether the active gesture wants auto-pan near the view edge now. */
@@ -95,6 +101,7 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
     | { slot: ToolSlot; gesture: Gesture; pointerId: number }
     | undefined;
   let space = false;
+  let generation = 0;
 
   function feed(input: ToolInput, ctx: ToolContext): RouteResult {
     if (!active) return IGNORED;
@@ -119,6 +126,7 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
         effects.push({ type: "release", pointerId: input.pointerId });
       } else {
         active = { slot, gesture, pointerId: input.pointerId };
+        generation++;
       }
       return { effects, handled: true };
     }
@@ -129,8 +137,13 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
     get activeTool() {
       return active?.slot.id;
     },
+    get generation() {
+      return generation;
+    },
     get activePointer() {
-      return active?.pointerId;
+      return active && !active.gesture.awaiting()
+        ? active.pointerId
+        : undefined;
     },
     get spaceHeld() {
       return space;
@@ -160,12 +173,22 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
     },
     handle(input, ctx) {
       switch (input.type) {
-        case "pointer-down":
-          // One gesture at a time: a second pointer cannot start another (D3).
-          return active ? { effects: [], handled: true } : press(input, ctx);
+        case "pointer-down": {
+          if (!active) return press(input, ctx);
+          // A gesture that waits with no pointer down gives way to a new press;
+          // otherwise one gesture at a time: a second pointer cannot start another (D3).
+          if (!active.gesture.awaiting()) return { effects: [], handled: true };
+          const ended = feed({ type: "cancel", reason: "new-press" }, ctx);
+          const started = press(input, ctx);
+          return {
+            effects: [...ended.effects, ...started.effects],
+            handled: started.handled,
+          };
+        }
         case "pointer-move":
         case "pointer-up":
-          return active?.pointerId === input.pointerId
+          return active?.pointerId === input.pointerId &&
+            !active.gesture.awaiting()
             ? feed(input, ctx)
             : IGNORED;
         case "wheel":
@@ -181,6 +204,7 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
           if (input.key === " ") space = false;
           return IGNORED;
         case "cancel":
+        case "verdict":
           return feed(input, ctx);
       }
     },
