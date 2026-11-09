@@ -5,11 +5,27 @@
  * endpoints). Application rules such as type compatibility belong to policy, so
  * structurally valid but application-invalid data is accepted here. Functions return
  * `Result` values and never throw, whatever the input.
+ *
+ * A valid record comes back as a new object holding only the record's own fields, with
+ * fresh copies of its value objects and lists, so the store never shares an object with
+ * the caller and never keeps unknown keys. The payload is application data of any size
+ * and is kept as given.
  */
 import { isWellFormedId } from "../../base/ids/ids.js";
 import { ok, type Rejection, type Result, reject } from "../../base/result.js";
-import type { ConnectionRecord, NodeRecord, PortRecord } from "./records.js";
-import { isFiniteSize, isFiniteVec2, isQuarterTurns } from "./values.js";
+import { copyCapabilities } from "./capability-overrides.js";
+import type {
+  ConnectionRecord,
+  NodeRecord,
+  PortRecord,
+  RouteConstraint,
+} from "./records.js";
+import {
+  isFiniteSize,
+  isFiniteVec2,
+  isQuarterTurns,
+  type Vec2,
+} from "./values.js";
 
 type Obj = Record<string, unknown>;
 
@@ -28,6 +44,9 @@ const DIRECTIONS: ReadonlySet<unknown> = new Set([
   "output",
   "undirected",
 ]);
+
+const optionalText = (value: unknown): boolean =>
+  value === undefined || typeof value === "string";
 
 export function validateNodeRecord(
   input: unknown,
@@ -65,7 +84,33 @@ export function validateNodeRecord(
   }
   if (!("payload" in o))
     return reject("malformed-record", "Node payload is required", [id]);
-  return ok(o as unknown as NodeRecord);
+  if (!optionalText(o.title) || !optionalText(o.status))
+    return reject("malformed-record", "Node title and status are text", [id]);
+  const capabilities =
+    o.capabilities === undefined ? undefined : copyCapabilities(o.capabilities);
+  if (o.capabilities !== undefined && !capabilities) {
+    return reject(
+      "malformed-record",
+      "Node capabilities must map known actions to booleans",
+      [id],
+    );
+  }
+  const position = o.position as NodeRecord["position"];
+  const size = o.size as NodeRecord["size"];
+  return ok({
+    id: o.id,
+    type: o.type,
+    position: { x: position.x, y: position.y },
+    size: { width: size.width, height: size.height },
+    rotation: o.rotation,
+    mirrored: o.mirrored,
+    z: o.z,
+    ports: [...(o.ports as NodeRecord["ports"])],
+    ...(o.title === undefined ? {} : { title: o.title }),
+    ...(o.status === undefined ? {} : { status: o.status }),
+    payload: o.payload,
+    ...(capabilities ? { capabilities } : {}),
+  } as unknown as NodeRecord);
 }
 
 export function validatePortRecord(
@@ -96,9 +141,10 @@ export function validatePortRecord(
       "Limit must be an integer >= 0 or unlimited",
       [id],
     );
-  const placement = o.placement;
-  if (placement !== undefined) {
-    const pl = asObject(placement);
+  if (!optionalText(o.label))
+    return reject("malformed-record", "Port label must be text", [id]);
+  const pl = asObject(o.placement);
+  if (o.placement !== undefined) {
     if (!pl || !Number.isFinite(pl.x) || !Number.isFinite(pl.y)) {
       return reject("non-finite", "Port placement must be finite", [id]);
     }
@@ -106,7 +152,24 @@ export function validatePortRecord(
       return reject("non-finite", "Port placement normal must be finite", [id]);
     }
   }
-  return ok(o as unknown as PortRecord);
+  const normal = pl?.normal as Vec2 | undefined;
+  return ok({
+    id: o.id,
+    node: o.node,
+    direction: o.direction,
+    typeKey: o.typeKey,
+    limit,
+    ...(o.label === undefined ? {} : { label: o.label }),
+    ...(pl
+      ? {
+          placement: {
+            x: pl.x,
+            y: pl.y,
+            ...(normal ? { normal: { x: normal.x, y: normal.y } } : {}),
+          },
+        }
+      : {}),
+  } as unknown as PortRecord);
 }
 
 function endpointShape(value: unknown): boolean {
@@ -154,7 +217,26 @@ export function validateConnectionRecord(
       [id],
     );
   }
-  return ok(o as unknown as ConnectionRecord);
+  const end = (e: unknown): ConnectionRecord["from"] => {
+    const v = e as ConnectionRecord["from"];
+    return { node: v.node, port: v.port };
+  };
+  const route = o.route as readonly RouteConstraint[] | undefined;
+  return ok({
+    id: o.id,
+    kind: o.kind,
+    from: end(o.from),
+    to: end(o.to),
+    ...(route
+      ? {
+          route: route.map((c) => ({
+            kind: c.kind,
+            orientation: c.orientation,
+            at: c.at,
+          })),
+        }
+      : {}),
+  } as unknown as ConnectionRecord);
 }
 
 /** A port must name its owner, and the owner must list the port. */
