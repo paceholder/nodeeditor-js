@@ -79,6 +79,8 @@ export interface SnapshotLimits {
   readonly maxConnections: number;
   readonly maxPortsPerNode: number;
   readonly maxPayloadDepth: number;
+  /** Route constraints on one connection; never above `MAX_ROUTE_CONSTRAINTS`. */
+  readonly maxRouteConstraints: number;
   /** Applies to text input of `loadDocument`, checked before parsing. */
   readonly maxDocumentChars: number;
 }
@@ -88,6 +90,7 @@ export const DEFAULT_SNAPSHOT_LIMITS: SnapshotLimits = {
   maxConnections: 200_000,
   maxPortsPerNode: 1024,
   maxPayloadDepth: 64,
+  maxRouteConstraints: 256,
   maxDocumentChars: 64 * 1024 * 1024,
 };
 

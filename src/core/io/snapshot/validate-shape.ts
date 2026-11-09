@@ -174,7 +174,7 @@ export function parseShape(
     "connections",
     options.limits.maxConnections,
     sink,
-    (entry, path) => parseConnection(entry, path, sink),
+    (entry, path) => parseConnection(entry, path, options.limits, sink),
     skipped,
   );
   return {

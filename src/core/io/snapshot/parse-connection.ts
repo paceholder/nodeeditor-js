@@ -3,11 +3,12 @@ import { isWellFormedId } from "../../base/ids/ids.js";
 import type { RouteConstraint } from "../../data/model/records.js";
 import {
   isRouteShape,
+  MAX_ROUTE_CONSTRAINTS,
   validateConnectionRecord,
 } from "../../data/model/validate-records.js";
 import { isObj, onlyKeys, optStr, reqStr } from "./parse-fields.js";
 import { connectionToRecord } from "./records.js";
-import type { ErrorSink } from "./snapshot-errors.js";
+import type { ErrorSink, SnapshotLimits } from "./snapshot-errors.js";
 import type { ConnectionSnapshot } from "./snapshot-types.js";
 
 function endpoint(
@@ -50,12 +51,23 @@ function parseRoute(
   value: unknown,
   path: string,
   id: string | undefined,
+  max: number,
   sink: ErrorSink,
 ): readonly RouteConstraint[] | undefined {
   if (value === undefined) return undefined;
   const entities = id === undefined ? [] : [id];
   if (!Array.isArray(value)) {
     sink.add("invalid-shape", "Route must be an array", path, entities);
+    return undefined;
+  }
+  // Checked before any entry is read, so a huge route costs nothing.
+  if (value.length > max) {
+    sink.add(
+      "limit-exceeded",
+      `Route holds ${value.length} constraints; the limit is ${max}`,
+      path,
+      entities,
+    );
     return undefined;
   }
   const out: RouteConstraint[] = [];
@@ -79,6 +91,7 @@ function parseRoute(
 export function parseConnection(
   raw: unknown,
   path: string,
+  limits: Pick<SnapshotLimits, "maxRouteConstraints">,
   sink: ErrorSink,
 ): ConnectionSnapshot | undefined {
   if (!isObj(raw)) {
@@ -94,7 +107,13 @@ export function parseConnection(
   const kind = optStr(raw, "kind", path, sink);
   const from = endpoint(raw.from, `${path}.from`, sink);
   const to = endpoint(raw.to, `${path}.to`, sink);
-  const route = parseRoute(raw.route, `${path}.route`, id, sink);
+  const route = parseRoute(
+    raw.route,
+    `${path}.route`,
+    id,
+    Math.min(limits.maxRouteConstraints, MAX_ROUTE_CONSTRAINTS),
+    sink,
+  );
   if (sink.errors.length > before || id === undefined || !from || !to)
     return undefined;
   const connection: ConnectionSnapshot = {

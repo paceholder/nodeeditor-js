@@ -195,6 +195,12 @@ function endpointShape(value: unknown): boolean {
   return e !== undefined && isWellFormedId(e.node) && isWellFormedId(e.port);
 }
 
+/**
+ * Most route constraints one connection may hold. A hand-drawn route has a handful; the
+ * bound keeps untrusted input and pinned routing cheap.
+ */
+export const MAX_ROUTE_CONSTRAINTS = 256;
+
 /** A route is an array of known constraints with finite coordinates. */
 export function isRouteShape(value: unknown): boolean {
   return (
@@ -227,6 +233,13 @@ export function validateConnectionRecord(
     return reject("malformed-id", "Connection endpoint IDs are malformed", [
       id,
     ]);
+  }
+  if (Array.isArray(o.route) && o.route.length > MAX_ROUTE_CONSTRAINTS) {
+    return reject(
+      "limit-exceeded",
+      `A connection holds at most ${MAX_ROUTE_CONSTRAINTS} route constraints`,
+      [id],
+    );
   }
   if (o.route !== undefined && !isRouteShape(o.route)) {
     return reject(

@@ -11,7 +11,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 - [x] 1.3 Explicit sequence: bounded to 2^40 and unique per kind among live and staged entities (D11); `GraphReader.idWithSeq` gives the reverse lookup; verify `src/core/data/patch/explicit-seq.test.ts` cases titled "explicit insertion sequences are bounded and unique"
 - [x] 1.4 Record copies: validation returns records with only known fields and copied values, payload by reference, title, status, label and overrides type-checked (D12); verify `src/core/data/model/record-copies.test.ts` cases titled "stored records are the model's own copies"
 - [x] 1.5 World range: node position, node size and route constraint coordinates validated against the world range, constants moved to the data layer, `out-of-range` added to the snapshot error codes (D4); verify `src/core/data/model/world-range.test.ts` and `src/core/io/snapshot/world-range.test.ts` cases titled "records stay inside the supported world range"
-- [ ] 1.6 Route-constraint limit: 256 in record validation, `maxRouteConstraints` in snapshot limits checked before reading entries (D5); verify `src/core/data/model/validate-records.test.ts` and `src/core/io/snapshot/validate-shape.test.ts` cases titled "route constraints are bounded"
+- [x] 1.6 Route-constraint limit: 256 in record validation, `maxRouteConstraints` in snapshot limits checked before reading entries (D5); verify `src/core/io/snapshot/route-limit.test.ts` cases titled "route constraints are bounded"
 
 ## 2. IDs (core/base, core/edit/adapter, core/io)
 

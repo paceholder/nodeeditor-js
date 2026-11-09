@@ -132,7 +132,7 @@ export function readFragment(
     );
   } else {
     rawExternal.forEach((entry: unknown, i: number) => {
-      const c = parseConnection(entry, `external[${i}]`, sink);
+      const c = parseConnection(entry, `external[${i}]`, limits, sink);
       if (c) external.push(c);
     });
   }
