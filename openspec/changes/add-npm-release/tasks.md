@@ -10,7 +10,7 @@
 
 ## 3. CI
 
-- [ ] 3.1 Update `.github/workflows/ci.yml`: Node 20 and 22 matrix and a consumer smoke job; verify the YAML parses and the smoke passes locally
+- [x] 3.1 Update `.github/workflows/ci.yml`: Node 20 and 22 matrix and a consumer smoke job; verify the YAML parses and the smoke passes locally
 
 ## 4. Release workflow
 
