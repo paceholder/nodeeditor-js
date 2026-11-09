@@ -88,6 +88,12 @@ export interface VerdictCache {
   dispose(): void;
 }
 
+/** What a tool or host may do with a model's cache; the model keeps the rest to itself. */
+export type VerdictService = Pick<
+  VerdictCache,
+  "lookup" | "request" | "cancel" | "release" | "forgetFailures" | "subscribe"
+>;
+
 interface Scope {
   readonly nodes: readonly string[];
   readonly ports: readonly string[];

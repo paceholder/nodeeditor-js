@@ -43,8 +43,15 @@ import {
 } from "./edit/commands/size-limits.js";
 import type { EventHub } from "./edit/events/event-hub.js";
 import { createDefaultConnectionPolicy } from "./edit/policy/default-policy.js";
+import { touchedBy } from "./edit/policy/touched-entities.js";
 import type { ConnectionPolicy } from "./edit/policy/types.js";
+import { createValidatedPolicy } from "./edit/policy/validated-policy.js";
 import { createPolicyValidator } from "./edit/policy/validator.js";
+import {
+  createVerdictCache,
+  type VerdictService,
+} from "./edit/policy/verdict-cache.js";
+import type { ConnectionValidator } from "./edit/policy/verdict-types.js";
 import { createFragmentPlanners } from "./io/fragment/plan-paste.js";
 import type {
   PayloadCodecRegistry,
@@ -56,6 +63,13 @@ export interface GraphModelOptions extends LocalAdapterOptions {
   readonly registry?: NodeTypeRegistry;
   /** Replaces the default connection policy. */
   readonly connectionPolicy?: ConnectionPolicy;
+  /**
+   * Asks the host whether a connection plan is acceptable. The model keeps the
+   * answers in a cache that its policy reads; `model.verdicts` is how they are requested.
+   */
+  readonly connectionValidator?: ConnectionValidator;
+  /** How long to wait for the validator; there is no default. */
+  readonly timeoutMs?: number;
   /** Host layer of capability resolution. */
   readonly capabilityPolicy?: CapabilityPolicy;
   /** Denies every edit while reads keep working. */
@@ -111,6 +125,11 @@ export interface GraphModel
     CommandApi,
     ConvenienceMethods {
   readonly registry: NodeTypeRegistry;
+  /**
+   * The verdicts of the host validator, present when the model was created with a
+   * `connectionValidator`. Every view on this model shares them.
+   */
+  readonly verdicts?: VerdictService;
   /** The codecs paste and duplicate use; copy should pass the same ones. */
   readonly payloadCodecs?: PayloadCodecRegistry;
   /** The fragment limits paste uses. */
@@ -125,7 +144,22 @@ export interface GraphModel
 export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
   const adapter: LocalAdapter = createLocalAdapter(options);
   const registry = options.registry ?? createNodeTypeRegistry();
-  const policy = options.connectionPolicy ?? createDefaultConnectionPolicy();
+  const basePolicy =
+    options.connectionPolicy ?? createDefaultConnectionPolicy();
+  const cache = options.connectionValidator
+    ? createVerdictCache({
+        validator: options.connectionValidator,
+        revision: () => adapter.revision(),
+        ...(options.timeoutMs === undefined
+          ? {}
+          : { timeoutMs: options.timeoutMs }),
+      })
+    : undefined;
+  const policy = cache ? createValidatedPolicy(basePolicy, cache) : basePolicy;
+  if (cache) {
+    adapter.on("change", (e) => cache.invalidate(touchedBy(e.patch)));
+    adapter.on("reset", () => cache.reset());
+  }
   const validators = [
     createCapabilityValidator({
       readOnly: () => options.readOnly === true,
@@ -165,6 +199,22 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     ...api,
     ...createConvenience(api),
     registry,
+    dispose() {
+      cache?.dispose();
+      core.dispose();
+    },
+    ...(cache
+      ? {
+          verdicts: {
+            lookup: cache.lookup,
+            request: cache.request,
+            cancel: cache.cancel,
+            release: cache.release,
+            forgetFailures: cache.forgetFailures,
+            subscribe: cache.subscribe,
+          },
+        }
+      : {}),
     sizeLimits(id) {
       const node = adapter.reader.getNode(id);
       return node

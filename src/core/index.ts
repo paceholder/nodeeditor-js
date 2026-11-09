@@ -162,6 +162,7 @@ export type {
 export type {
   VerdictLookup,
   VerdictRequestOptions,
+  VerdictService,
 } from "./edit/policy/verdict-cache.js";
 export type { VerdictKey } from "./edit/policy/verdict-key.js";
 export { verdictKey } from "./edit/policy/verdict-key.js";
