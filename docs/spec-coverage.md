@@ -323,7 +323,7 @@ Status legend:
 - [x] L583 support matrix, licence, bundle, versioning -- Published support and versioning policy
 - [x] L584 configurable workers/CSP/webviews -- Configurable optional assets
 - [x] L585 tree-shaking, default preset -- Tree-shakable features and default preset
-- [x] L587-589 Baseline: Chromium/Firefox/Safari, React 19, ES2022, Node 22 -- Published support and versioning policy; config.yaml support matrix
+- [x] L587-589 Baseline: Chromium/Firefox/Safari, React 19, ES2022, Node 20 -- the published support policy; config.yaml support matrix
 - [~] L590-591 Touch/pen must not corrupt state; no multitouch/pinch in R1 -- touch long-press only; no touch-safety or pinch non-goal
       stated
 

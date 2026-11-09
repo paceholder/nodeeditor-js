@@ -11,7 +11,7 @@ it fails, the following fix task applies, otherwise mark it "not needed" in `not
 
 ## 2. Node versions
 
-- [ ] 2.1 The aim is that consumers of `dist/` run on Node 20 and later. Run `npm run build`, `npm test` and the consumer smoke of 1.1 on Node 20 and record which pass; if all do, set the `engines` field of `package.json` to Node 20 and later and update the Node baseline in `openspec/config.yaml` and `AGENTS.md`; if building or testing needs a newer Node, keep that as a development-only requirement (`devEngines` for the tools, and a line in the docs that built files run on Node 20 and later) and record the reason in `notes.md`; verify `npm pack --dry-run` and the docs lint. `package.json` is not changed before this check runs
+- [x] 2.1 The aim is that consumers of `dist/` run on Node 20 and later. Run `npm run build`, `npm test` and the consumer smoke of 1.1 on Node 20 and record which pass; if all do, set the `engines` field of `package.json` to Node 20 and later and update the Node baseline in `openspec/config.yaml` and `AGENTS.md`; if building or testing needs a newer Node, keep that as a development-only requirement (`devEngines` for the tools, and a line in the docs that built files run on Node 20 and later) and record the reason in `notes.md`; verify `npm pack --dry-run` and the docs lint. `package.json` is not changed before this check runs
 
 ## 3. Documentation
 

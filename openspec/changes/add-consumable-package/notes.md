@@ -18,3 +18,16 @@ git URL pinned to a commit in an empty project.
 - The git scenario installs a snapshot of the working tree committed in a temporary repository,
   so it checks work that is not committed yet. `npm pack` runs the `prepare` build too.
 - The script is plain Node ESM and is excluded from the checked-JavaScript typecheck pass.
+
+## Node versions (2.1)
+
+Checked on Node 20.20.2 (npm 10.9.9): `npm run build` passed, `npm test` passed (148 files, 972
+tests) and `node scripts/consumer-smoke.mjs` passed. So `engines` is now Node 20 and later
+(`package.json` and its lockfile entry), and the Node baseline in `openspec/config.yaml`,
+`AGENTS.md` and `README.md` says Node 20+. No `devEngines` was needed. The browser tests and CI
+still run on the Node already installed (CI uses Node 22).
+
+The "Published support and versioning policy" requirement is modified in this change's packaging spec to say Node 20
+or later (the owner approved it), and the baseline line in `docs/spec-coverage.md` follows.
+Known: CI still runs on Node 22. The tests were run on Node 20 once by hand for this change
+(972 tests passed); the library supports Node 20 and later.

@@ -50,7 +50,7 @@ npm run lint         # biome check
 npm run format       # biome check --write
 ```
 
-Node 22+ is the baseline for headless tests/examples.
+Node 20+ is the baseline for headless tests/examples.
 
 TypeScript is pinned to 6.x on purpose: TypeScript 7 (native compiler) has no JS
 compiler API, which tsup's declaration build needs. Biome ignores `*.md` so it never

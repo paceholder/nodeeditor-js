@@ -24,3 +24,12 @@ registry status) SHALL be documented.
 #### Scenario: Missing React
 - **WHEN** the consumer imports only core and view without React installed
 - **THEN** installation and build succeed
+
+## MODIFIED Requirements
+
+### Requirement: Published support and versioning policy
+Before R1 the project SHALL publish its tested support matrix (current and previous stable Chromium, Firefox, and Safari; React 19; ES2022; Node 20 or later), feature detection and fallbacks, license and dependency notices, bundle measurements, and API versioning policy.
+
+#### Scenario: Matrix covered by CI
+- **WHEN** the release checklist is evaluated
+- **THEN** the browser tests run on each listed browser engine and the headless tests run on Node 20

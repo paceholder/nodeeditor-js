@@ -52,7 +52,7 @@ context: |
   - Kept in R1: composite ports, provided values, identifiable junctions, docking, orthogonal
     routing, undirected ports.
   - Support matrix: current and previous stable Chromium, Firefox, Safari; React 19; ES2022;
-    Node 22+.
+    Node 20+.
   - Tests: Vitest for headless tests; Vitest browser mode (Playwright provider) for real-browser
     view tests, driving the installed Google Chrome (no bundled browser download); system
     Safari via safaridriver as a later opt-in. Playwright Test possibly later for example flows.

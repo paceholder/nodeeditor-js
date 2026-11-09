@@ -33,7 +33,7 @@ npm run demo         # live demo of examples/plain-js
 npm run demo:react   # the same editor hosted from React (examples/react)
 ```
 
-Node 22 or newer is required.
+Node 20 or newer is required.
 
 ## Documentation
 
