@@ -24,4 +24,4 @@
 
 ## 4. Gates
 
-- [ ] 4.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, the consumer smoke and `openspec validate prepare-first-release-docs-and-workflows --strict`; record in `notes.md`
+- [x] 4.1 Run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build`, the consumer smoke and `openspec validate prepare-first-release-docs-and-workflows --strict`; record in `notes.md`
