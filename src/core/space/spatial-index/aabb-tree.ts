@@ -3,7 +3,8 @@
  *
  * A bounding-volume hierarchy whose leaves carry "fat" boxes: the tight bounds grown by
  * `fatMargin`. An update whose new tight bounds still fit inside the stored fat box is
- * O(1) and touches no tree node. A leaf's tight bounds always lie inside its fat box, so
+ * O(1) and touches no tree node, unless the fat box has grown more than twice the size a
+ * fresh one would have (an entry that shrank a lot), in which case it is re-fitted. A leaf's tight bounds always lie inside its fat box, so
  * a query collects a subtree whose box it contains without testing further. Insertion picks a sibling by a perimeter heuristic and
  * AVL-style rotations keep the height logarithmic. Queries test the fat boxes while
  * descending and the exact tight bounds at the leaves, so results equal a linear scan.
@@ -40,6 +41,8 @@ export interface AabbTreeOptions {
 export interface AabbTree<K extends string> extends SpatialIndex<K> {
   /** Tree height (0 for empty or a single leaf); for balance diagnostics. */
   height(): number;
+  /** The enlarged box stored for `key`; for diagnostics. */
+  boxOf(key: K): Rect<"world"> | undefined;
 }
 
 const fatten = (r: Rect<W>, m: number): Rect<W> => ({
@@ -65,6 +68,9 @@ export function createAabbTree<K extends string>(
   let root: TreeNode<K> | undefined;
 
   const isLeaf = (n: TreeNode<K>): boolean => n.child1 === undefined;
+  /** A stored box more than twice as wide or tall as a fresh one is re-fitted. */
+  const oversized = (box: Rect<W>, bounds: Rect<W>): boolean =>
+    box.w > 2 * (bounds.w + 2 * margin) || box.h > 2 * (bounds.h + 2 * margin);
   const h = (n: TreeNode<K> | undefined): number => n?.height ?? 0;
 
   function refit(n: TreeNode<K>): void {
@@ -189,7 +195,11 @@ export function createAabbTree<K extends string>(
     const existing = leaves.get(key);
     if (existing) {
       existing.tight = bounds;
-      if (rectContainsRect(existing.box, bounds)) return;
+      if (
+        rectContainsRect(existing.box, bounds) &&
+        !oversized(existing.box, bounds)
+      )
+        return;
       detach(existing);
       existing.box = fatten(bounds, margin);
       attach(existing);
@@ -273,5 +283,6 @@ export function createAabbTree<K extends string>(
       root = undefined;
     },
     height: () => h(root),
+    boxOf: (key) => leaves.get(key)?.box,
   };
 }
