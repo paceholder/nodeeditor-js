@@ -56,6 +56,7 @@ const CONNECTION_FIELDS: Record<keyof ConnectionFieldChanges, true> = {
 
 interface Kind<R extends { readonly id: string }> {
   readonly label: string;
+  readonly entity: "node" | "port" | "connection";
   readonly fields: Readonly<Record<string, true>>;
   validate(input: unknown): Result<R, Rejection>;
   get(stage: StagedState, id: string): R | undefined;
@@ -65,6 +66,7 @@ interface Kind<R extends { readonly id: string }> {
 
 const NODE: Kind<NodeRecord> = {
   label: "Node",
+  entity: "node",
   fields: NODE_FIELDS,
   validate: validateNodeRecord,
   get: (s, id) => s.getNode(id as NodeId),
@@ -73,6 +75,7 @@ const NODE: Kind<NodeRecord> = {
 };
 const PORT: Kind<PortRecord> = {
   label: "Port",
+  entity: "port",
   fields: PORT_FIELDS,
   validate: validatePortRecord,
   get: (s, id) => s.getPort(id as PortId),
@@ -81,6 +84,7 @@ const PORT: Kind<PortRecord> = {
 };
 const CONNECTION: Kind<ConnectionRecord> = {
   label: "Connection",
+  entity: "connection",
   fields: CONNECTION_FIELDS,
   validate: validateConnectionRecord,
   get: (s, id) => s.getConnection(id as ConnectionId),
@@ -92,8 +96,19 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Largest explicit insertion sequence. Automatic sequences count up from the largest one
+ * seen, so a bound far below the largest safe integer keeps them exact and distinct.
+ */
+export const MAX_EXPLICIT_SEQ = 2 ** 40;
+
 function isSeq(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
+  return (
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 1 &&
+    value <= MAX_EXPLICIT_SEQ
+  );
 }
 
 function idInUse(stage: StagedState, id: string): boolean {
@@ -121,8 +136,17 @@ function add<R extends { readonly id: string }>(
   if (seq !== undefined && !isSeq(seq)) {
     return rejectionOf(
       "malformed-record",
-      "Add seq must be a positive integer",
+      `Add seq must be an integer from 1 to ${MAX_EXPLICIT_SEQ}`,
       [id],
+    );
+  }
+  const holder =
+    seq === undefined ? undefined : stage.idWithSeq(kind.entity, seq);
+  if (holder !== undefined) {
+    return rejectionOf(
+      "conflict",
+      `${kind.label} ${id} cannot take seq ${seq}, which ${holder} uses`,
+      [id, holder],
     );
   }
   kind.put(stage, checked.value, seq);

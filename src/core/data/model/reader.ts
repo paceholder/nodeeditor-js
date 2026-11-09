@@ -34,6 +34,11 @@ export interface GraphReader {
   neighbors(node: NodeId): readonly NodeRecord[];
   /** Insertion sequence of a node, port or connection; undefined if absent. */
   seqOf(id: NodeId | PortId | ConnectionId): number | undefined;
+  /** The ID of the entity of `kind` whose insertion sequence is `seq`, if any. */
+  idWithSeq(
+    kind: "node" | "port" | "connection",
+    seq: number,
+  ): string | undefined;
   /** Snapshot of the whole committed graph; reused while the revision is unchanged. */
   state(): GraphState;
 }
@@ -96,6 +101,15 @@ export function createGraphReader(store: GraphStore): GraphReader {
           store.nodes.seqOf(id) ??
           store.ports.seqOf(id) ??
           store.connections.seqOf(id),
+      ),
+    idWithSeq: (kind, seq) =>
+      guard(() =>
+        (kind === "node"
+          ? store.nodes
+          : kind === "port"
+            ? store.ports
+            : store.connections
+        ).idAt(seq),
       ),
     state: () => guard(stateOf),
   };

@@ -69,6 +69,12 @@ export function createStagedState(base: GraphReader): StagedState {
   // stale when a connection is re-staged or dropped; queries re-test the current record.
   const stagedByNode = new Map<string, Set<string>>();
   const stagedByPort = new Map<string, Set<string>>();
+  // Staged sequence to ID per kind; entries can go stale and are re-tested on lookup.
+  const stagedSeq = {
+    node: new Map<number, string>(),
+    port: new Map<number, string>(),
+    connection: new Map<number, string>(),
+  };
   let touches = 0;
 
   const indexStaged = (
@@ -89,9 +95,32 @@ export function createStagedState(base: GraphReader): StagedState {
     id: string,
     record: T | undefined,
     seq: number | undefined,
+    bySeq: Map<number, string>,
   ): void => {
     const order = slots.get(id)?.order ?? touches++;
     slots.set(id, { record, seq, order });
+    if (record !== undefined && seq !== undefined) bySeq.set(seq, id);
+  };
+  const slotsOf = (kind: "node" | "port" | "connection"): Overlay<unknown> =>
+    kind === "node" ? nodeSlots : kind === "port" ? portSlots : connSlots;
+  /** Live staged holder of `seq`: a staged entry, else a base entry not re-staged away. */
+  const idWithSeq = (
+    kind: "node" | "port" | "connection",
+    seq: number,
+  ): string | undefined => {
+    const slots = slotsOf(kind);
+    const holds = (id: string | undefined): boolean => {
+      if (id === undefined) return false;
+      const slot = slots.get(id);
+      return (
+        slot === undefined || (slot.record !== undefined && slot.seq === seq)
+      );
+    };
+    const staged = stagedSeq[kind].get(seq);
+    if (staged !== undefined && slots.has(staged) && holds(staged))
+      return staged;
+    const based = base.idWithSeq(kind, seq);
+    return holds(based) ? based : undefined;
   };
   const keyOf = <T>(slot: Slot<T>): number =>
     slot.seq ?? AFTER_BASE + slot.order;
@@ -216,6 +245,7 @@ export function createStagedState(base: GraphReader): StagedState {
       return out;
     },
     seqOf,
+    idWithSeq,
     state(): GraphState {
       return {
         revision: base.revision(),
@@ -225,18 +255,23 @@ export function createStagedState(base: GraphReader): StagedState {
         paintOrder: sortedPaint(),
       };
     },
-    putNode: (record, seq) => stage(nodeSlots, record.id, record, seq),
-    putPort: (record, seq) => stage(portSlots, record.id, record, seq),
+    putNode: (record, seq) =>
+      stage(nodeSlots, record.id, record, seq, stagedSeq.node),
+    putPort: (record, seq) =>
+      stage(portSlots, record.id, record, seq, stagedSeq.port),
     putConnection(record, seq) {
-      stage(connSlots, record.id, record, seq);
+      stage(connSlots, record.id, record, seq, stagedSeq.connection);
       for (const end of [record.from, record.to]) {
         indexStaged(stagedByNode, end.node, record.id);
         indexStaged(stagedByPort, end.port, record.id);
       }
     },
-    dropNode: (id) => stage(nodeSlots, id, undefined, undefined),
-    dropPort: (id) => stage(portSlots, id, undefined, undefined),
-    dropConnection: (id) => stage(connSlots, id, undefined, undefined),
+    dropNode: (id) =>
+      stage(nodeSlots, id, undefined, undefined, stagedSeq.node),
+    dropPort: (id) =>
+      stage(portSlots, id, undefined, undefined, stagedSeq.port),
+    dropConnection: (id) =>
+      stage(connSlots, id, undefined, undefined, stagedSeq.connection),
     writes() {
       const rows: { order: number; write: StagedWrite }[] = [];
       for (const [id, s] of nodeSlots)

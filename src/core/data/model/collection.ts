@@ -16,6 +16,8 @@ export interface Collection<T> {
   has(id: string): boolean;
   get(id: string): T | undefined;
   seqOf(id: string): number | undefined;
+  /** The ID whose entry has sequence `seq`, if any. */
+  idAt(seq: number): string | undefined;
   /** Records in `seq` order. The returned array is never mutated afterwards. */
   list(): readonly T[];
   readonly size: number;
@@ -30,11 +32,13 @@ export function createCollection<T>(
   freezeArrays: boolean,
 ): MutableCollection<T> {
   const entries = new Map<string, Entry<T>>();
+  const bySeq = new Map<number, string>();
   let cached: readonly T[] | undefined;
   return {
     has: (id) => entries.has(id),
     get: (id) => entries.get(id)?.record,
     seqOf: (id) => entries.get(id)?.seq,
+    idAt: (seq) => bySeq.get(seq),
     get size() {
       return entries.size;
     },
@@ -49,13 +53,18 @@ export function createCollection<T>(
       return cached;
     },
     set(id, record, seq) {
+      const before = entries.get(id)?.seq;
+      if (before !== undefined && bySeq.get(before) === id)
+        bySeq.delete(before);
       entries.set(id, { record, seq });
+      bySeq.set(seq, id);
       cached = undefined;
     },
     delete(id) {
       const existing = entries.get(id);
       if (existing) {
         entries.delete(id);
+        if (bySeq.get(existing.seq) === id) bySeq.delete(existing.seq);
         cached = undefined;
       }
       return existing;

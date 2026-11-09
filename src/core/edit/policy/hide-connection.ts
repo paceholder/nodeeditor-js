@@ -37,6 +37,10 @@ export function hideConnection(
       return base.neighbors(node).filter((n) => linked.has(n.id));
     },
     seqOf: (id) => (id === hidden ? undefined : base.seqOf(id)),
+    idWithSeq(kind, seq) {
+      const id = base.idWithSeq(kind, seq);
+      return id === hidden ? undefined : id;
+    },
     state: () => {
       const state = base.state();
       return { ...state, connections: visible(state.connections) };

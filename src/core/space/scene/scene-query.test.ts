@@ -115,16 +115,22 @@ describe("queryRect order", () => {
     }
   });
 
+  // A patch cannot give two live entities one seq, so a reader that reports one seq for
+  // every entity stands in for a host source that does.
+  const sameSeq = (model: ReturnType<typeof buildModel>) => ({
+    reader: { ...model.reader, seqOf: () => 5 },
+    on: model.on,
+  });
+
   it("nodes sharing z and seq fall back to ID order", () => {
     const model = buildModel([]);
     const ops = ["b", "a", "c"].map((id, i) => ({
       op: "add" as const,
       entity: "node" as const,
       record: mkNode(id, { position: { x: i * 10, y: 0 } }),
-      seq: 5,
     }));
     expect(model.submit({ ops }).status).toBe("accepted");
-    const scene = createGeometryScene(model);
+    const scene = createGeometryScene(sameSeq(model));
     expect(scene.queryRect(EVERYTHING).map((i) => i.id)).toEqual([
       "a",
       "b",
@@ -146,11 +152,10 @@ describe("queryRect order", () => {
       op: "add" as const,
       entity: "connection" as const,
       record: mkConn(id, fn, fp, tn, tp),
-      seq: 50,
     }));
     const result = model.submit({ ops });
     expect(result.status, JSON.stringify(result)).toBe("accepted");
-    const scene = createGeometryScene(model);
+    const scene = createGeometryScene(sameSeq(model));
     const ids = scene
       .queryRect(EVERYTHING)
       .filter((i) => i.kind === "connection")
