@@ -122,7 +122,10 @@ was submitted). The rule is the reason this change depends on `add-async-connect
 ### D5. Unknown outcome
 
 `onSubmit` returns a promise of `accepted | rejected | unknown`. An optional `timeoutMs`
-turns silence into `unknown`; the default is no timeout (the host owns its transport). An
+turns silence into `unknown`; the library has no default (the host owns its transport and
+sets a value, for example 5000). It is one setting for everything that waits on the host:
+the validator of `add-async-connection-policy` and delegated creation use the same
+`timeoutMs` value, with no separate creation timeout. An
 unknown entry is never passed to `onSubmit` again (the no blind retry rule: no deduplication declared). The
 adapter publishes `resync-requested` once per unknown entry. The entry stays displayed (the
 user sees their edit) and is rebased by every push; the host settles it with
@@ -350,3 +353,5 @@ calls made from inside an event handler are queued like submissions.
    in order; a conflict between a pending edit and an incoming refresh is logged and
    published as a `conflict` event.
 4. **Folder** (D1): `src/core/io/sync/`.
+5. **Timeout.** A single `timeoutMs` covers the validator and delegated creation; the library
+   has no default and the host sets one (for example 5000) (D5).
