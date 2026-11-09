@@ -211,9 +211,11 @@ export function createLocalAdapter(
     };
   }
 
-  function step(kind: "undo" | "redo"): Accepted | Rejected {
+  function step(
+    kind: "undo" | "redo",
+    operationId: OperationId = mint(),
+  ): Accepted | Rejected {
     const entry = kind === "undo" ? history.peekUndo() : history.peekRedo();
-    const operationId = mint();
     if (!entry) {
       return reject(
         {
@@ -246,9 +248,9 @@ export function createLocalAdapter(
 
   const stepOrQueue = (kind: "undo" | "redo"): SubmitResult => {
     live();
-    return hub.isDispatching()
-      ? deferred(mint(), () => step(kind))
-      : step(kind);
+    if (!hub.isDispatching()) return step(kind);
+    const operationId = mint();
+    return deferred(operationId, () => step(kind, operationId));
   };
 
   return {

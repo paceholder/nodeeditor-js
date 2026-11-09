@@ -24,7 +24,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 - [x] 3.2 Planning sees `addValidator` validators: the command environment reads the adapter's live list; verify `src/core/edit/commands/host-validators.test.ts` case titled "planning sees every registered validator"
 - [x] 3.3 Reserved IDs for queued plans: planning cursor in the local adapter (D8); verify `src/core/edit/adapter/queued-plans.test.ts` cases titled "commands issued from inside a handler get distinct IDs"
 - [x] 3.4 Event order and commit hook: a queued job's events go before the next job, verdict cache cleared in `onCommit` (D9); verify `src/core/edit/events/queued-order.test.ts` and `src/core/queued-verdicts.test.ts` cases titled "a queued edit's events precede the next queued edit" and "host verdicts are cleared right after commit"
-- [ ] 3.5 Queued undo and redo operation IDs; verify `src/core/edit/adapter/local-adapter.test.ts` case titled "queued undo and redo report their own operation ID"
+- [x] 3.5 Queued undo and redo operation IDs; verify `src/core/edit/adapter/queued-undo.test.ts` cases titled "queued undo and redo report their own operation ID"
 - [ ] 3.6 Rejected undo or redo drops its stack with a reason (D2); verify `src/core/edit/history/local-history.test.ts` and `src/core/edit/adapter/local-adapter.test.ts` cases titled "a rejected undo or redo does not block history"
 - [ ] 3.7 History limit option (D3); verify `src/core/edit/history/local-history.test.ts` case titled "local history size limit"
 - [ ] 3.8 Checked `replaceDocument`, refused during dispatch (D10); verify `src/core/edit/adapter/local-adapter.test.ts` cases titled "whole-document replacement is checked before it changes anything"
