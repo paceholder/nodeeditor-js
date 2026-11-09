@@ -5,6 +5,7 @@
  * the DOM side ask whether anyone listens (the context menu suppresses the browser's
  * menu only then).
  */
+import { rethrowLater } from "../../platform/rethrow-later.js";
 
 export interface ViewEvents<M> {
   /** Subscribe; returns the unsubscribe function. */
@@ -14,13 +15,6 @@ export interface ViewEvents<M> {
   /** Drop every handler (dispose). */
   clear(): void;
 }
-
-/** Default error report: rethrow outside the current call stack. */
-const rethrowLater = (error: unknown): void => {
-  queueMicrotask(() => {
-    throw error;
-  });
-};
 
 export function createViewEvents<M>(
   report: (error: unknown) => void = rethrowLater,

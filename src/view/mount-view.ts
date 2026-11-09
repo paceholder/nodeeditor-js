@@ -28,6 +28,7 @@ import {
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
+import { rethrowLater } from "./platform/rethrow-later.js";
 import { clientRectOf, type ViewRect } from "./platform/view-rect.js";
 import { createViewportNotifier } from "./platform/viewport-notify.js";
 import { createViewportState } from "./platform/viewport-state.js";
@@ -145,7 +146,14 @@ export function mountView(
     viewState,
     routeEditors,
     bound: () => (reader && scene ? { reader, scene } : undefined),
+    onError: (layer, error) => reportPaintError(layer, error),
   });
+  // Painter errors go to `"paint-error"` listeners, else are rethrown outside the frame.
+  const reportPaintError = (layer: LayerName, error: unknown): void => {
+    if (editing.listens("paint-error"))
+      editing.emit("paint-error", { layer, error });
+    else rethrowLater(error);
+  };
 
   const scheduler = createFrameScheduler(
     clock,
@@ -180,6 +188,8 @@ export function mountView(
       if (overlay.count > 0) overlay.layout();
       viewportNotifier.flush();
     },
+    (error, layer) =>
+      layer ? reportPaintError(layer, error) : rethrowLater(error),
   );
   interaction.add(presence.painter);
   const previews = createPreviewHost({

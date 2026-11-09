@@ -149,6 +149,8 @@ export interface Editing {
   readonly on: ViewContextMenu["on"];
   /** Raise a view event for the mount code that owns its source (viewport, selection). */
   readonly emit: ViewEvents<ViewEventMap>["emit"];
+  /** Whether any handler listens for the event type. */
+  listens(type: keyof ViewEventMap): boolean;
   /** The view lock: editing gestures and commands are refused while it is on. */
   locked(): boolean;
   setLocked(locked: boolean): void;
@@ -476,6 +478,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     clipboard: clipboard ?? UNBOUND_CLIPBOARD,
     on: menu.on,
     emit: events.emit,
+    listens: (type) => events.count(type) > 0,
     locked: lock.get,
     setLocked(next) {
       if (!lock.set(next)) return;

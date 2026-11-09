@@ -56,6 +56,7 @@ export type {
   ContextMenuInvocation,
   ContextMenuTarget,
   GestureCancelledEvent,
+  PaintErrorEvent,
   ViewEventMap,
 } from "./interact/context-menu/context-menu-types.js";
 export type {

@@ -86,4 +86,49 @@ describe("frame scheduler", () => {
     expect(f.pendingCount()).toBe(0);
     expect(f.requests()).toBe(1);
   });
+
+  it("a layer that throws does not stop the other layers or the after-frame hook", () => {
+    const f = fakeClock();
+    const painted: LayerName[] = [];
+    const errors: Array<[string, LayerName | undefined]> = [];
+    const after: number[] = [];
+    const s = createFrameScheduler(
+      f.clock,
+      (l) => {
+        if (l === "scene") throw new Error("painter bug");
+        painted.push(l);
+      },
+      (t) => void after.push(t),
+      (error, layer) => void errors.push([(error as Error).message, layer]),
+    );
+    s.markDirty("background", "scene", "interaction");
+    f.flush(5);
+    expect(painted).toEqual(["background", "interaction"]);
+    expect(after).toEqual([5]);
+    expect(errors).toEqual([["painter bug", "scene"]]);
+    // The next frame paints again: the scheduler is not stuck.
+    s.markDirty("background");
+    f.flush();
+    expect(painted).toEqual(["background", "interaction", "background"]);
+  });
+
+  it("an after-frame hook that throws is reported and later frames still run", () => {
+    const f = fakeClock();
+    const errors: unknown[] = [];
+    let painted = 0;
+    const s = createFrameScheduler(
+      f.clock,
+      () => void painted++,
+      () => {
+        throw new Error("hook bug");
+      },
+      (error) => void errors.push(error),
+    );
+    s.markDirty("scene");
+    f.flush();
+    s.markDirty("scene");
+    f.flush();
+    expect(painted).toBe(2);
+    expect(errors).toHaveLength(2);
+  });
 });

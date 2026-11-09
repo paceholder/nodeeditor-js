@@ -4,7 +4,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 
 ## 1. Rendering robustness
 
-- [ ] 1.1 Isolate painters with `try`/`finally`, guard each layer and the after-frame hook in the frame scheduler, reset the context at the start of each layer paint, and report through the `paint-error` event (D1); verify `frame-scheduler.test.ts` (a throwing layer does not stop the other layers or the after-frame hook) and `painter-isolation.browser.test.ts` (a node painter that clips and throws once leaves the other nodes painted in later frames; one report per layer per frame; rethrown without a listener)
+- [x] 1.1 Isolate painters with `try`/`finally`, guard each layer and the after-frame hook in the frame scheduler, reset the context at the start of each layer paint, and report through the `paint-error` event (D1); verify `frame-scheduler.test.ts` (a throwing layer does not stop the other layers or the after-frame hook) and `painter-isolation.browser.test.ts` (a node painter that clips and throws once leaves the other nodes painted in later frames; one report per layer per frame; rethrown without a listener)
 - [ ] 1.2 Repaint synchronously after a container resize through a scheduler `flush()` (D4); verify `frame-scheduler.test.ts` (flush paints the dirty layers now and cancels the pending request) and `resize.browser.test.ts` (with a frame clock that never fires, the canvases show content after a resize)
 - [ ] 1.3 Take the backing size from the device-pixel box and cap its area (D5); verify `backing-size.test.ts` (device box preferred, area cap lowers the ratio, at least one pixel)
 - [ ] 1.4 Snap grid lines in device space (D6); verify `grid.test.ts` (at ratio 1.5 every line's device coordinate is an integer plus one half)

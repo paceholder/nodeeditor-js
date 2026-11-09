@@ -3,7 +3,9 @@
  * viewport many times per frame; subscribers hear about it once, after the frame, and
  * only when the viewport differs from the one they last heard about.
  */
+
 import type { Viewport } from "../../core/index.js";
+import { rethrowLater } from "./rethrow-later.js";
 
 export interface ViewportNotifier {
   /** Subscribe; returns the unsubscribe function. */
@@ -21,10 +23,7 @@ const same = (a: Viewport, b: Viewport): boolean =>
 export function createViewportNotifier(
   get: () => Viewport,
   initial: Viewport,
-  report: (error: unknown) => void = (e) =>
-    queueMicrotask(() => {
-      throw e;
-    }),
+  report: (error: unknown) => void = rethrowLater,
 ): ViewportNotifier {
   const handlers = new Set<(viewport: Viewport) => void>();
   let pending = false;

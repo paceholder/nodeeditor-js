@@ -3,8 +3,10 @@
  *
  * Layers are marked dirty; one animation-frame request is made when the first layer
  * becomes dirty. The frame paints each dirty layer once and clears the set. There is no
- * loop: with nothing dirty, no request is pending or made.
+ * loop: with nothing dirty, no request is pending or made. Each layer and the after-frame
+ * hook run guarded: one that throws is reported and the rest of the frame still runs.
  */
+import { rethrowLater } from "./rethrow-later.js";
 
 export type LayerName = "background" | "scene" | "interaction";
 
@@ -33,6 +35,8 @@ export function createFrameScheduler(
   paint: (layer: LayerName, time: number) => void,
   /** Called once after each frame's layers were painted. */
   afterFrame?: (time: number) => void,
+  /** A layer (named) or the after-frame hook (no layer) threw; rethrown later by default. */
+  onError: (error: unknown, layer?: LayerName) => void = rethrowLater,
 ): FrameScheduler {
   const dirty = new Set<LayerName>();
   let handle: number | undefined;
@@ -44,8 +48,18 @@ export function createFrameScheduler(
     // Take the dirty set first: painting may mark layers dirty for the next frame.
     const batch = LAYER_ORDER.filter((l) => dirty.has(l));
     dirty.clear();
-    for (const layer of batch) paint(layer, time);
-    afterFrame?.(time);
+    for (const layer of batch) {
+      try {
+        paint(layer, time);
+      } catch (error) {
+        onError(error, layer);
+      }
+    }
+    try {
+      afterFrame?.(time);
+    } catch (error) {
+      onError(error);
+    }
   }
 
   return {

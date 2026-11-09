@@ -11,6 +11,7 @@ import type {
   Rejection,
   Viewport,
 } from "../../../core/index.js";
+import type { LayerName } from "../../platform/frame-scheduler.js";
 import type { HoverEvent } from "../hover/hover-types.js";
 import type { SelectionState } from "../selection/view-selection.js";
 import type { GestureCancellation, Modifiers } from "../tools/tool-types.js";
@@ -72,6 +73,16 @@ export interface ViewEventMap {
   readonly "connection-rejected": ConnectionRejectedEvent;
   /** A gesture ended because of a change to what it involves, or a lock. */
   readonly "gesture-cancelled": GestureCancelledEvent;
+  /**
+   * A painter threw while a layer was painted: the first error of that layer's paint. The
+   * rest of the frame was painted. Without a listener the error is rethrown asynchronously.
+   */
+  readonly "paint-error": PaintErrorEvent;
+}
+
+export interface PaintErrorEvent {
+  readonly layer: LayerName;
+  readonly error: unknown;
 }
 
 export interface ConnectionRejectedEvent {

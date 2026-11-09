@@ -7,7 +7,11 @@
  * glyphs paint in world space. Painters come from the registries and can be swapped
  * independently of geometry. At the `overview` detail level nodes and connections are
  * drawn in style batches by `overview-painter.ts` instead (D3).
+ *
+ * Painters are host code and may throw. Every painter call is isolated: the saved state
+ * is always restored, the error goes to `fault`, and the rest of the layer still paints.
  */
+
 import {
   type ConnectionEntry,
   compose,
@@ -17,6 +21,7 @@ import {
   type SceneLayer,
   transformRect,
 } from "../../../core/index.js";
+import { rethrowLater } from "../../platform/rethrow-later.js";
 import type { AssetService } from "../assets/asset-service.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
 import type { PainterRegistries } from "../registries/painters.js";
@@ -68,6 +73,8 @@ export interface SceneLayerDeps {
   readonly assets: AssetService;
   /** Selected connections of a kind with an editor get grips; omitted: none. */
   readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
+  /** A painter threw; omitted: the error is rethrown outside the frame. */
+  readonly fault?: (error: unknown) => void;
 }
 
 export interface ScenePaintStats {
@@ -89,22 +96,28 @@ function paintConnections(
   detail: DetailPolicy,
   unit: number,
 ): void {
+  const fault = deps.fault ?? rethrowLater;
   setMatrix(ctx, frame.worldToDevice);
   for (const e of list) {
     if (!e.path) continue;
     const selected = deps.state.isSelected(e.id);
     ctx.save();
-    if (selected) drawConnectionSelection(ctx, e.path, frame.theme, unit);
-    deps.painters.connections.get(e.record.kind).paint(ctx, {
-      connection: e.record,
-      path: e.path,
-      route: e.route ?? UNCHECKED_ROUTE,
-      style: resolveStyle(frame.theme, { type: e.record.kind, id: e.id }),
-      detail,
-      unit,
-      selected,
-    });
-    ctx.restore();
+    try {
+      if (selected) drawConnectionSelection(ctx, e.path, frame.theme, unit);
+      deps.painters.connections.get(e.record.kind).paint(ctx, {
+        connection: e.record,
+        path: e.path,
+        route: e.route ?? UNCHECKED_ROUTE,
+        style: resolveStyle(frame.theme, { type: e.record.kind, id: e.id }),
+        detail,
+        unit,
+        selected,
+      });
+    } catch (error) {
+      fault(error);
+    } finally {
+      ctx.restore();
+    }
     if (selected) {
       const editor = deps.routeEditors?.get(e.record.kind);
       if (editor)
@@ -123,22 +136,32 @@ function paintNodes(
 ): void {
   // Node space has unit scale, so device pixels per local unit is zoom * dpr.
   const assets = deps.assets.drawer(ctx, frame.viewport.zoom * frame.dpr);
+  const fault = deps.fault ?? rethrowLater;
   for (const e of list) {
     const bounds = transformRect(e.toLocal, e.bodyBounds);
     const diagnostics = diagnosticsOf(e.record.status);
     const selected = deps.state.isSelected(e.id);
+    const matrix = compose(frame.worldToDevice, e.toWorld);
     ctx.save();
-    setMatrix(ctx, compose(frame.worldToDevice, e.toWorld));
-    deps.painters.nodes.get(e.record.type).paint(ctx, {
-      node: e.record,
-      bounds,
-      style: resolveStyle(frame.theme, { type: e.record.type, id: e.id }),
-      detail,
-      unit,
-      assets,
-      state: { selected, hovered: deps.state.isHovered(e.id), diagnostics },
-    });
+    try {
+      setMatrix(ctx, matrix);
+      deps.painters.nodes.get(e.record.type).paint(ctx, {
+        node: e.record,
+        bounds,
+        style: resolveStyle(frame.theme, { type: e.record.type, id: e.id }),
+        detail,
+        unit,
+        assets,
+        state: { selected, hovered: deps.state.isHovered(e.id), diagnostics },
+      });
+    } catch (error) {
+      fault(error);
+    } finally {
+      ctx.restore();
+    }
     // Always drawn, whatever the painter or detail level did.
+    ctx.save();
+    setMatrix(ctx, matrix);
     if (selected) drawNodeSelection(ctx, bounds, frame.theme, unit);
     drawNodeBadges(ctx, bounds, diagnostics, frame.theme, unit);
     ctx.restore();
@@ -148,7 +171,8 @@ function paintNodes(
 /**
  * Port glyphs run without a `save`/`restore` each (D4): the layer sets the state the
  * built-in glyphs use before every call and restores once at the end, so nothing leaks
- * into later layers.
+ * into later layers. After a glyph throws, the layer's saved state is restored and saved
+ * again, so whatever that glyph set (a clip) does not reach the next one.
  */
 function paintPorts(
   ctx: CanvasRenderingContext2D,
@@ -158,6 +182,7 @@ function paintPorts(
   detail: DetailPolicy,
   unit: number,
 ): void {
+  const fault = deps.fault ?? rethrowLater;
   ctx.save();
   setMatrix(ctx, frame.worldToDevice);
   for (const e of list) {
@@ -172,14 +197,21 @@ function paintPorts(
       ctx.fillStyle = style.portFill;
       ctx.strokeStyle = style.portStroke;
       ctx.lineWidth = unit;
-      deps.painters.portGlyphs.get(port.typeKey).paint(ctx, {
-        port,
-        position: anchor.position,
-        normal: anchor.normal,
-        style,
-        detail,
-        unit,
-      });
+      try {
+        deps.painters.portGlyphs.get(port.typeKey).paint(ctx, {
+          port,
+          position: anchor.position,
+          normal: anchor.normal,
+          style,
+          detail,
+          unit,
+        });
+      } catch (error) {
+        fault(error);
+        ctx.restore();
+        ctx.save();
+        setMatrix(ctx, frame.worldToDevice);
+      }
     }
   }
   ctx.restore();
