@@ -1,8 +1,24 @@
 {
   "name": "@paceholder/nodeeditor-js",
   "version": "0.1.0",
-  "private": true,
   "description": "General-purpose node editor library for JavaScript/TypeScript with React integration",
+  "keywords": [
+    "node-editor",
+    "graph",
+    "canvas",
+    "react",
+    "typescript",
+    "diagram",
+    "flow"
+  ],
+  "homepage": "https://github.com/paceholder/nodeeditor-js#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paceholder/nodeeditor-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paceholder/nodeeditor-js/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -28,6 +44,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -51,7 +70,8 @@
     "demo:react": "vite --config examples/react/vite.config.ts",
     "demo:react:build": "vite build --config examples/react/vite.config.ts",
     "demo:perf": "vite --config examples/perf/vite.config.ts",
-    "demo:perf:build": "vite build --config examples/perf/vite.config.ts"
+    "demo:perf:build": "vite build --config examples/perf/vite.config.ts",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test"
   },
   "peerDependencies": {
     "react": ">=19",

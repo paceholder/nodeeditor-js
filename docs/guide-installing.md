@@ -29,8 +29,8 @@ Other ways in, by how far they reach:
 - A folder link (`npm install ../nodeeditor-js`, or a workspace link) points at the
   developer's checkout. It works only on a machine where that folder exists, so it does not
   suit containers or CI. Read the React note in section 4 before using it.
-- A registry can come later. The package stays `private: true` until that decision; a git
-  dependency works with a private package.
+- The npm registry: the package is published as `@paceholder/nodeeditor-js` (see
+  [guide-releasing.md](guide-releasing.md)). It is no longer marked `private`.
 
 ## 2. What the install builds
 

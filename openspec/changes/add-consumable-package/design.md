@@ -32,6 +32,7 @@ documented path; a pinned local tag.
 
 ## Settled Questions
 
-- `private: true` stays until a registry decision; a git dependency works with a private
+- (Superseded by `add-npm-release`: the owner decided to publish to npm and `private` was
+  removed.) `private: true` stays until a registry decision; a git dependency works with a private
   package. This is a temporary decision, recorded here and not as a requirement, so a later
   registry publication needs no spec change.

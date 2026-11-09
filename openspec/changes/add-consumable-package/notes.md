@@ -46,3 +46,8 @@ and `node scripts/consumer-smoke.mjs` pass. `openspec validate add-consumable-pa
 with `--strict` it reports only the warning that the "Consumable build" requirement text is longer than 500
 characters (the same strict warning appears for the other open changes). The text was moved
 here unchanged, so it was not edited; the owner accepted the warning.
+
+## Superseded decision
+
+The decision to keep `private: true` until a registry decision is superseded by
+`add-npm-release`: the owner decided to publish to npm and `private` was removed.
