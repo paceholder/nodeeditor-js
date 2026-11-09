@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 describe("view import without browser globals", () => {
-  it("imports nodeeditor-js/view in Node without touching window or document", async () => {
+  it("imports @paceholder/nodeeditor-js/view in Node without touching window or document", async () => {
     expect(typeof (globalThis as { window?: unknown }).window).toBe(
       "undefined",
     );

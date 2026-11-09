@@ -63,10 +63,10 @@ strictly downward:
 
 | Entry                          | Source                 | May depend on                                 |
 | ------------------------------ | ---------------------- | --------------------------------------------- |
-| `nodeeditor-js`                | `src/core/index.ts`    | nothing browser- or React-specific            |
-| `nodeeditor-js/view`           | `src/view/index.ts`    | core + DOM/Canvas (only after explicit mount) |
-| `nodeeditor-js/view/advanced`  | `src/view/advanced.ts` | same as view                                  |
-| `nodeeditor-js/react`          | `src/react`            | view + React (peer dependency)                |
+| `@paceholder/nodeeditor-js`                | `src/core/index.ts`    | nothing browser- or React-specific            |
+| `@paceholder/nodeeditor-js/view`           | `src/view/index.ts`    | core + DOM/Canvas (only after explicit mount) |
+| `@paceholder/nodeeditor-js/view/advanced`  | `src/view/advanced.ts` | same as view                                  |
+| `@paceholder/nodeeditor-js/react`          | `src/react`            | view + React (peer dependency)                |
 
 `view` exports what a host needs to mount and customize an editor; `view/advanced`
 exports the building blocks (frame scheduler, DOM input, tool router, layer painters,

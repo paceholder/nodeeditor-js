@@ -20,8 +20,8 @@ import type { JsonValue } from "./json-value.js";
 
 /** Version of the snapshot shape and of the wrapping document. */
 export const FORMAT_VERSION = 1;
-export const SNAPSHOT_FORMAT = "nodeeditor-js/graph";
-export const DOCUMENT_FORMAT = "nodeeditor-js/document";
+export const SNAPSHOT_FORMAT = "@paceholder/nodeeditor-js/graph";
+export const DOCUMENT_FORMAT = "@paceholder/nodeeditor-js/document";
 
 export interface PortSnapshot {
   readonly id: string;

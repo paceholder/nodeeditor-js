@@ -4,7 +4,7 @@
  * exercised. Speeds are defined per second of wall time, so a dropped frame shows up as a
  * longer interval, not as less motion.
  */
-import type { ViewHandle } from "nodeeditor-js/view";
+import type { ViewHandle } from "@paceholder/nodeeditor-js/view";
 
 export const WORKLOADS = ["pan", "zoom", "drag"] as const;
 /** The overview navigation target rule: the same pan and zoom scripts with the whole fixture on screen. */

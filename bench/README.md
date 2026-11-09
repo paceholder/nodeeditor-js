@@ -3,7 +3,7 @@
 Seeded fixtures, headless and browser benchmarks, and a bundle-size report for the
 performance requirements. Nothing here
 ships in the package (`files: ["dist"]`). The measurement code imports the public entry
-points only (`nodeeditor-js`, `nodeeditor-js/view`, `nodeeditor-js/view/advanced`).
+points only (`@paceholder/nodeeditor-js`, `@paceholder/nodeeditor-js/view`, `@paceholder/nodeeditor-js/view/advanced`).
 
 ## Running
 
@@ -11,7 +11,7 @@ points only (`nodeeditor-js`, `nodeeditor-js/view`, `nodeeditor-js/view/advanced
 | --- | --- |
 | `npm run bench` | Builds, then runs the headless benches (Node) on F-LARGE: validate, load, export, diff, scene and index build, culling query, picking, one-node patch. |
 | `npm run bench:browser` | Builds, then runs the browser workloads and the idle probe in the installed Google Chrome (headless, both device pixel ratios). Quick by default; `BENCH_QUICK=0` runs full length. |
-| `npm run bench:size` | Bundles `core`, `view`, `advanced` (`nodeeditor-js/view/advanced`) and `react` like a consumer would and prints gzip sizes against the budgets (`advanced` and `react` have none). `view` bundles only the core code it uses, since it does not re-export core. `node scripts/bundle-size.mjs --enforce` exits non-zero on overrun. |
+| `npm run bench:size` | Bundles `core`, `view`, `advanced` (`@paceholder/nodeeditor-js/view/advanced`) and `react` like a consumer would and prints gzip sizes against the budgets (`advanced` and `react` have none). `view` bundles only the core code it uses, since it does not re-export core. `node scripts/bundle-size.mjs --enforce` exits non-zero on overrun. |
 | `npm run bench:baseline` | The full run: all of the above at full duration, then writes `bench/baseline/<date>-<browser>.json` and `SUMMARY.md`. |
 | `npm run test:bench` | Unit tests of the fixtures, statistics, baseline writer and budget logic. `npm test` does not include them. |
 

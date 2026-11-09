@@ -3,7 +3,7 @@
  * timer reads `renderStats()`; it only touches text nodes whose value changed, and it
  * never invalidates a layer, so it causes no repaint.
  */
-import type { ViewHandle } from "nodeeditor-js/view";
+import type { ViewHandle } from "@paceholder/nodeeditor-js/view";
 import type { FrameSampler } from "./frame-sampler.js";
 
 export const STATS_INTERVAL_MS = 250;

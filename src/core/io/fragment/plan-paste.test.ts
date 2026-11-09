@@ -128,10 +128,10 @@ describe("paste validation", () => {
       {
         kind: "paste",
         fragment: {
-          format: "nodeeditor-js/fragment",
+          format: "@paceholder/nodeeditor-js/fragment",
           version: 1,
           fragment: {
-            format: "nodeeditor-js/graph",
+            format: "@paceholder/nodeeditor-js/graph",
             version: 1,
             nodes: [{}, {}],
           },

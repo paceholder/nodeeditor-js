@@ -2,11 +2,11 @@
 
 A tutorial for application developers: show a graph model on screen, give node types a
 look, load symbol pictures, theme the result, and read back what is under the pointer.
-Everything here uses two entry points: `nodeeditor-js` for the model, geometry and other
-core names, and `nodeeditor-js/view` for the browser view. Each name has exactly one
+Everything here uses two entry points: `@paceholder/nodeeditor-js` for the model, geometry and other
+core names, and `@paceholder/nodeeditor-js/view` for the browser view. Each name has exactly one
 import path. The building blocks the view is assembled from (frame scheduler,
 DOM input, tool router, layer painters, fallback painters) are in
-`nodeeditor-js/view/advanced`; mounting and customizing an editor never needs them. For the model side read [guide-using-the-model.md](guide-using-the-model.md);
+`@paceholder/nodeeditor-js/view/advanced`; mounting and customizing an editor never needs them. For the model side read [guide-using-the-model.md](guide-using-the-model.md);
 for how the layers fit together read [architecture.md](architecture.md); for the
 coordinate spaces and picking rules read [geometry.md](geometry.md).
 
@@ -21,8 +21,8 @@ covers the correct, fast, themeable *display*, panning, zooming and picking.
 ## 1. Mounting a view
 
 ```ts
-import { createGraphModel } from "nodeeditor-js";
-import { mountView } from "nodeeditor-js/view";
+import { createGraphModel } from "@paceholder/nodeeditor-js";
+import { mountView } from "@paceholder/nodeeditor-js/view";
 
 const model = createGraphModel();
 const container = document.getElementById("editor");
@@ -190,14 +190,14 @@ import {
   createCardGeometry,
   createGeometryRegistry,
   createImageSymbolGeometry,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   createCardPainter,
   createConnectionPainter,
   createImageSymbolPainter,
   createPainterRegistries,
   createPortGlyphPainter,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 
 const geometry = createGeometryRegistry();
 geometry.register("pump", createImageSymbolGeometry({ paintedMargin: 22 }));
@@ -216,7 +216,7 @@ const view = mountView(container, { model, geometry, painters });
   anchors in node-local space. Picking and culling use it, so they work without a browser.
 - **Painters** (view) only draw. There are four slots: `nodes` keyed by node type,
   `portGlyphs` keyed by the port's `typeKey`, `connections` keyed by connection `kind`, and a
-  single `background` slot (default: the grid, `paintGrid` from `nodeeditor-js/view/advanced`).
+  single `background` slot (default: the grid, `paintGrid` from `@paceholder/nodeeditor-js/view/advanced`).
 - The default grid keeps a steady on-screen density. When zooming out brings its lines
   closer than 8 CSS px, it steps up by `gridMajorEvery` (with the defaults: 20, then 100,
   then 500 world units …), and the finer lines of each level fade in as they open up.
@@ -243,7 +243,7 @@ Without one, every connection is a cubic Bezier as before.
 import {
   createOrthogonalRouter,
   createRouteRegistry,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 
 const routes = createRouteRegistry(); // unregistered kinds: Bezier
 routes.register("signal", createOrthogonalRouter({ cornerRadius: 6 }));
@@ -312,7 +312,7 @@ import {
   createOrthogonalSegmentEditor,
   createRouteEditorRegistry,
   mountView,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 
 const routes = createRouteRegistry();
 routes.register("signal", createOrthogonalRouter({ cornerRadius: 6 }));
@@ -422,7 +422,7 @@ fallback for node types without a painter, so a document that contains a type yo
 not know still opens and stays editable. `drawPlaceholder(...)` is exported for
 painters that want the same look for their own error state. `boxNodePainter` is a plain
 rounded box with a centered title, handy while prototyping. All three come from
-`nodeeditor-js/view/advanced`.
+`@paceholder/nodeeditor-js/view/advanced`.
 
 ### Writing a custom node painter
 
@@ -432,8 +432,8 @@ saved and restored around the call, so you do not need to undo your changes. Thi
 `QGraphicsItem::paint()` with the painter already translated, rotated and clipped.
 
 ```ts
-import type { Payload } from "nodeeditor-js";
-import type { NodePainter } from "nodeeditor-js/view";
+import type { Payload } from "@paceholder/nodeeditor-js";
+import type { NodePainter } from "@paceholder/nodeeditor-js/view";
 
 // The payload is host data (JSON); read the one field this painter understands.
 function levelOf(payload: Payload): number {
@@ -659,7 +659,7 @@ from the zoom and three theme thresholds: `lodReducedBelow` (default 0.6),
 Painters receive the policy as `detail` and decide what to skip. Selection, diagnostics and
 connection endpoints are typed as the literal `true` in every level: they can never be
 switched off by zoom. `detailLevel(zoom, theme)` and `detailPolicy(zoom, theme)` are exported
-from `nodeeditor-js/view/advanced` if your own code needs the same decision.
+from `@paceholder/nodeeditor-js/view/advanced` if your own code needs the same decision.
 
 The same thresholds as a strip, zooming out from left to right. Ports follow a fourth,
 separate token, `lodHidePortsBelow`; its default happens to equal `lodMinimalBelow`, but
@@ -1011,14 +1011,14 @@ view.setPresence([]); // clear
 ```
 
 Cursor glyphs keep their size on screen; selection outlines are dashed boxes around the
-nodes' bodies. (`point` comes from `nodeeditor-js`.)
+nodes' bodies. (`point` comes from `@paceholder/nodeeditor-js`.)
 
 **The resize handle** is a built-in interaction painter at order 20: above gesture
 previews (10), below presence (100). It draws an 8 x 8 CSS-pixel grip inside the screen
 bottom-right corner of the single selected node whose type opted in to resizing
 (`capabilities: { resize: true }`), follows the preview frame while that node is being
 resized, and hides during a move. Its geometry (`resizeHandleOf` in
-`nodeeditor-js/view/advanced`) is the same function the resize tool picks with, so the
+`@paceholder/nodeeditor-js/view/advanced`) is the same function the resize tool picks with, so the
 `nwse-resize` hover cursor, the drawing and the press always agree. A host assembling its
 own view from building blocks adds it with `createResizeHandlePainter(source)` or wires
 selection, probe and preview in one call with `createResizeHandles(deps)`.

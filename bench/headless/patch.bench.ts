@@ -1,5 +1,5 @@
 /** One-node-move patch with up to four incident connections on F-LARGE. */
-import type { NodeId, Patch } from "nodeeditor-js";
+import type { NodeId, Patch } from "@paceholder/nodeeditor-js";
 import { test } from "vitest";
 import { F_LARGE } from "../fixtures/fixture-specs.js";
 import { runCases, saveResults } from "./measure.js";

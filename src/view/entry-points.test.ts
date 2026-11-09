@@ -68,7 +68,7 @@ describe("one import path per public name", () => {
     expect(Object.keys(advanced).filter((n) => runtime.has(n))).toEqual([]);
   });
 
-  it("re-exports no core name from nodeeditor-js/view or view/advanced", () => {
+  it("re-exports no core name from @paceholder/nodeeditor-js/view or view/advanced", () => {
     expect(NAMES.core.size).toBeGreaterThan(0);
     expect(shared(NAMES.core, NAMES.view)).toEqual([]);
     expect(shared(NAMES.core, NAMES.advanced)).toEqual([]);
@@ -85,7 +85,7 @@ describe("the react entry holds only its own names", () => {
 });
 
 describe("building blocks are separate", () => {
-  it("mounts the examples without importing nodeeditor-js/view/advanced", () => {
+  it("mounts the examples without importing @paceholder/nodeeditor-js/view/advanced", () => {
     const files = [
       ...listFiles("examples/plain-js"),
       ...listFiles("examples/perf"),
@@ -93,7 +93,7 @@ describe("building blocks are separate", () => {
     expect(files.length).toBeGreaterThan(0);
     const offenders = files.filter((f) =>
       readFileSync(join(ROOT, f), "utf8").includes(
-        "nodeeditor-js/view/advanced",
+        "@paceholder/nodeeditor-js/view/advanced",
       ),
     );
     expect(offenders).toEqual([]);

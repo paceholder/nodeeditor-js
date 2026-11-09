@@ -58,7 +58,7 @@ describe("native clipboard events", () => {
     const copy = clip(view.element, "copy");
     expect(copy.event.defaultPrevented).toBe(true);
     const text = copy.data.getData("text/plain");
-    expect(text).toContain("nodeeditor-js/fragment");
+    expect(text).toContain("@paceholder/nodeeditor-js/fragment");
     const paste = clip(view.element, "paste", text);
     expect(paste.event.defaultPrevented).toBe(true);
     expect(model.reader.nodes()).toHaveLength(4);
@@ -83,7 +83,9 @@ describe("native clipboard events", () => {
     const { model, view } = setup();
     view.selection.replace([selNode("a"), selNode("b")]);
     const cut = clip(view.element, "cut");
-    expect(cut.data.getData("text/plain")).toContain("nodeeditor-js/fragment");
+    expect(cut.data.getData("text/plain")).toContain(
+      "@paceholder/nodeeditor-js/fragment",
+    );
     expect(model.reader.nodes()).toHaveLength(0);
     expect(model.historyState().undoLabel).toBe("Delete");
   });

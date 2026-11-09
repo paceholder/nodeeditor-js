@@ -6,8 +6,11 @@
 import {
   type ConnectionPolicy,
   createDefaultConnectionPolicy,
-} from "nodeeditor-js";
-import type { ConnectionChooser, ViewHandle } from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js";
+import type {
+  ConnectionChooser,
+  ViewHandle,
+} from "@paceholder/nodeeditor-js/view";
 
 const KINDS = [
   { key: "direct", label: "Direct link" },

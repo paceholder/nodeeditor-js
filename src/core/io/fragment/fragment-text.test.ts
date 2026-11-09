@@ -101,13 +101,21 @@ describe("untrusted fragment content", () => {
       42,
       "",
       "{",
-      '{"format":"nodeeditor-js/fragment"',
-      { format: "nodeeditor-js/fragment", version: 1 },
-      { format: "nodeeditor-js/fragment", version: 1, fragment: [] },
+      '{"format":"@paceholder/nodeeditor-js/fragment"',
+      { format: "@paceholder/nodeeditor-js/fragment", version: 1 },
       {
-        format: "nodeeditor-js/fragment",
+        format: "@paceholder/nodeeditor-js/fragment",
         version: 1,
-        fragment: { format: "nodeeditor-js/graph", version: 1, nodes: [{}] },
+        fragment: [],
+      },
+      {
+        format: "@paceholder/nodeeditor-js/fragment",
+        version: 1,
+        fragment: {
+          format: "@paceholder/nodeeditor-js/graph",
+          version: 1,
+          nodes: [{}],
+        },
         external: "x",
       },
     ];

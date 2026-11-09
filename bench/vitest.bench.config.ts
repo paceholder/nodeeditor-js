@@ -9,11 +9,14 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // Benches import the public entry points; the node projects resolve them to source.
 const sourceAlias = [
   {
-    find: /^nodeeditor-js\/view\/advanced$/,
+    find: /^@paceholder\/nodeeditor-js\/view\/advanced$/,
     replacement: src("view/advanced.ts"),
   },
-  { find: /^nodeeditor-js\/view$/, replacement: src("view/index.ts") },
-  { find: /^nodeeditor-js$/, replacement: src("core/index.ts") },
+  {
+    find: /^@paceholder\/nodeeditor-js\/view$/,
+    replacement: src("view/index.ts"),
+  },
+  { find: /^@paceholder\/nodeeditor-js$/, replacement: src("core/index.ts") },
 ];
 
 // The browser project runs against the production build in dist/ (not source), in the
@@ -21,19 +24,19 @@ const sourceAlias = [
 // Playwright browser name stays "chromium"; results record the real browser version.
 const distAlias = [
   {
-    find: /^nodeeditor-js\/view\/advanced$/,
+    find: /^@paceholder\/nodeeditor-js\/view\/advanced$/,
     replacement: fileURLToPath(
       new URL("../dist/view/advanced.js", import.meta.url),
     ),
   },
   {
-    find: /^nodeeditor-js\/view$/,
+    find: /^@paceholder\/nodeeditor-js\/view$/,
     replacement: fileURLToPath(
       new URL("../dist/view/index.js", import.meta.url),
     ),
   },
   {
-    find: /^nodeeditor-js$/,
+    find: /^@paceholder\/nodeeditor-js$/,
     replacement: fileURLToPath(
       new URL("../dist/core/index.js", import.meta.url),
     ),

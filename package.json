@@ -1,6 +1,6 @@
 {
-  "name": "nodeeditor-js",
-  "version": "0.0.0",
+  "name": "@paceholder/nodeeditor-js",
+  "version": "0.1.0",
   "private": true,
   "description": "General-purpose node editor library for JavaScript/TypeScript with React integration",
   "license": "MIT",

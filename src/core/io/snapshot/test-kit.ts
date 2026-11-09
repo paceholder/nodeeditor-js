@@ -8,7 +8,7 @@ import type { GraphSnapshot } from "./snapshot-types.js";
 /** A small valid snapshot as untrusted-looking plain data. */
 export function sampleSnapshot(): Record<string, unknown> {
   return {
-    format: "nodeeditor-js/graph",
+    format: "@paceholder/nodeeditor-js/graph",
     version: 1,
     idCursor: { c: 1, n: 2, p: 3 },
     nodes: [

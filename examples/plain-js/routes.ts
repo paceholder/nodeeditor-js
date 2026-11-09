@@ -7,13 +7,13 @@ import {
   createOrthogonalRouter,
   createRouteRegistry,
   type RouteRegistry,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   createOrthogonalSegmentEditor,
   createRouteEditorRegistry,
   type RouteEditorRegistry,
   type ViewHandle,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 
 export function demoRoutes(): RouteRegistry {
   const routes = createRouteRegistry();

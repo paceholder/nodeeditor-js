@@ -1,4 +1,8 @@
-import { EditorProvider, NodeEditor, ViewControls } from "nodeeditor-js/react";
+import {
+  EditorProvider,
+  NodeEditor,
+  ViewControls,
+} from "@paceholder/nodeeditor-js/react";
 import { useMemo } from "react";
 import { createDemo } from "./demo-model.js";
 import { HoverPopover } from "./hover-popover.js";

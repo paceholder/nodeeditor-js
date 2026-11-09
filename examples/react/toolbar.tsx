@@ -1,5 +1,5 @@
-import { useCommand, useHistory } from "nodeeditor-js/react";
-import { COMMAND_IDS } from "nodeeditor-js/view";
+import { useCommand, useHistory } from "@paceholder/nodeeditor-js/react";
+import { COMMAND_IDS } from "@paceholder/nodeeditor-js/view";
 
 /** Buttons follow command availability; the reason shows as the tooltip when refused. */
 export function Toolbar() {

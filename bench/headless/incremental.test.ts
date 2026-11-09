@@ -3,7 +3,7 @@ import {
   createGeometryScene,
   type Rect,
   type SpatialIndex,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import { describe, expect, it } from "vitest";
 import { F_LARGE } from "../fixtures/fixture-specs.js";
 import {

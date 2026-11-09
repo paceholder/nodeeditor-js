@@ -7,7 +7,7 @@ import {
   type ConnectionValidator,
   type GraphModel,
   rejectionOf,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 
 /** Milliseconds a real service might take; the demo wires gestures to this. */
 export const VALIDATION_DELAY_MS = 700;

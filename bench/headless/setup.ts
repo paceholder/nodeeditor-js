@@ -6,7 +6,7 @@ import {
   type GraphModel,
   type GraphSnapshot,
   loadSnapshot,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   DEFAULT_SEED,
   type FixtureSpec,

@@ -13,7 +13,7 @@ same validator.
 
 ```json
 {
-  "format": "nodeeditor-js/graph",
+  "format": "@paceholder/nodeeditor-js/graph",
   "version": 1,
   "idCursor": { "c": 1, "n": 2, "p": 3 },
   "nodes": [
@@ -94,7 +94,7 @@ inside it. Pass `fragment: true` to `validateSnapshot`, or `exportSnapshot(model
 ## 2. Document
 
 ```json
-{ "format": "nodeeditor-js/document", "version": 1, "graph": { "...": "snapshot" },
+{ "format": "@paceholder/nodeeditor-js/document", "version": 1, "graph": { "...": "snapshot" },
   "viewport": { "x": 0, "y": 0, "zoom": 1 }, "selection": ["n1"] }
 ```
 
@@ -185,12 +185,12 @@ the patch is applied. Snapshot-mode adapters will build on this.
 ## 9. Clipboard envelope
 
 Copy writes a fragment as `text/plain`, wrapped in a small envelope with its own format
-marker (`FRAGMENT_FORMAT`, `"nodeeditor-js/fragment"`) and version (`FRAGMENT_VERSION`,
+marker (`FRAGMENT_FORMAT`, `"@paceholder/nodeeditor-js/fragment"`) and version (`FRAGMENT_VERSION`,
 1):
 
 ```json
-{ "format": "nodeeditor-js/fragment", "version": 1,
-  "fragment": { "format": "nodeeditor-js/graph", "version": 1,
+{ "format": "@paceholder/nodeeditor-js/fragment", "version": 1,
+  "fragment": { "format": "@paceholder/nodeeditor-js/graph", "version": 1,
                 "nodes": [...], "connections": [...] },
   "external": [ { "id": "c7", "from": { "node": "n3", "port": "p9" },
                   "to": { "node": "n5", "port": "p2" } } ] }

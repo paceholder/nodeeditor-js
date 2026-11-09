@@ -95,7 +95,7 @@ describe("clipboard fragment API on the core entry", () => {
     ]) {
       expect(typeof fn).toBe("function");
     }
-    expect(core.FRAGMENT_FORMAT).toBe("nodeeditor-js/fragment");
+    expect(core.FRAGMENT_FORMAT).toBe("@paceholder/nodeeditor-js/fragment");
     expect(core.FRAGMENT_VERSION).toBe(1);
     const placement: core.Placement = { kind: "offset", by: { x: 1, y: 1 } };
     const excluded: core.ExcludedReference[] = [];

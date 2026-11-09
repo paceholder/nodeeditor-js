@@ -2,8 +2,8 @@
 
 A tutorial for application developers who host the editor in a React 19 application:
 mount it, read editor state in components, anchor React content to a node, and add the
-zoom and lock controls. Everything here comes from `nodeeditor-js/react`; the model and
-geometry names stay in `nodeeditor-js` and the view names in `nodeeditor-js/view`. Each
+zoom and lock controls. Everything here comes from `@paceholder/nodeeditor-js/react`; the model and
+geometry names stay in `@paceholder/nodeeditor-js` and the view names in `@paceholder/nodeeditor-js/view`. Each
 name has exactly one import path, so the react entry never re-exports them.
 For the view itself read [guide-view.md](guide-view.md), and for the model side read
 [guide-using-the-model.md](guide-using-the-model.md).
@@ -26,8 +26,8 @@ A working example with an inspector, a toolbar, a hover popover and the controls
 ## 1. Mounting
 
 ```tsx
-import { createGraphModel } from "nodeeditor-js";
-import { EditorProvider, NodeEditor } from "nodeeditor-js/react";
+import { createGraphModel } from "@paceholder/nodeeditor-js";
+import { EditorProvider, NodeEditor } from "@paceholder/nodeeditor-js/react";
 
 const model = createGraphModel();
 
@@ -204,7 +204,7 @@ function NodeDetails({ id }: { id: NodeId }) {
 
 `useCommand(id, args?)` is what a toolbar button needs: `available`, the `reason` while it
 cannot run, and a `run()` that executes it. The IDs are in `COMMAND_IDS` from
-`nodeeditor-js/view`. The answer follows selection, model, history, the view lock, the viewport and the
+`@paceholder/nodeeditor-js/view`. The answer follows selection, model, history, the view lock, the viewport and the
 `"availability"` event, and
 the object keeps its identity while it is unchanged.
 
@@ -229,7 +229,7 @@ function DeleteButton() {
 a stable value (a constant or a memoized object), not a new literal on every render.
 
 A model that is read-only gets an inert history: `useHistory` reports nothing to undo. The
-test is `hasHistory(model)` from `nodeeditor-js/view`, a type guard you can use for your own
+test is `hasHistory(model)` from `@paceholder/nodeeditor-js/view`, a type guard you can use for your own
 models too: it holds for any model that provides `historyState()`.
 
 ## 3. Content anchored to a node

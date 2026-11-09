@@ -195,7 +195,12 @@ function randomGraph(next: () => number): GraphSnapshot {
     pairs.add(key);
     connections.push({ id: `c${i}`, from, to });
   }
-  return { format: "nodeeditor-js/graph", version: 1, nodes, connections };
+  return {
+    format: "@paceholder/nodeeditor-js/graph",
+    version: 1,
+    nodes,
+    connections,
+  };
 }
 
 /** Compare ignoring `seq`-derived order of equal entities and the cursor. */

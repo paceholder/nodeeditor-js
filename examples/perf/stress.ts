@@ -5,8 +5,8 @@
  * move tool and its preview are exercised; the live stream submits batch patches to the
  * model the way a host adapter would.
  */
-import type { GraphModel, PatchOp } from "nodeeditor-js";
-import { COMMAND_IDS, type ViewHandle } from "nodeeditor-js/view";
+import type { GraphModel, PatchOp } from "@paceholder/nodeeditor-js";
+import { COMMAND_IDS, type ViewHandle } from "@paceholder/nodeeditor-js/view";
 import { createPrng } from "../../bench/fixtures/prng.js";
 import {
   type FrameSampler,

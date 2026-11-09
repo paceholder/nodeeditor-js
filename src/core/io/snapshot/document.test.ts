@@ -34,7 +34,7 @@ describe("versioned document", () => {
     if (!saved.ok) return;
     const parsed = JSON.parse(saved.value);
     expect(Object.keys(parsed)).toEqual(["format", "version", "graph"]);
-    expect(parsed.format).toBe("nodeeditor-js/document");
+    expect(parsed.format).toBe("@paceholder/nodeeditor-js/document");
     expect(parsed.version).toBe(1);
     expect(parsed.graph).toEqual(
       JSON.parse(JSON.stringify(exportSnapshot(model))),
@@ -101,7 +101,7 @@ describe("payload codecs", () => {
     });
     expect(saveDocument(loadedModel(), { codecs }).ok).toBe(false);
     const text = JSON.stringify({
-      format: "nodeeditor-js/document",
+      format: "@paceholder/nodeeditor-js/document",
       version: 1,
       graph: sampleSnapshot(),
     });
@@ -156,7 +156,7 @@ describe("loading", () => {
     const model = loadedModel();
     const before = JSON.stringify(exportSnapshot(model));
     const text = JSON.stringify({
-      format: "nodeeditor-js/document",
+      format: "@paceholder/nodeeditor-js/document",
       version: 2,
       graph: {},
     });
@@ -175,7 +175,9 @@ describe("loading", () => {
     expect(code("[]")).toBe("invalid-shape");
     expect(code('{"format":"x","version":1}')).toBe("unsupported-format");
     expect(
-      code('{"format":"nodeeditor-js/document","version":1,"graph":{},"x":1}'),
+      code(
+        '{"format":"@paceholder/nodeeditor-js/document","version":1,"graph":{},"x":1}',
+      ),
     ).toBe("invalid-shape");
     expect(code("{}".padEnd(50, " "), { maxDocumentChars: 10 })).toBe(
       "limit-exceeded",
@@ -202,7 +204,7 @@ describe("loading", () => {
 
   it("applies a host migration from an older version and returns its warnings", () => {
     const text = JSON.stringify({
-      format: "nodeeditor-js/document",
+      format: "@paceholder/nodeeditor-js/document",
       version: 0,
       legacy: sampleSnapshot(),
     });
@@ -238,7 +240,7 @@ describe("no network access on open", () => {
       payload: { asset: "https://example.invalid/symbol.svg" },
     };
     const text = JSON.stringify({
-      format: "nodeeditor-js/document",
+      format: "@paceholder/nodeeditor-js/document",
       version: 1,
       graph: input,
     });

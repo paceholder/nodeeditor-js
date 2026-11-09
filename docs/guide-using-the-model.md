@@ -1,7 +1,7 @@
 # Guide: using the model
 
 A tutorial for application developers: create a graph, edit it, listen to changes, undo,
-and save. Everything here uses only the public entry point, `nodeeditor-js`, and runs in
+and save. Everything here uses only the public entry point, `@paceholder/nodeeditor-js`, and runs in
 plain Node with no browser. For how the pieces fit together read
 [architecture.md](architecture.md); for the internals behind them read
 [guide-core-model.md](guide-core-model.md).
@@ -28,7 +28,7 @@ import {
   saveDocument,
   type ChangeEvent,
   type Patch,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 ```
 
 ## 1. Creating a model
@@ -561,7 +561,7 @@ if (loaded.ok) {
 ```ts
 // Snapshot: just the graph, as a plain object.
 const snapshot = exportSnapshot(model);
-snapshot.format;   // "nodeeditor-js/graph"
+snapshot.format;   // "@paceholder/nodeeditor-js/graph"
 snapshot.version;  // 1
 loadSnapshot(fresh, snapshot);
 ```

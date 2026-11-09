@@ -1,4 +1,7 @@
-import { type GraphSnapshot, validateSnapshot } from "nodeeditor-js";
+import {
+  type GraphSnapshot,
+  validateSnapshot,
+} from "@paceholder/nodeeditor-js";
 import { describe, expect, it } from "vitest";
 import {
   customSpec,

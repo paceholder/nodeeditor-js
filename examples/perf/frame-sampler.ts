@@ -3,7 +3,7 @@
  * painting, and stops 0.5 s after the last painted frame, so an idle editor requests no
  * frames at all even with the stats panel open.
  */
-import type { ViewHandle } from "nodeeditor-js/view";
+import type { ViewHandle } from "@paceholder/nodeeditor-js/view";
 
 export interface IntervalStats {
   readonly frames: number;

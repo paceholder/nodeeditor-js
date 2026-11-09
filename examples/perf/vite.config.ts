@@ -15,8 +15,14 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      { find: /^nodeeditor-js\/view$/, replacement: src("view/index.ts") },
-      { find: /^nodeeditor-js$/, replacement: src("core/index.ts") },
+      {
+        find: /^@paceholder\/nodeeditor-js\/view$/,
+        replacement: src("view/index.ts"),
+      },
+      {
+        find: /^@paceholder\/nodeeditor-js$/,
+        replacement: src("core/index.ts"),
+      },
     ],
   },
   server: { fs: { allow: [fileURLToPath(new URL("../..", import.meta.url))] } },

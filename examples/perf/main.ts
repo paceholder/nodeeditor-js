@@ -4,8 +4,8 @@
  * it. The panel is plain HTML fed by `renderStats()` and a frame sampler; it never
  * repaints the canvases.
  */
-import type { GraphModel } from "nodeeditor-js";
-import { COMMAND_IDS, type ViewHandle } from "nodeeditor-js/view";
+import type { GraphModel } from "@paceholder/nodeeditor-js";
+import { COMMAND_IDS, type ViewHandle } from "@paceholder/nodeeditor-js/view";
 import {
   customSpec,
   DEFAULT_SEED,

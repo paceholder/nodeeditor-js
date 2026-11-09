@@ -1,5 +1,9 @@
-import type { ConnectionId, NodeId } from "nodeeditor-js";
-import { useConnection, useNode, useSelection } from "nodeeditor-js/react";
+import type { ConnectionId, NodeId } from "@paceholder/nodeeditor-js";
+import {
+  useConnection,
+  useNode,
+  useSelection,
+} from "@paceholder/nodeeditor-js/react";
 
 /**
  * Says how many entities are selected and shows the primary one, the entity selected last.

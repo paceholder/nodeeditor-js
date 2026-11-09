@@ -1,6 +1,6 @@
 // Framework-independent browser view (Canvas2D symbol renderer, tools, overlays): what a
-// host needs to mount and customize an editor. Core names come from `nodeeditor-js` and
-// building blocks from `nodeeditor-js/view/advanced`; no name has two paths.
+// host needs to mount and customize an editor. Core names come from `@paceholder/nodeeditor-js` and
+// building blocks from `@paceholder/nodeeditor-js/view/advanced`; no name has two paths.
 // Browser APIs may only be touched during explicit mount, never at import time.
 
 export type {

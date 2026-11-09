@@ -7,19 +7,19 @@ describe("composed validator", () => {
   it("never throws on hostile input", () => {
     const hostile: unknown[] = [
       {
-        format: "nodeeditor-js/graph",
+        format: "@paceholder/nodeeditor-js/graph",
         version: 1,
         nodes: null,
         connections: 5,
       },
       {
-        format: "nodeeditor-js/graph",
+        format: "@paceholder/nodeeditor-js/graph",
         version: 1,
         nodes: [null, 1, "x", []],
         connections: [[]],
       },
       JSON.parse(
-        '{"format":"nodeeditor-js/graph","version":1,"nodes":[{"__proto__":1}],"connections":[]}',
+        '{"format":"@paceholder/nodeeditor-js/graph","version":1,"nodes":[{"__proto__":1}],"connections":[]}',
       ),
       Object.create(null),
       () => 1,

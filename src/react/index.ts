@@ -1,5 +1,5 @@
 // React provider, mounting component, and hooks. React is a peer dependency. The view's
-// own names stay on `nodeeditor-js/view`; each public name has one import path.
+// own names stay on `@paceholder/nodeeditor-js/view`; each public name has one import path.
 
 export { EditorProvider, useEditor } from "./editor-context.js";
 export { NodeEditor } from "./node-editor.js";

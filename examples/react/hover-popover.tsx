@@ -1,4 +1,8 @@
-import { NodeOverlay, useHover, useNode } from "nodeeditor-js/react";
+import {
+  NodeOverlay,
+  useHover,
+  useNode,
+} from "@paceholder/nodeeditor-js/react";
 
 /** A popover anchored above the hovered node; the overlay keeps it attached while panning. */
 export function HoverPopover() {

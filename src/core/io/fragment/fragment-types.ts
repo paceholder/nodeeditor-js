@@ -16,7 +16,7 @@ import type {
   GraphSnapshot,
 } from "../snapshot/snapshot-types.js";
 
-export const FRAGMENT_FORMAT = "nodeeditor-js/fragment";
+export const FRAGMENT_FORMAT = "@paceholder/nodeeditor-js/fragment";
 export const FRAGMENT_VERSION = 1;
 
 /** A connection with exactly one end (or none) among the copied nodes, by original IDs. */

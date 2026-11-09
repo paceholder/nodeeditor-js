@@ -3,7 +3,7 @@
  * `symbol-0` .. `symbol-7`). Plain line drawings of a generic schematic style, produced
  * in code so the benchmark and the demo need no static files.
  */
-import type { AssetSource } from "nodeeditor-js/view";
+import type { AssetSource } from "@paceholder/nodeeditor-js/view";
 
 const INK = "#aab6c8";
 const W = 80;

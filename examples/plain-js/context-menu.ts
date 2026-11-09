@@ -2,7 +2,10 @@
 // target, the selection and positions, and this code builds a plain DOM list in the
 // view's overlay. Every item is a registered command run through view.commands, so it
 // matches the shortcut, explains why it is unavailable, and undoes the same way.
-import type { ContextMenuEvent, ViewHandle } from "nodeeditor-js/view";
+import type {
+  ContextMenuEvent,
+  ViewHandle,
+} from "@paceholder/nodeeditor-js/view";
 
 // Host-side labels for the command label keys the menu offers, in menu order. Commands
 // the host has no label for (nudge, reveal) are left out.

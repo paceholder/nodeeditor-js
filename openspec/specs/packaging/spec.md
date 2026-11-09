@@ -2,17 +2,17 @@
 
 ## Purpose
 
-Defines how the library is distributed: the nodeeditor-js package, its entry points and
+Defines how the library is distributed: the @paceholder/nodeeditor-js package, its entry points and
 peer dependencies, runtime independence from servers and frameworks, examples, the support
 matrix, and deployment-friendly optional assets.
 
 ## Requirements
 
 ### Requirement: ESM package with typed entry points
-The library SHALL be published as the MIT-licensed package `nodeeditor-js` containing ESM JavaScript, TypeScript declarations, and explicit exports for the core, view, view-advanced, and react entry points. The view entry point SHALL export what a host application uses to mount and customize an editor; engine building blocks SHALL be exported only from the view-advanced entry point. Each public name SHALL have exactly one entry point that exports it. Plain JavaScript users SHALL NOT need a TypeScript build step.
+The library SHALL be published as the MIT-licensed package `@paceholder/nodeeditor-js` containing ESM JavaScript, TypeScript declarations, and explicit exports for the core, view, view-advanced, and react entry points. The view entry point SHALL export what a host application uses to mount and customize an editor; engine building blocks SHALL be exported only from the view-advanced entry point. Each public name SHALL have exactly one entry point that exports it. Plain JavaScript users SHALL NOT need a TypeScript build step.
 
 #### Scenario: Plain JavaScript import
-- **WHEN** a plain JavaScript module imports `nodeeditor-js` and `nodeeditor-js/view` from a static page
+- **WHEN** a plain JavaScript module imports `@paceholder/nodeeditor-js` and `@paceholder/nodeeditor-js/view` from a static page
 - **THEN** both resolve without a build step and type declarations are available to TypeScript users
 
 #### Scenario: Unexported path
@@ -25,7 +25,7 @@ The library SHALL be published as the MIT-licensed package `nodeeditor-js` conta
 
 #### Scenario: Building blocks are separate
 - **WHEN** a host mounts an editor with custom node painters, geometry, connection policy and tools
-- **THEN** every import it needs comes from `nodeeditor-js` and `nodeeditor-js/view`, and none from `nodeeditor-js/view/advanced`
+- **THEN** every import it needs comes from `@paceholder/nodeeditor-js` and `@paceholder/nodeeditor-js/view`, and none from `@paceholder/nodeeditor-js/view/advanced`
 
 ### Requirement: No required infrastructure
 The library SHALL NOT require an application server, framework store, router, theme system, mandatory WASM, or startup network access. The minimal local example SHALL work from ordinary static hosting.

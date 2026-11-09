@@ -4,12 +4,12 @@ import {
   createGeometryRegistry,
   createGraphModel,
   type GraphModel,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   createCardPainter,
   createConnectionPainter,
   createPainterRegistries,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 
 /**
  * Applies a command as initial content: committed, but without an undo entry, so the first

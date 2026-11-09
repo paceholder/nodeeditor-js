@@ -14,7 +14,7 @@ import type {
   NodeSnapshot,
   PortSnapshot,
   QuarterTurns,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import type { FixtureSpec } from "./fixture-specs.js";
 import { createPrng, type Prng } from "./prng.js";
 
@@ -176,7 +176,7 @@ export function generateFixture(
   }
 
   return {
-    format: "nodeeditor-js/graph",
+    format: "@paceholder/nodeeditor-js/graph",
     version: 1,
     idCursor: { c: connections.length, n: nodes.length, p: portCounter },
     nodes,

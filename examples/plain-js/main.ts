@@ -5,7 +5,7 @@ import {
   createImageSymbolGeometry,
   type GraphModel,
   type NodeRecord,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   COMMAND_IDS,
   createCardPainter,
@@ -15,7 +15,7 @@ import {
   createPortGlyphPainter,
   DEFAULT_KEYMAP,
   mountView,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 import { choicePicker, demoPolicy } from "./choice-picker.js";
 import { installContextMenu } from "./context-menu.js";
 import { demoValidator, VALIDATION_DELAY_MS } from "./host-validator.js";

@@ -4,7 +4,7 @@
  * of `fill`/`stroke` calls bounded by its distinct styles plus the selected and diagnostic
  * entities, not by the number of entities on screen, for Bezier and orthogonal routes.
  */
-import { resolveStyle } from "nodeeditor-js/view/advanced";
+import { resolveStyle } from "@paceholder/nodeeditor-js/view/advanced";
 import { expect, it } from "vitest";
 import { DEFAULT_SEED, F_TYPICAL } from "../fixtures/fixture-specs.js";
 import type { FixtureRoutes } from "../fixtures/fixture-types.js";

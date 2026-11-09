@@ -5,7 +5,7 @@ import {
   type GraphSnapshot,
   loadSnapshot,
   validateSnapshot,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import { test } from "vitest";
 import { F_LARGE } from "../fixtures/fixture-specs.js";
 import { runCases, saveResults } from "./measure.js";

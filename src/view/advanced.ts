@@ -1,6 +1,6 @@
 // Building blocks of the browser view: frame scheduling, DOM input, tool
 // routing, layer painters and fallbacks, for hosts that assemble a view from parts.
-// Mounting and customizing an editor needs only `nodeeditor-js/view`.
+// Mounting and customizing an editor needs only `@paceholder/nodeeditor-js/view`.
 // Importing this module has no side effects.
 
 export { choiceOptions } from "./interact/choice/choice-request.js";

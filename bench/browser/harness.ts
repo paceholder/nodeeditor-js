@@ -6,8 +6,8 @@
  * where a real device's events land relative to the next animation frame.
  */
 
-import type { GraphModel } from "nodeeditor-js";
-import type { ViewHandle } from "nodeeditor-js/view";
+import type { GraphModel } from "@paceholder/nodeeditor-js";
+import type { ViewHandle } from "@paceholder/nodeeditor-js/view";
 import { cdp, commands } from "vitest/browser";
 import { type FixtureSpec, worldSize } from "../fixtures/fixture-specs.js";
 import {

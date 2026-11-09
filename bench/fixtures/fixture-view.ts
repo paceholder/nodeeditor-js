@@ -8,7 +8,7 @@ import {
   type GraphModel,
   type GraphSnapshot,
   loadSnapshot,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 import {
   createCardPainter,
   createImageSymbolPainter,
@@ -16,7 +16,7 @@ import {
   mountView,
   type ViewHandle,
   type ViewOptions,
-} from "nodeeditor-js/view";
+} from "@paceholder/nodeeditor-js/view";
 import { resolveFixtureAsset } from "./fixture-symbols.js";
 import {
   CARD_TYPE,

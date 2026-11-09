@@ -12,7 +12,7 @@ import {
   type GeometryRegistry,
   type NodeTypeRegistry,
   type RouteRegistry,
-} from "nodeeditor-js";
+} from "@paceholder/nodeeditor-js";
 
 import { CARD_TYPE_KEY, SYMBOL_TYPE_KEY } from "./generate-fixture.js";
 

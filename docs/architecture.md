@@ -12,9 +12,9 @@ describes something not implemented yet, it says **(planned)** and names the cha
 
 ```mermaid
 flowchart TB
-  react["<b>nodeeditor-js/react</b><br/>provider, mount component, hooks, node overlay, view controls<br/><i>React peer dependency</i>"]
-  view["<b>nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays, tools, DOM input<br/>building blocks: <b>nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
-  core["<b>nodeeditor-js</b> (core)<br/>records, IDs, patches, history, commands,<br/>policy, snapshot, geometry, spatial index<br/><i>headless: runs in Node</i>"]
+  react["<b>@paceholder/nodeeditor-js/react</b><br/>provider, mount component, hooks, node overlay, view controls<br/><i>React peer dependency</i>"]
+  view["<b>@paceholder/nodeeditor-js/view</b><br/>Canvas2D layers, painters, assets, overlays, tools, DOM input<br/>building blocks: <b>@paceholder/nodeeditor-js/view/advanced</b><br/><i>browser, only after mountView()</i>"]
+  core["<b>@paceholder/nodeeditor-js</b> (core)<br/>records, IDs, patches, history, commands,<br/>policy, snapshot, geometry, spatial index<br/><i>headless: runs in Node</i>"]
   react -- depends on --> view
   view -- depends on --> core
 ```
@@ -410,7 +410,7 @@ table and fails on a wrong-way import, on a runtime import cycle between files, 
 view code reaching core other than through `src/core/index.ts`.
 
 ```
-src/core/                                                            (nodeeditor-js)
+src/core/                                                            (@paceholder/nodeeditor-js)
   base/       result.ts, ids/    Result, Rejection, MisuseError;     implemented
                                  branded IDs, counter generator
   data/       model/             records, validation, store,         implemented
@@ -435,7 +435,7 @@ src/core/                                                            (nodeeditor
                                  planners
   graph-model.ts                 createGraphModel facade             implemented
   index.ts                       public entry
-src/view/                                                     (nodeeditor-js/view)
+src/view/                                                     (@paceholder/nodeeditor-js/view)
   platform/   dom/               layer stack, container metrics      implemented
               frame-scheduler.ts, viewport-state.ts, model-binding.ts,
               render-stats.ts
@@ -465,8 +465,8 @@ src/view/                                                     (nodeeditor-js/vie
               overlay/           DOM overlay host, presence          implemented
   view-types.ts, view-editing.ts, view-context-menu.ts,              implemented
   view-connection-choice.ts, mount-view.ts
-  index.ts                       host API (nodeeditor-js/view)
-  advanced.ts                    building blocks (nodeeditor-js/view/advanced)
+  index.ts                       host API (@paceholder/nodeeditor-js/view)
+  advanced.ts                    building blocks (@paceholder/nodeeditor-js/view/advanced)
 src/react/                       provider, mount component, hooks,   implemented
                                  node overlay, view controls
 ```
@@ -478,7 +478,7 @@ cycle between files appears.
 
 ```mermaid
 flowchart BT
-  subgraph core["src/core (nodeeditor-js)"]
+  subgraph core["src/core (@paceholder/nodeeditor-js)"]
     base["base/<br/>result, ids"] --> data["data/<br/>model, node-types, patch"]
     data --> edit["edit/<br/>policy, capabilities, commands,<br/>history, adapter, events"]
     edit --> space["space/<br/>geometry, routing,<br/>spatial-index, scene"]

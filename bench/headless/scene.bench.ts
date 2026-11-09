@@ -2,7 +2,7 @@
  * Scene and index construction, culling queries and picking on F-LARGE, with
  * Bezier routes and again with every connection orthogonal (radius 6).
  */
-import { rect } from "nodeeditor-js";
+import { rect } from "@paceholder/nodeeditor-js";
 import { test } from "vitest";
 import { F_LARGE, worldSize } from "../fixtures/fixture-specs.js";
 import type { FixtureRoutes } from "../fixtures/fixture-types.js";
