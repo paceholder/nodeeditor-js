@@ -23,6 +23,7 @@ import {
   createErrorSink,
   type PayloadCodecRegistry,
   resolveLimits,
+  runCodec,
 } from "./snapshot-errors.js";
 import type {
   GraphSnapshot,
@@ -92,7 +93,7 @@ export function prepareLoad(
     }
     const codec = options.codecs?.get(node.type);
     if (codec) {
-      const decoded = codec.decode(node.payload);
+      const decoded = runCodec(() => codec.decode(node.payload));
       if (decoded.ok) return nodeToRecord(node, decoded.value);
       errors.add(
         decoded.error.code,

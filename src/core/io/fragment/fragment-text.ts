@@ -16,9 +16,11 @@ import { isObj } from "../snapshot/parse-fields.js";
 import {
   createErrorSink,
   type ErrorSink,
+  guarded,
   type PayloadCodecRegistry,
   prefixedSink,
   resolveLimits,
+  runCodec,
   type SnapshotLimits,
 } from "../snapshot/snapshot-errors.js";
 import {
@@ -87,7 +89,7 @@ function decodePayloads(
   return snapshot.nodes.map((node, i) => {
     const codec = codecs?.get(node.type);
     if (!codec) return cloneJson(node.payload);
-    const decoded = codec.decode(node.payload);
+    const decoded = runCodec(() => codec.decode(node.payload));
     if (decoded.ok) return decoded.value;
     sink.add(
       decoded.error.code,
@@ -99,10 +101,17 @@ function decodePayloads(
   });
 }
 
-/** Validate an envelope object and decode its payloads. */
+/** Validate an envelope object and decode its payloads. Never throws. */
 export function readFragment(
   value: unknown,
   options: FragmentParseOptions = {},
+): Parsed<ReadFragment> {
+  return guarded(() => readEnvelope(value, options));
+}
+
+function readEnvelope(
+  value: unknown,
+  options: FragmentParseOptions,
 ): Parsed<ReadFragment> {
   if (!isObj(value) || value.format !== FRAGMENT_FORMAT) {
     return fail("not-a-fragment", NOT_A_FRAGMENT, "format");

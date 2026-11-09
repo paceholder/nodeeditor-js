@@ -10,6 +10,7 @@ import {
   type ErrorSink,
   resolveLimits,
   type SnapshotLimits,
+  thrownMessage,
 } from "./snapshot-errors.js";
 import {
   FORMAT_VERSION,
@@ -44,15 +45,25 @@ export function validateSnapshotInto(
   sink: ErrorSink,
 ): GraphSnapshot | undefined {
   const before = sink.count();
-  const parts = parseShape(
-    input,
-    {
-      limits: resolveLimits(options.limits),
-      fragment: options.fragment === true,
-    },
-    sink,
-  );
-  if (parts) checkReferences(parts, sink);
+  let parts: ShapeParts | undefined;
+  try {
+    parts = parseShape(
+      input,
+      {
+        limits: resolveLimits(options.limits),
+        fragment: options.fragment === true,
+      },
+      sink,
+    );
+    if (parts) checkReferences(parts, sink);
+  } catch (error) {
+    // A getter or proxy in the input threw: report it, never throw.
+    sink.add(
+      "invalid-shape",
+      `The input could not be read: ${thrownMessage(error)}`,
+      "",
+    );
+  }
   if (sink.count() > before || !parts) return undefined;
   return {
     format: SNAPSHOT_FORMAT,

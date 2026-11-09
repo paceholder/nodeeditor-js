@@ -14,7 +14,12 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
 } from "../../data/model/values.js";
-import { createErrorSink, type ErrorSink } from "./snapshot-errors.js";
+import {
+  createErrorSink,
+  type ErrorSink,
+  guarded,
+  thrownMessage,
+} from "./snapshot-errors.js";
 import {
   DOCUMENT_FORMAT,
   FORMAT_VERSION,
@@ -55,13 +60,23 @@ const error = (
   entities: readonly string[] = [],
 ): SnapshotError => ({ code, message, path, entities });
 
+type Migrated = Result<
+  { doc: WrappedDocument; warnings: readonly string[] },
+  readonly SnapshotError[]
+>;
+
+/** Check the document wrapper and run host migrations; never throws. */
 export function runMigrations(
   parsed: unknown,
   migrations: Readonly<Record<number, Migration>> = {},
-): Result<
-  { doc: WrappedDocument; warnings: readonly string[] },
-  readonly SnapshotError[]
-> {
+): Migrated {
+  return guarded(() => migrate(parsed, migrations));
+}
+
+function migrate(
+  parsed: unknown,
+  migrations: Readonly<Record<number, Migration>>,
+): Migrated {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     return err([error("invalid-shape", "A document must be an object", "")]);
   }
@@ -91,7 +106,18 @@ export function runMigrations(
         ),
       ]);
     }
-    const next = step(doc);
+    let next: ReturnType<Migration>;
+    try {
+      next = step(doc);
+    } catch (thrown) {
+      return err([
+        error(
+          "invalid-shape",
+          `Migration from version ${version} failed: ${thrownMessage(thrown)}`,
+          "version",
+        ),
+      ]);
+    }
     if (!next.ok) return next;
     if (next.value.doc.version !== version + 1) {
       return err([
@@ -112,7 +138,13 @@ export function runMigrations(
       return err([error("invalid-shape", `Unknown field "${key}"`, key)]);
     }
   }
-  return ok({ doc: doc as unknown as WrappedDocument, warnings });
+  // Read the sections here, inside the guard, so a getter cannot throw later.
+  const wrapped: WrappedDocument = {
+    graph: doc.graph,
+    ...(doc.viewport === undefined ? {} : { viewport: doc.viewport }),
+    ...(doc.selection === undefined ? {} : { selection: doc.selection }),
+  };
+  return ok({ doc: wrapped, warnings });
 }
 
 /** The viewport section: only `x`, `y` and `zoom`, inside the supported ranges. */

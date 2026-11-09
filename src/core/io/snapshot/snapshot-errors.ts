@@ -73,6 +73,50 @@ export function prefixedSink(sink: ErrorSink, prefix: string): ErrorSink {
   };
 }
 
+/** The message of anything thrown. */
+export function thrownMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Run a check that reads untrusted input; a throw (a property getter, a proxy) becomes an
+ * `invalid-shape` error at `path`, so validation keeps its never-throws contract.
+ */
+export function guarded<T>(
+  run: () => Result<T, readonly SnapshotError[]>,
+  path = "",
+): Result<T, readonly SnapshotError[]> {
+  try {
+    return run();
+  } catch (error) {
+    return {
+      ok: false,
+      error: [
+        {
+          code: "invalid-shape",
+          message: `The input could not be read: ${thrownMessage(error)}`,
+          path,
+          entities: [],
+        },
+      ],
+    };
+  }
+}
+
+/** Run a host payload codec step; a throw becomes a failed result. */
+export function runCodec<T>(
+  step: () => Result<T, Rejection>,
+): Result<T, Rejection> {
+  try {
+    return step();
+  } catch (error) {
+    return reject(
+      "non-json-payload",
+      `The payload codec threw: ${thrownMessage(error)}`,
+    );
+  }
+}
+
 /** Add errors that were already built (decoded payloads, inner results). */
 export function addErrors(
   sink: ErrorSink,
