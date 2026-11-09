@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { toOperationId, toRevision } from "../adapter/types.js";
+import { toOperationId } from "../adapter/types.js";
 import { createEventHub } from "./event-hub.js";
 import type { ChangeEvent } from "./types.js";
 
 const change = (n: number): ChangeEvent => ({
-  revision: toRevision(`r${n}`),
+  revision: n,
   patch: { ops: [] },
   origin: "local",
   operationId: toOperationId(`op${n}`),
@@ -20,7 +20,7 @@ describe("typed events", () => {
     );
     hub.emit("change", change(1));
     hub.emit("change", change(2));
-    expect(seen).toEqual(["r1/local/0", "r2/local/0"]);
+    expect(seen).toEqual(["1/local/0", "2/local/0"]);
   });
 
   it("unsubscribe stops delivery and clear releases handlers", () => {
@@ -44,7 +44,7 @@ describe("reentrancy", () => {
     let queued: Promise<unknown> | undefined;
     hub.on("change", (e) => {
       log.push(`a${e.revision}`);
-      if (e.revision === "r1") {
+      if (e.revision === 1) {
         queued = hub.defer(
           () => {
             hub.emit("change", change(2));
@@ -56,7 +56,7 @@ describe("reentrancy", () => {
     });
     hub.on("change", (e) => log.push(`b${e.revision}`));
     hub.emit("change", change(1));
-    expect(log).toEqual(["ar1", "br1", "ar2", "br2"]);
+    expect(log).toEqual(["a1", "b1", "a2", "b2"]);
     await expect(queued).resolves.toBe("done");
   });
 
@@ -66,12 +66,12 @@ describe("reentrancy", () => {
     hub.on("change", () => {
       throw new Error("boom");
     });
-    hub.on("change", (e) => log.push(e.revision));
+    hub.on("change", (e) => log.push(String(e.revision)));
     hub.on("failure", (f) => {
       if (f.source === "handler") log.push(`failure:${f.eventType}`);
     });
     hub.emit("change", change(1));
-    expect(log).toEqual(["r1", "failure:change"]);
+    expect(log).toEqual(["1", "failure:change"]);
   });
 
   it("handler error inside a failure handler reaches onHandlerError without looping", () => {
@@ -122,14 +122,14 @@ describe("reset event", () => {
     hub.on("change", (e) => log.push(`change:${e.revision}`));
     hub.on("failure", (f) => log.push(`failure:${f.source}`));
     hub.emit("change", change(1));
-    hub.emitReset({ revision: toRevision("r2"), origin: "external" });
+    hub.emitReset({ revision: 2, origin: "external" });
     hub.emit("change", change(3));
     expect(log).toEqual([
-      "change:r1",
-      "reset:r2",
+      "change:1",
+      "reset:2",
       "third",
       "failure:handler",
-      "change:r3",
+      "change:3",
     ]);
   });
 });

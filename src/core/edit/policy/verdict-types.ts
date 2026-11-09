@@ -7,8 +7,8 @@
  * wrapper policy only reads.
  */
 import type { Rejection } from "../../base/result.js";
+import type { Revision } from "../../base/revision.js";
 import type { Endpoint } from "../../data/model/records.js";
-import type { Revision } from "../adapter/types.js";
 
 /** The slice of `AbortSignal` the library relies on; core has no DOM or Node types. */
 export interface AbortSignalLike {
@@ -42,7 +42,7 @@ export interface VerdictProposal {
 
 export interface VerdictRequest {
   readonly proposal: VerdictProposal;
-  /** Model revision at request time; opaque, for the host's own bookkeeping. */
+  /** Model revision at request time, for the host's own bookkeeping. */
   readonly revision: Revision;
   /** Aborted when nothing wants the answer any more. */
   readonly signal: VerdictSignal;

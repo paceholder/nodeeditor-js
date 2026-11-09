@@ -3,12 +3,12 @@ import { nodeId } from "../../base/ids/ids.js";
 import { MisuseError, rejectionOf } from "../../base/result.js";
 import { mkNode } from "../../data/model/test-helpers.js";
 import { createLocalAdapter } from "./local-adapter.js";
-import { toOperationId, toRevision } from "./types.js";
+import { toOperationId } from "./types.js";
 
-const add = (id: string) =>
+const add = (adapter: { revision(): number }, id: string) =>
   ({
     operationId: toOperationId(`x-${id}`),
-    baseRevision: toRevision("r0"),
+    baseRevision: adapter.revision(),
     patch: {
       ops: [{ op: "add", entity: "node", record: mkNode(id) }],
     },
@@ -20,7 +20,7 @@ const add = (id: string) =>
 describe("local adapter", () => {
   it("returns the result synchronously and the reader reflects it before submit returns", () => {
     const adapter = createLocalAdapter();
-    const result = adapter.submit(add("n1"));
+    const result = adapter.submit(add(adapter, "n1"));
     const seenInside = adapter.reader.getNode(nodeId("n1"));
     expect(result).toMatchObject({
       ok: true,
@@ -38,8 +38,8 @@ describe("local adapter", () => {
     adapter.on("failure", (f) => {
       if (f.source === "rejection") failures.push(f.rejection.code);
     });
-    adapter.submit(add("n1"));
-    const again = adapter.submit(add("n1"));
+    adapter.submit(add(adapter, "n1"));
+    const again = adapter.submit(add(adapter, "n1"));
     expect(again).toMatchObject({ ok: false, status: "rejected" });
     expect(failures).toEqual(["duplicate-id"]);
   });
@@ -49,9 +49,9 @@ describe("local adapter", () => {
     const off = adapter.addValidator({
       validate: () => rejectionOf("conflict", "blocked"),
     });
-    expect(adapter.submit(add("n1")).status).toBe("rejected");
+    expect(adapter.submit(add(adapter, "n1")).status).toBe("rejected");
     off();
-    expect(adapter.submit(add("n1")).status).toBe("accepted");
+    expect(adapter.submit(add(adapter, "n1")).status).toBe("accepted");
   });
 
   it("queues a submit made inside a handler and settles it accepted", async () => {
@@ -60,12 +60,12 @@ describe("local adapter", () => {
     let inner: ReturnType<typeof adapter.submit> | undefined;
     adapter.on("change", (e) => {
       log.push(`a:${e.revision}`);
-      if (!inner) inner = adapter.submit(add("n2"));
+      if (!inner) inner = adapter.submit(add(adapter, "n2"));
     });
     adapter.on("change", (e) => log.push(`b:${e.revision}`));
-    adapter.submit(add("n1"));
+    adapter.submit(add(adapter, "n1"));
     expect(inner?.status).toBe("queued");
-    expect(log).toEqual(["a:r1", "b:r1", "a:r2", "b:r2"]);
+    expect(log).toEqual(["a:1", "b:1", "a:2", "b:2"]);
     if (inner?.status !== "queued") throw new Error("expected queued");
     await expect(inner.settled).resolves.toMatchObject({
       ok: true,
@@ -79,10 +79,10 @@ describe("local adapter", () => {
     let inner: ReturnType<typeof adapter.submit> | undefined;
     adapter.on("change", () => {
       if (inner) return;
-      inner = adapter.submit(add("n2"));
+      inner = adapter.submit(add(adapter, "n2"));
       adapter.dispose();
     });
-    adapter.submit(add("n1"));
+    adapter.submit(add(adapter, "n1"));
     if (inner?.status !== "queued") throw new Error("expected queued");
     await expect(inner.settled).resolves.toMatchObject({
       ok: false,
@@ -93,7 +93,7 @@ describe("local adapter", () => {
 
   it("external-origin changes are applied but never recorded", () => {
     const adapter = createLocalAdapter();
-    adapter.submit({ ...add("n1"), origin: "external" });
+    adapter.submit({ ...add(adapter, "n1"), origin: "external" });
     expect(adapter.reader.getNode(nodeId("n1"))).toBeDefined();
     expect(adapter.historyState().canUndo).toBe(false);
   });
@@ -101,13 +101,13 @@ describe("local adapter", () => {
   it("advances the cursor forward only and observes added IDs", () => {
     const adapter = createLocalAdapter();
     adapter.submit({
-      ...add("n7"),
-      patch: { ...add("n7").patch, idCursor: { n: 3 } },
+      ...add(adapter, "n7"),
+      patch: { ...add(adapter, "n7").patch, idCursor: { n: 3 } },
     });
     expect(adapter.idCursor()).toEqual({ n: 7 });
     adapter.submit({
-      ...add("n8"),
-      patch: { ...add("n8").patch, idCursor: { n: 2 } },
+      ...add(adapter, "n8"),
+      patch: { ...add(adapter, "n8").patch, idCursor: { n: 2 } },
     });
     expect(adapter.idCursor()).toEqual({ n: 8 });
   });
@@ -121,7 +121,7 @@ describe("local adapter", () => {
     const adapter = createLocalAdapter();
     let events = 0;
     adapter.on("change", () => events++);
-    const r = adapter.submit({ ...add("n1"), patch: { ops: [] } });
+    const r = adapter.submit({ ...add(adapter, "n1"), patch: { ops: [] } });
     expect(r.status).toBe("accepted");
     expect(events).toBe(0);
     expect(adapter.historyState().canUndo).toBe(false);

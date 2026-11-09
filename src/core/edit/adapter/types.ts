@@ -9,6 +9,7 @@
  */
 
 import type { Rejection } from "../../base/result.js";
+import type { Revision } from "../../base/revision.js";
 import type {
   ChangedIds,
   ChangeOrigin,
@@ -17,14 +18,8 @@ import type {
 
 declare const brand: unique symbol;
 
-/** Opaque revision token, ordered by the adapter that issued it. */
-export type Revision = string & { readonly [brand]: "revision" };
 /** Identifies one submitted edit. */
 export type OperationId = string & { readonly [brand]: "operation" };
-
-export function toRevision(value: string): Revision {
-  return value as Revision;
-}
 
 export function toOperationId(value: string): OperationId {
   return value as OperationId;
@@ -32,6 +27,10 @@ export function toOperationId(value: string): OperationId {
 
 export interface Submission {
   readonly operationId: OperationId;
+  /**
+   * The revision the patch was planned against. The local adapter rejects the submission
+   * with `stale-revision` when it is not the current revision at submit time.
+   */
   readonly baseRevision: Revision;
   readonly patch: Patch;
   /** Human-readable description used for history labels. */

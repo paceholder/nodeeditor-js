@@ -17,6 +17,8 @@ export type RejectionCode =
   | "invalid-limit"
   | "unknown-entity"
   | "conflict"
+  /** A submission's base revision is not the model's current revision. */
+  | "stale-revision"
   | "dangling-reference"
   | "history-unavailable"
   | "disposed"

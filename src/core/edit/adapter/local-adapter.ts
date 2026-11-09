@@ -16,6 +16,7 @@ import {
   type IdGenerator,
 } from "../../base/ids/id-generator.js";
 import { MisuseError, type Rejection, rejectionOf } from "../../base/result.js";
+import type { Revision } from "../../base/revision.js";
 import {
   createGraphReader,
   type GraphReader,
@@ -40,11 +41,9 @@ import {
   type ModelAdapter,
   type OperationId,
   type Rejected,
-  type Revision,
   type Submission,
   type SubmitResult,
   toOperationId,
-  toRevision,
 } from "./types.js";
 
 export interface LocalAdapterOptions extends StoreOptions {
@@ -133,7 +132,7 @@ export function createLocalAdapter(
   const live = (): void => {
     if (disposed) throw new MisuseError("The model has been disposed");
   };
-  const revision = (): Revision => toRevision(`r${store.revision()}`);
+  const revision = (): Revision => store.revision();
   const mint = (): OperationId => toOperationId(`op${++operations}`);
 
   function reject(sub: Submission, rejection: Rejection): Rejected {
@@ -169,7 +168,7 @@ export function createLocalAdapter(
       ok: true,
       status: "accepted",
       operationId: sub.operationId,
-      revision: toRevision(`r${applied.revision}`),
+      revision: applied.revision,
       changed: applied.changed,
     };
     if (sub.patch.ops.length === 0) return accepted;
@@ -341,6 +340,18 @@ export function createLocalAdapter(
         !Array.isArray(sub.patch?.ops)
       ) {
         throw new MisuseError("submit expects a submission with a patch");
+      }
+      // Checked now, also for a queued edit: the ones queued before it advance the
+      // revision on purpose.
+      const now = revision();
+      if (sub.baseRevision !== now) {
+        return reject(
+          sub,
+          rejectionOf(
+            "stale-revision",
+            `The edit was planned against revision ${String(sub.baseRevision)}, but the model is at revision ${now}`,
+          ),
+        );
       }
       if (!hub.isDispatching()) return run(sub, recordLocal(sub));
       // Reserve the queued patch's IDs now, so the next plan continues after them.

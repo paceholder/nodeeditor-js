@@ -11,7 +11,7 @@
  * keep it. Verdicts are never serialized.
  */
 import type { Rejection } from "../../base/result.js";
-import type { Revision } from "../adapter/types.js";
+import type { Revision } from "../../base/revision.js";
 import type { Unsubscribe } from "../events/types.js";
 import type { TouchedEntities } from "./touched-entities.js";
 import type { ConnectionPlan } from "./types.js";
@@ -32,7 +32,7 @@ import type {
 
 export interface VerdictCacheOptions {
   readonly validator: ConnectionValidator;
-  /** The model's current revision, passed to the validator as an opaque token. */
+  /** The model's current revision, passed to the validator for its bookkeeping. */
   readonly revision: () => Revision;
   /** There is no default: a validator that never answers stays pending. */
   readonly timeoutMs?: number;

@@ -27,6 +27,7 @@ export {
 } from "./base/ids/ids.js";
 export type { Rejection, RejectionCode, Result } from "./base/result.js";
 export { err, MisuseError, ok, reject, rejectionOf } from "./base/result.js";
+export type { Revision } from "./base/revision.js";
 export type { MirrorAxis, ResizeFixed } from "./data/model/node-frame.js";
 export { anchoredPosition } from "./data/model/node-frame.js";
 export type { GraphReader } from "./data/model/reader.js";
@@ -98,7 +99,6 @@ export type {
   ModelAdapter,
   OperationId,
   Rejected,
-  Revision,
   Submission,
   SubmitResult,
   UnknownOutcome,

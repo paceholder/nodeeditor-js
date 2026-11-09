@@ -7,12 +7,13 @@
  */
 
 import type { Rejection } from "../../base/result.js";
+import type { Revision } from "../../base/revision.js";
 import type {
   ChangedIds,
   ChangeOrigin,
   Patch,
 } from "../../data/patch/types.js";
-import type { HistoryState, OperationId, Revision } from "../adapter/types.js";
+import type { HistoryState, OperationId } from "../adapter/types.js";
 
 export interface ChangeEvent {
   readonly revision: Revision;

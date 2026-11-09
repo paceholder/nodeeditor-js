@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nodeId, portId } from "../../base/ids/ids.js";
-import { toRevision } from "../adapter/types.js";
 import type { TouchedEntities } from "./touched-entities.js";
 import type { ConnectionPlan } from "./types.js";
 import { createVerdictCache } from "./verdict-cache.js";
@@ -50,7 +49,7 @@ function setup(options: { timeoutMs?: number; capacity?: number } = {}) {
   const fake = fakeValidator();
   const cache = createVerdictCache({
     validator: fake.validator,
-    revision: () => toRevision("r1"),
+    revision: () => 1,
     ...options,
   });
   return { ...fake, cache };
@@ -74,7 +73,7 @@ describe("verdict cache requests", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("sends the normalized proposal and the revision token", () => {
+  it("sends the normalized proposal and the model revision", () => {
     const { cache, calls } = setup();
     void cache.request(plan("a", "b", "flow"));
     expect(calls[0]?.request.proposal).toEqual({
@@ -82,7 +81,7 @@ describe("verdict cache requests", () => {
       to: { node: "n-b", port: "b" },
       kind: "flow",
     });
-    expect(calls[0]?.request.revision).toBe("r1");
+    expect(calls[0]?.request.revision).toBe(1);
   });
 
   it("stores a late verdict under its own key and leaves the other pending", async () => {
@@ -215,7 +214,7 @@ describe("verdict failures", () => {
       validator: () => {
         throw new Error("boom");
       },
-      revision: () => toRevision("r1"),
+      revision: () => 1,
     });
     const q = plan("c", "d");
     await throwing.request(q);

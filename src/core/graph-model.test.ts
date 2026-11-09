@@ -111,7 +111,7 @@ describe("create, read, update and delete through patches", () => {
     model.submit({ ops: [moveOp(a.node, { x: 0, y: 0 }, { x: 40, y: 20 })] });
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      revision: "r2",
+      revision: 2,
       origin: "local",
       patch: { ops: [{ op: "update", id: a.node }] },
     });

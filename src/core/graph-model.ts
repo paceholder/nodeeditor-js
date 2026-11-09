@@ -10,6 +10,7 @@
 import type { IdCursor, IdGenerator } from "./base/ids/id-generator.js";
 import type { NodeId } from "./base/ids/ids.js";
 import { MisuseError } from "./base/result.js";
+import type { Revision } from "./base/revision.js";
 import type { GraphReader } from "./data/model/reader.js";
 import {
   createNodeTypeRegistry,
@@ -26,7 +27,6 @@ import type { DocumentReplacement } from "./edit/adapter/replace-document.js";
 import type {
   HistoryState,
   OperationId,
-  Revision,
   SubmitResult,
 } from "./edit/adapter/types.js";
 import type { CapabilityPolicy } from "./edit/capabilities/types.js";
@@ -93,7 +93,10 @@ export interface SubmitOptions {
   readonly history?: "record" | "skip";
   /** Defaults to a freshly minted ID. */
   readonly operationId?: OperationId;
-  /** Defaults to the current revision. */
+  /**
+   * The revision the patch was planned against; defaults to the current revision. Any
+   * other value is rejected with `stale-revision` and nothing changes.
+   */
   readonly baseRevision?: Revision;
 }
 

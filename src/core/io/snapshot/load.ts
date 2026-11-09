@@ -14,9 +14,9 @@ import {
   type IdGenerator,
 } from "../../base/ids/id-generator.js";
 import { err, ok, type Result } from "../../base/result.js";
+import type { Revision } from "../../base/revision.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { DocumentReplacement } from "../../edit/adapter/replace-document.js";
-import type { Revision } from "../../edit/adapter/types.js";
 import { cloneJson } from "./json-value.js";
 import { connectionToRecord, nodeToRecord, portToRecord } from "./records.js";
 import {

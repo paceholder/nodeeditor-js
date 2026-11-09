@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { connectionId } from "../../base/ids/ids.js";
 import { fragmentOf } from "../../io/fragment/test-kit.js";
-import { toRevision } from "../adapter/types.js";
 import { createDefaultConnectionPolicy } from "../policy/default-policy.js";
 import type { ConnectionPolicy, ConnectionProposal } from "../policy/types.js";
 import { createValidatedPolicy } from "../policy/validated-policy.js";
@@ -25,7 +24,7 @@ function setup(base: ConnectionPolicy = createDefaultConnectionPolicy()) {
       ) ?? {
         valid: true,
       },
-    revision: () => toRevision("r1"),
+    revision: () => 1,
   });
   const model = makeModel({
     connectionPolicy: createValidatedPolicy(base, cache),

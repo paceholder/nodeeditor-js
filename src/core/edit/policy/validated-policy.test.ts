@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { toRevision } from "../adapter/types.js";
 import { end, make, makeModel } from "../commands/test-kit.js";
 import { createDefaultConnectionPolicy } from "./default-policy.js";
 import type { ConnectionPolicy } from "./types.js";
@@ -18,7 +17,7 @@ function setup(answer: ConnectionVerdict = { valid: true }) {
       calls += 1;
       return answer;
     },
-    revision: () => toRevision("r1"),
+    revision: () => 1,
   });
   const base = createDefaultConnectionPolicy();
   const policy = createValidatedPolicy(base, cache);
@@ -93,7 +92,7 @@ describe("validated policy", () => {
     };
     const cache = createVerdictCache({
       validator: async () => ({ valid: true }),
-      revision: () => toRevision("r1"),
+      revision: () => 1,
     });
     const model = makeModel();
     const policy = createValidatedPolicy(choosing, cache);

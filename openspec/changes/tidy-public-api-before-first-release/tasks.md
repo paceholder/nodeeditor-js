@@ -6,7 +6,7 @@
 
 ## 2. One revision type and a checked base revision
 
-- [ ] 2.1 Make `Revision` a non-negative integer everywhere and remove `toRevision`; add the `stale-revision` code and the check at submit in the local adapter; tests first in `src/core/edit/adapter/base-revision.test.ts` ("base revision is checked by the local adapter") and `src/core/revision-type.test.ts` ("one revision type"); verify lint, typecheck, `npm test`
+- [x] 2.1 Make `Revision` a non-negative integer everywhere and remove `toRevision`; add the `stale-revision` code and the check at submit in the local adapter; tests first in `src/core/edit/adapter/base-revision.test.ts` ("base revision is checked by the local adapter") and `src/core/revision-type.test.ts` ("one revision type"); verify lint, typecheck, `npm test`
 
 ## 3. Operation ID constructor
 
