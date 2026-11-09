@@ -1,6 +1,9 @@
 import { defineConfig } from "tsup";
+import { addClientDirective } from "./scripts/client-directive.mjs";
 
-export default defineConfig({
+// `treeshake` is left off: its extra Rollup pass appended a second source-map comment to
+// every emitted file, and esbuild's own tree shaking already drops unused code.
+export default defineConfig((options) => ({
   entry: {
     "core/index": "src/core/index.ts",
     "view/index": "src/view/index.ts",
@@ -13,6 +16,6 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   splitting: true,
-  treeshake: true,
   external: ["react", "react-dom"],
-});
+  onSuccess: () => addClientDirective(options.outDir ?? "dist"),
+}));

@@ -2,7 +2,7 @@
 
 ## 1. Client directive
 
-- [ ] 1.1 Write a test that reads the first line of each built entry file; add the directive for the React entry only; verify the test, build and gates
+- [x] 1.1 Write a test that reads the first line of each built entry file; add the directive for the React entry only; verify the test, build and gates
 
 ## 2. React layer
 
@@ -16,7 +16,7 @@
 
 ## 3. Packaging
 
-- [ ] 3.1 One source-map comment per built file, with a test
+- [x] 3.1 One source-map comment per built file, with a test
 - [ ] 3.2 `package.json`: `author`, optional `@types/react` peer; manifest test
 - [ ] 3.3 README for the registry page
 - [ ] 3.4 `docs/guide-installing.md` (repository URL, resolution note); CHANGELOG, SECURITY, CONTRIBUTING; package-contents test keeps them out
