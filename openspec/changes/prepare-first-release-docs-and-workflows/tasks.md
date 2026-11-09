@@ -18,7 +18,7 @@
 
 - [x] 3.1 One source-map comment per built file, with a test
 - [x] 3.2 `package.json`: `author`, optional `@types/react` peer; manifest test
-- [ ] 3.3 README for the registry page
+- [x] 3.3 README for the registry page
 - [ ] 3.4 `docs/guide-installing.md` (repository URL, resolution note); CHANGELOG, SECURITY, CONTRIBUTING; package-contents test keeps them out
 - [ ] 3.5 Workflow hardening: `ci.yml` permissions, `release.yml` environment, branch check, pinned actions, exact npm, `next` tag; `docs/guide-releasing.md`; YAML parse check
 
