@@ -2,11 +2,11 @@
 
 ## 1. Package metadata
 
-- [ ] 1.1 Remove `private`, add `publishConfig.access`, registry fields and `prepublishOnly` in `package.json`; update the text that says `private: true` is kept; verify lint, typecheck, tests, `npm pack --dry-run`
+- [x] 1.1 Remove `private`, add `publishConfig.access`, registry fields and `prepublishOnly` in `package.json`; update the text that says `private: true` is kept; verify lint, typecheck, tests, `npm pack --dry-run`
 
 ## 2. Contents test
 
-- [ ] 2.1 Add a node test titled "published package" that checks the `npm pack --dry-run --json` file list and metadata; verify it passes
+- [x] 2.1 Add a node test titled "published package" that checks the `npm pack --dry-run --json` file list and metadata; verify it passes
 
 ## 3. CI
 
