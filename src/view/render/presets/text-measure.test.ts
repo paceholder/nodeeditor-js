@@ -36,3 +36,23 @@ describe("text measurer", () => {
     expect(m.fit(ctx, "abcdefghij", 5)).toBe("…");
   });
 });
+
+describe("cached text fitting", () => {
+  it("a repeated frame of 500 truncated titles makes no text measurement", () => {
+    const m = createTextMeasurer();
+    const { ctx, calls } = ctxWith("12px a");
+    const titles = Array.from(
+      { length: 500 },
+      (_, i) => `title ${i}: a rather long name that never fits its bar`,
+    );
+    const frame = (): string[] => titles.map((t) => m.fit(ctx, t, 120));
+    const first = frame();
+    const before = calls();
+    expect(frame()).toEqual(first);
+    expect(calls() - before).toBe(0);
+    // A different width is a different fit.
+    expect(m.fit(ctx, titles[0] ?? "", 60).length).toBeLessThan(
+      first[0]?.length ?? 0,
+    );
+  });
+});
