@@ -88,8 +88,7 @@ export interface ToolRouter {
   autoPanning(): boolean;
   /**
    * A model change was committed: cancels the gesture when an entity it involves was
-   * removed (any origin) or changed by an external change. Anything else leaves
-   * the gesture running.
+   * removed or changed, from any origin. Anything else leaves the gesture running.
    */
   changed(change: GestureChange, ctx: ToolContext): RouteResult;
 }
@@ -167,17 +166,22 @@ export function createToolRouter(tools: readonly ToolSlot[]): ToolRouter {
       if (!active) return IGNORED;
       const involved = active.gesture.involved();
       if (involved.length === 0) return IGNORED;
+      // Any origin: the gesture computed what it will write from its start, so a change
+      // it did not make (undo, a host edit) would be overwritten on release. Its own commit
+      // never gets here, because the gesture has ended by the time its commit runs.
       const removed = involved.filter((id) => change.removed.includes(id));
       const touched =
-        removed.length === 0 && change.origin === "external"
+        removed.length === 0
           ? involved.filter((id) => change.changed.includes(id))
           : [];
       const reason: GestureCancelReason | undefined =
         removed.length > 0
           ? "entity-removed"
-          : touched.length > 0
-            ? "external-change"
-            : undefined;
+          : touched.length === 0
+            ? undefined
+            : change.origin === "external"
+              ? "external-change"
+              : "entity-changed";
       if (!reason) return IGNORED;
       const result = feed({ type: "cancel", reason }, ctx);
       return {

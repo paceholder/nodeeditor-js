@@ -94,14 +94,14 @@ describe("resize tool", () => {
     }
   });
 
-  it("an external change of the resized node cancels; other changes do not", () => {
+  it("an external change of the resized node cancels; changes of other nodes do not", () => {
     const h = fixture();
     h.selection.replace([nodeKey(N("a"))]);
     h.down({ x: 38, y: 18 });
     h.move({ x: 60, y: 30 });
     expect(resizeTool.involved?.({ kind: "idle" })).toEqual([]);
     h.change({ removed: [], changed: ["b"], origin: "external" });
-    h.change({ removed: [], changed: ["a"], origin: "local" });
+    h.change({ removed: [], changed: ["b"], origin: "local" });
     expect(h.router.activeTool).toBe("resize");
     expect(h.cancellations).toEqual([]);
     h.change({ removed: [], changed: ["a"], origin: "external" });

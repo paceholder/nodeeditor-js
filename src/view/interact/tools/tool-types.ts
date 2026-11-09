@@ -100,6 +100,8 @@ export type CancelReason =
   | "entity-removed"
   /** An external change touched an entity the gesture involves. */
   | "external-change"
+  /** A local edit, undo or redo the gesture did not make touched an entity it involves. */
+  | "entity-changed"
   /** The view was locked. */
   | "locked"
   /** A press started a new gesture while one waited for a host verdict. */
@@ -113,7 +115,7 @@ export type CancelReason =
 /** The reasons a gesture ends without the user asking. */
 export type GestureCancelReason = Extract<
   CancelReason,
-  "entity-removed" | "external-change" | "locked" | "reset"
+  "entity-removed" | "external-change" | "entity-changed" | "locked" | "reset"
 >;
 
 /** Why a gesture ended on its own and which entities caused it. */

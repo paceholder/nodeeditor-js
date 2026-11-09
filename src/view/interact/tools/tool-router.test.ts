@@ -176,17 +176,19 @@ describe("the router ends a gesture whose entities changed", () => {
     expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
   });
 
-  it("an external change of an involved entity cancels; a local one does not", () => {
-    const h = drag();
-    h.change({ removed: [], changed: ["a"], origin: "local" });
-    h.change({ removed: [], changed: ["a"], origin: "undo" });
-    expect(h.router.activeTool).toBe("select-move");
-    h.change({ removed: [], changed: ["a"], origin: "external" });
-    expect(h.router.activeTool).toBeUndefined();
-    expect(h.cancellations).toEqual([
-      { reason: "external-change", ids: ["a"] },
-    ]);
-    expect(h.log.commits).toEqual([]);
+  it("a change of an involved entity cancels whatever its origin, naming an external one", () => {
+    for (const [origin, reason] of [
+      ["external", "external-change"],
+      ["local", "entity-changed"],
+      ["undo", "entity-changed"],
+      ["redo", "entity-changed"],
+    ] as const) {
+      const h = drag();
+      h.change({ removed: [], changed: ["a"], origin });
+      expect(h.router.activeTool).toBeUndefined();
+      expect(h.cancellations).toEqual([{ reason, ids: ["a"] }]);
+      expect(h.log.commits).toEqual([]);
+    }
   });
 
   it("a change committed by the gesture itself never cancels it", () => {

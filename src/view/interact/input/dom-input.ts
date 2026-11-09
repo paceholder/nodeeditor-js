@@ -70,7 +70,7 @@ export interface DomInputDeps {
 export interface DomInput {
   /**
    * A model change was committed: the gesture in flight is cancelled when an entity it
-   * involves was removed, or changed externally.
+   * involves was removed or changed, whatever the change's origin.
    */
   modelChanged(change: GestureChange): void;
   /** A host verdict settled: a gesture showing or waiting on a pending target re-reads it. */
