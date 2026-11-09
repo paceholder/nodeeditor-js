@@ -7,7 +7,7 @@
 ## 2. React layer
 
 - [x] 2.1 Chooser trampoline: failing browser test first, then the fix in `src/react/node-editor.ts`
-- [ ] 2.2 State hooks read on change only: failing test first
+- [x] 2.2 State hooks read on change only: failing test first
 - [ ] 2.3 Viewport and selection carried across a remount: failing test first
 - [ ] 2.4 `ref` form beside `onReady`, with cleanup: failing test first
 - [ ] 2.5 Command hooks compare arguments by value: failing test first
