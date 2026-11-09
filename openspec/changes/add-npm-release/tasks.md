@@ -18,7 +18,7 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Add `docs/guide-releasing.md`; update `docs/guide-installing.md` and `README.md`; verify lint
+- [x] 5.1 Add `docs/guide-releasing.md`; update `docs/guide-installing.md` and `README.md`; verify lint
 
 ## 6. Gates and tag
 

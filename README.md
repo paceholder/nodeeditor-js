@@ -4,7 +4,14 @@ A general-purpose node editor library for JavaScript and TypeScript. It is the w
 successor of the C++/Qt library QtNodes: a headless graph model with patches and undo,
 a Canvas2D view, and React bindings.
 
-Status: pre-release (`0.1.0`, not published to npm). The API may still change.
+Status: pre-release (`0.1.0`). The API may still change.
+
+```bash
+npm install @paceholder/nodeeditor-js   # available after the first npm publish
+```
+
+See `docs/guide-installing.md` for git-tag installs and `docs/guide-releasing.md` for how
+releases are published.
 
 ## What it provides
 
@@ -40,6 +47,8 @@ Node 20 or newer is required.
 - `docs/architecture.md`: how the library is put together, with QtNodes comparisons.
 - `docs/guide-installing.md`: depending on the library from an application (git tag or
   commit, install-time build, Node version, one React copy).
+- `docs/guide-releasing.md`: publishing to npm (first manual publish, trusted publishing,
+  later releases).
 - `docs/guide-core-model.md`, `docs/guide-using-the-model.md`, `docs/guide-view.md`,
   `docs/guide-react.md`: walkthroughs of the implemented code.
 - `docs/interaction.md`, `docs/geometry.md`, `docs/format.md`: interaction, geometry and

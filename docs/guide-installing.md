@@ -7,7 +7,14 @@ Node version is needed, and how to keep one copy of React. The package has four 
 
 ## 1. The consumption path
 
-The package is not on a registry yet. A host depends on the git repository, pinned to a tag
+From the npm registry (available after the first publish, see
+[guide-releasing.md](guide-releasing.md)):
+
+```bash
+npm install @paceholder/nodeeditor-js
+```
+
+Until then, or to try unreleased work, a host depends on the git repository, pinned to a tag
 or to a commit:
 
 ```json
