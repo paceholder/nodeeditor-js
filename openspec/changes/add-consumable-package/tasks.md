@@ -15,8 +15,8 @@ it fails, the following fix task applies, otherwise mark it "not needed" in `not
 
 ## 3. Documentation
 
-- [ ] 3.1 Add `docs/guide-installing.md`: the consumption path (a git dependency pinned to a tag or commit; a workspace link works only on a developer machine; a registry can come later), the install-time build and what it needs, the Node baseline from 2.1, and `private: true` kept until a registry decision; verify docs lint and the `npm pack --dry-run` file list
-- [ ] 3.2 In `docs/guide-react.md` and the install guide, state that React is a peer dependency and that a host bundler must resolve one copy (dedupe or alias) when it links the library; verify docs lint
+- [x] 3.1 Add `docs/guide-installing.md`: the consumption path (a git dependency pinned to a tag or commit; a workspace link works only on a developer machine; a registry can come later), the install-time build and what it needs, the Node baseline from 2.1, and `private: true` kept until a registry decision; verify docs lint and the `npm pack --dry-run` file list
+- [x] 3.2 In `docs/guide-react.md` and the install guide, state that React is a peer dependency and that a host bundler must resolve one copy (dedupe or alias) when it links the library; verify docs lint
 
 ## 4. Gates and tag
 

@@ -38,6 +38,8 @@ Node 20 or newer is required.
 ## Documentation
 
 - `docs/architecture.md`: how the library is put together, with QtNodes comparisons.
+- `docs/guide-installing.md`: depending on the library from an application (git tag or
+  commit, install-time build, Node version, one React copy).
 - `docs/guide-core-model.md`, `docs/guide-using-the-model.md`, `docs/guide-view.md`,
   `docs/guide-react.md`: walkthroughs of the implemented code.
 - `docs/interaction.md`, `docs/geometry.md`, `docs/format.md`: interaction, geometry and

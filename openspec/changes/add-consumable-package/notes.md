@@ -31,3 +31,10 @@ The "Published support and versioning policy" requirement is modified in this ch
 or later (the owner approved it), and the baseline line in `docs/spec-coverage.md` follows.
 Known: CI still runs on Node 22. The tests were run on Node 20 once by hand for this change
 (972 tests passed); the library supports Node 20 and later.
+
+## Documentation (3.1, 3.2)
+
+`docs/guide-installing.md` is new and `docs/guide-react.md` states the peer dependency and the
+dedupe step. Checked by hand with npm 10.9.9: a git dependency installed with `--omit=dev`
+and with `--ignore-scripts` still builds `dist/` (npm builds git packages itself). Other package
+managers were not checked.

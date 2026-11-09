@@ -12,6 +12,14 @@ React is an optional peer dependency (`react` and `react-dom`, version 19 or new
 entry point is safe to import and to render on a server: nothing runs at import time and
 the canvas is created only after the component mounts in a browser.
 
+React is a peer dependency, so the library never bundles it and a host bundle must hold
+exactly one copy. That is automatic when the library is installed from a tarball or a git
+dependency. When a bundler links the library from a folder (a workspace or `npm install
+../nodeeditor-js`), a second copy of React can be found next to the linked source; tell the
+bundler to resolve one copy. In Vite set `resolve.dedupe: ["react", "react-dom"]`; other
+bundlers use an alias to the host's `node_modules/react` and `react-dom`. The install
+options are in [guide-installing.md](guide-installing.md).
+
 A working example with an inspector, a toolbar, a hover popover and the controls is in
 `examples/react` (`npm run demo:react`).
 
