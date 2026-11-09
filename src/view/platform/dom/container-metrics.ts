@@ -11,6 +11,13 @@ import { MAX_DPR, MIN_DPR } from "../../../core/index.js";
 export interface ContainerMetrics {
   /** CSS pixels. Zero in either dimension means "not measurable yet". */
   size(): { readonly width: number; readonly height: number };
+  /**
+   * The content box in device pixels, as the browser snapped it, where it reports one
+   * (`devicePixelContentBoxSize`); undefined elsewhere.
+   */
+  devicePixelSize():
+    | { readonly width: number; readonly height: number }
+    | undefined;
   dpr(): number;
   /** Fresh client rect of the observed element. */
   clientRect(): { readonly left: number; readonly top: number };
@@ -33,12 +40,15 @@ export function observeContainer(
   let width = element.clientWidth;
   let height = element.clientHeight;
   let dpr = sanitizeDpr(win.devicePixelRatio);
+  let device: { width: number; height: number } | undefined;
 
   const observer = new win.ResizeObserver((entries) => {
     const entry = entries[entries.length - 1];
     if (disposed || !entry) return;
     width = entry.contentRect.width;
     height = entry.contentRect.height;
+    const box = entry.devicePixelContentBoxSize?.[0];
+    device = box ? { width: box.inlineSize, height: box.blockSize } : undefined;
     // A ratio change also reaches here via the device-pixel box (below).
     const next = sanitizeDpr(win.devicePixelRatio);
     if (next !== dpr) {
@@ -77,6 +87,7 @@ export function observeContainer(
 
   return {
     size: () => ({ width, height }),
+    devicePixelSize: () => device,
     dpr: () => dpr,
     clientRect() {
       const r = element.getBoundingClientRect();

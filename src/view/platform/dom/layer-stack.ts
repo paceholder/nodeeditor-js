@@ -9,8 +9,8 @@ export interface LayerStack {
   readonly root: HTMLDivElement;
   readonly canvases: Readonly<Record<LayerName, HTMLCanvasElement>>;
   readonly overlay: HTMLDivElement;
-  /** Set the backing store of every canvas to `css * dpr` (rounded, at least 1). */
-  resize(cssWidth: number, cssHeight: number, dpr: number): void;
+  /** Set the backing store of every canvas, in device pixels (see `backingSize`). */
+  resize(pixelWidth: number, pixelHeight: number): void;
   /** Remove all nodes and release canvas backing stores. */
   destroy(): void;
 }
@@ -53,9 +53,9 @@ export function createLayerStack(container: HTMLElement): LayerStack {
     root,
     canvases,
     overlay,
-    resize(cssWidth, cssHeight, dpr) {
-      const w = Math.max(1, Math.round(cssWidth * dpr));
-      const h = Math.max(1, Math.round(cssHeight * dpr));
+    resize(pixelWidth, pixelHeight) {
+      const w = Math.max(1, Math.round(pixelWidth));
+      const h = Math.max(1, Math.round(pixelHeight));
       for (const canvas of Object.values(canvases)) {
         canvas.width = w;
         canvas.height = h;

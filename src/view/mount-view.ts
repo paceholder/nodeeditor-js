@@ -16,6 +16,7 @@ import { createOverlayHost } from "./interact/overlay/overlay-host.js";
 import { createPresence } from "./interact/overlay/presence.js";
 import { createSelectionModel } from "./interact/selection/selection-model.js";
 import { createViewSelection } from "./interact/selection/view-selection.js";
+import { backingSize } from "./platform/dom/backing-size.js";
 import {
   type ContainerMetrics,
   observeContainer,
@@ -219,14 +220,22 @@ export function mountView(
   const metrics: ContainerMetrics = observeContainer(stack.root, () => {
     if (!metrics.isMeasurable()) return;
     const { width, height } = metrics.size();
-    const dpr = metrics.dpr();
+    // Exact device-pixel box where reported, capped in area; `dpr` is what painting uses.
+    const store = backingSize(
+      { width, height },
+      metrics.dpr(),
+      metrics.devicePixelSize(),
+    );
+    const dpr = store.dpr;
     if (
       backing.width !== width ||
       backing.height !== height ||
-      backing.dpr !== dpr
+      backing.dpr !== dpr ||
+      stack.canvases.scene.width !== store.pixelWidth ||
+      stack.canvases.scene.height !== store.pixelHeight
     ) {
       backing = { width, height, dpr };
-      stack.resize(width, height, dpr);
+      stack.resize(store.pixelWidth, store.pixelHeight);
     }
     if (pendingInitialFit) {
       const fit = pendingInitialFit;
