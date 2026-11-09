@@ -116,8 +116,10 @@ export interface GraphModelCore {
   idCursor(): IdCursor;
   revision(): Revision;
   /**
-   * Low-level whole-document replacement used by `loadSnapshot`. It trusts its input:
-   * hosts should call `loadSnapshot`, which validates first.
+   * Low-level whole-document replacement used by `loadSnapshot`. It checks its records
+   * before changing anything and throws `MisuseError` for bad input or when called from
+   * inside an event handler; hosts should call `loadSnapshot`, which reports problems in
+   * untrusted input as results instead.
    */
   replaceDocument(replacement: DocumentReplacement): Revision;
   /** Release handlers and history. Later calls (except `dispose`) throw `MisuseError`. */

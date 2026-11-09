@@ -10,6 +10,7 @@
 
 import {
   createCounterIdGenerator,
+  cursorProblem,
   EMPTY_CURSOR,
   type IdCursor,
   type IdGenerator,
@@ -29,6 +30,7 @@ import { createEventHub } from "../events/event-hub.js";
 import { createLocalHistory } from "../history/local-history.js";
 import { advanceCursor } from "./cursor.js";
 import {
+  checkReplacement,
   type DocumentReplacement,
   replaceStoreContents,
 } from "./replace-document.js";
@@ -78,8 +80,10 @@ export interface LocalAdapter extends ModelAdapter {
   mintOperationId(): OperationId;
   /**
    * Replace the whole document atomically, set the ID cursor, clear local history and
-   * emit one `reset` event. Callers pass already-validated records;
-   * `loadSnapshot` is the public entry point.
+   * emit one `reset` event. The replacement is checked first; bad input
+   * throws `MisuseError` with nothing changed, as does a call from inside an event
+   * handler (its revision could not be returned). `loadSnapshot` is the public entry
+   * point, which validates untrusted input into results first.
    */
   replaceDocument(replacement: DocumentReplacement): Revision;
   /** Publish a `failure` event for an edit refused before it reached `submit`. */
@@ -299,7 +303,21 @@ export function createLocalAdapter(
     mintOperationId: mint,
     replaceDocument(replacement) {
       live();
-      replaceStoreContents(store, replacement);
+      if (hub.isDispatching()) {
+        throw new MisuseError(
+          "replaceDocument cannot run inside an event handler; defer it (for example with queueMicrotask)",
+        );
+      }
+      if (
+        typeof replacement !== "object" ||
+        replacement === null ||
+        cursorProblem(replacement.idCursor) !== undefined
+      ) {
+        throw new MisuseError(
+          "replaceDocument expects records and an ID cursor",
+        );
+      }
+      replaceStoreContents(store, checkReplacement(replacement));
       cursor = replacement.idCursor;
       notifyCommit({ kind: "reset" });
       const hadHistory = history.state().canUndo || history.state().canRedo;
