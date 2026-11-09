@@ -289,10 +289,22 @@ corner grip on resizable nodes only, instead of eight handles on every node.
 
 - **Wheel** zooms around the cursor by `exp(-deltaY * wheelSensitivity)`, clamped to the
   zoom limits (the supported range, narrowed by the view's `zoomLimits` option). Line and page wheel deltas are normalized to pixels.
-- The `wheel` option picks the behavior: `"zoom"` (default) or
-  `"scroll-page-unless-modifier"`, which zooms only while Ctrl/Cmd is held.
-- The wheel event is consumed (`preventDefault`) only when the viewport really changed.
+- The `wheel` option picks what a plain wheel does: `"zoom"` (default; horizontal delta is
+  ignored), `"scroll-page-unless-modifier"`, which leaves the wheel to the page and zooms
+  only while Ctrl/Cmd is held, or `"pan"`, which pans by both deltas (two-finger trackpad
+  scrolling) and zooms with Ctrl/Cmd.
+- **Pinch.** Browsers report a trackpad pinch as a wheel with the Control key, on macOS even
+  when no key is held. A Control-wheel therefore zooms in every mode, by
+  `exp(-deltaY * pinchSensitivity)` (default 0.01) with each event's delta clamped to ±10, so
+  a mouse notch with Control zooms by about 10 %. It is always consumed over the canvas, even
+  at a zoom limit, so the browser never zooms the page instead. The sensitivity has not been
+  tuned on a physical trackpad yet; adjust `pinchSensitivity` if pinching feels slow.
+- Other wheel events are consumed (`preventDefault`) only when the viewport really changed.
   At a zoom limit, or in scroll mode without the modifier, the page scrolls normally.
+- **Touch pinch.** A second finger on the view cancels the gesture the first one started
+  (a node drag, a pan) and the two fingers zoom about their midpoint and pan with it, within
+  the zoom limits. Lifting either finger ends the pinch; the finger left does nothing until
+  it lifts too.
 - **Pan** only changes the viewport, never the model.
 - **Hover** is reported through `view.on("hover", ...)` (guide-view, section 8): one pick per
   frame, nothing while a gesture is in flight, and a recompute when it ends.
@@ -361,8 +373,8 @@ is detected once at mount, or set with `input.platform`:
 | Mod+Shift+Z, Ctrl+Y | `history.redo` |
 | Mod+A | `selection.selectAll` |
 | Escape | cancel the gesture, otherwise `selection.clear` |
-| Arrow keys | `nodes.nudge` by the grid step (1 world unit without a grid) |
-| Shift+Arrow keys | `nodes.nudge` by ten steps |
+| Arrow keys | `nodes.nudge` by the grid step (1 world unit without a grid), once per press |
+| Shift+Arrow keys | `nodes.nudge` by ten steps, once per press |
 | R | `nodes.rotate` `{ turns: 1 }` (clockwise) |
 | Shift+R | `nodes.rotate` `{ turns: -1 }` |
 | M | `nodes.mirror` `{ axis: "horizontal" }` |
@@ -378,6 +390,14 @@ with `input.keymap`, for example
 `[...DEFAULT_KEYMAP, { chord: "F", command: "view.fitAll" }]`. Chords are `+`-joined
 modifiers (`Mod`, `Ctrl`, `Shift`, `Alt`) then a key. Keys are ignored while a gesture is
 running: one gesture is one history entry.
+
+A binding with `repeat: false` runs once per press: the key-downs a held key repeats are
+consumed and run nothing. The default nudge, rotate, mirror and duplicate bindings say so,
+so holding an arrow key moves one step and adds one history entry (set `repeat: true` on
+your own bindings for continuous nudging). Chords match the character a key produces, so a
+Latin layout such as AZERTY keeps its own letters; when the character is not an ASCII letter
+or digit (Cyrillic, Greek), the physical key (`KeyZ`, `Digit1`) is matched instead, so
+Mod+Z still undoes there.
 
 ### Clipboard shortcuts: the native route
 
@@ -429,8 +449,15 @@ the mouse adds the growing step, so copies cascade instead of stacking.
   host closes its menu and returns focus with `view.element.focus()`.
 - Cancellation sources: `pointercancel`, `lostpointercapture`, Escape, window `blur`, the
   document becoming hidden, a model `reset` (the whole document replaced, for example by
-  `loadSnapshot`), a context menu opened on a press that has not started dragging
-  (`"context-menu"`, section 7a), and `dispose()`. Each ends the gesture with nothing committed.
+  `loadSnapshot`), a `contextmenu` event on a press that has not started dragging
+  (`"context-menu"`, whether or not a menu listener is registered, section 7a), a move of
+  the gesture's mouse that no longer holds its button (`"button-released"`: the browser never
+  delivered the release, as when a native menu takes the mouse-up after a macOS
+  Control-click), a second touch (`"pinch"`), and `dispose()`. Each ends the gesture with
+  nothing committed. A lost release is a cancel, not a release: committing at a guessed
+  position could write an edit the user did not make.
+- With no gesture running, the cursor of a resting mouse (a scene pick and the resize-handle
+  test) is chosen at most once per frame, however many moves arrive.
 - The adapter attaches during `mountView()` and `dispose()` removes every listener.
 
 All cancellation sources meet in the router, and they only matter while a gesture runs.
@@ -438,9 +465,14 @@ Model reset and change are not DOM events: the view forwards them from the model
 `reset` and `change` events (`view-editing.ts`). A reset cancels any gesture. A committed
 change is judged by what the gesture involves: each tool says which nodes, ports and
 connections its running gesture involves (`Tool.involved(state)`), and the router cancels
-the gesture when one of them is removed (from any origin) or changed by an external change.
-A change of anything else, or a local change of an involved entity, leaves the gesture
-running. A lock ends a gesture with the reason `"locked"`.
+the gesture when one of them is removed or changed, from any origin: a local edit by the
+host, an undo or redo, or an external change. Tools compute what they write from the
+gesture's start, so a change they did not make would otherwise be overwritten on release.
+The reason is `"entity-removed"`, `"external-change"` for an external change, or
+`"entity-changed"` for the rest. A change of anything else leaves the gesture running, and
+the gesture's own commit never cancels it (the gesture has ended when its commit runs). A
+host that streams local updates to the node being dragged therefore cancels the drag. A lock
+ends a gesture with the reason `"locked"`.
 
 ```mermaid
 flowchart LR
@@ -454,7 +486,7 @@ flowchart LR
   cancel["cancel(reason)"] --> router["tool router"]
   changed["committed change"] -- "changed(removed, touched, origin)" --> router
   router --> tool{"active tool"}
-  tool -- "any cancel, a removed ID the gesture<br/>involves, or an external change of one" --> idle["idle: preview cleared,<br/>nothing committed"]
+  tool -- "any cancel, or a removal or change<br/>of an ID the gesture involves" --> idle["idle: preview cleared,<br/>nothing committed"]
   tool -- "other changes" --> goes["gesture continues"]
 ```
 
@@ -572,6 +604,7 @@ mountView(container, {
 ```
 
 `toolOptions` also holds `dragThresholdPx`, `pickTolerancePx`, `wheelSensitivity`,
+`pinchSensitivity` (section 5),
 `autoPan` (section 5a; `false` turns it off), `doubleClickMs` (the gap that makes two
 presses on a route handle a double-click, default 500) and `longPressMs` (section 7a; `false` turns
 the touch long-press off).
@@ -597,9 +630,11 @@ A tool is `Tool<S>`: `idle` state, `accepts(press, ctx)`, `transition(state, inp
 returning `{ state, effects }`, `isIdle(state)`, and optionally `autoPans(state)` (true
 in the states that drag something the view should auto-pan for), and `involved(state)`: the
 IDs of the nodes, ports and connections a gesture in that state reads or will write, so the
-router can cancel it when one of them is removed or changed externally. The tool context is
+router can cancel it when one of them is removed or changed. The tool context is
 read-only: `pick`, `reader`, `scene`, `selection`, `zoom`, `can(action, id)`,
 `sizeLimits(id)`, `evaluateConnection(from, to)` and `options`. Commit at most one command per gesture and always return to idle on
-commit or cancel; the router cancels for you when an entity you listed in `involved` goes away. The tool contract is public but
-experimental until Slice B adds routing tools. The headless harness
+commit or cancel; the router cancels for you when an entity you listed in `involved` goes away. Pointer input carries `buttons`, the held buttons as DOM pointer events report them (1 primary, 2 secondary, 4 middle).
+The tool contract (`Tool`, `ToolContext`, `ToolInput`, `ToolEffect`, `toolSlot`, the built-in
+tools) is exported from `@paceholder/nodeeditor-js/view/advanced` and may change before 1.0;
+the main view entry keeps `ToolSlot`, `defaultToolSlots` and the options. The headless harness
 (`src/view/test-support/tool-harness.ts`) drives tools against a real model and scene.

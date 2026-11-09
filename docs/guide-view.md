@@ -62,6 +62,11 @@ All options are optional:
 Nothing touches the browser at import time, so you can import this module while
 server-rendering; the DOM work starts inside `mountView()`.
 
+The root (`view.element`) has the role `application` (the editor handles its own keys, so
+screen readers pass them through), the role description "node editor" and the accessible
+name "Node editor"; set its `aria-label` to a localized or more specific name. The canvases
+are hidden from assistive technology. Keyboard navigation between nodes is not there yet.
+
 The view never copies the graph. It subscribes to the model's *committed* changes, so
 undo, redo, reloads and edits from any source repaint it with no extra code. Several views
 may show one model; each owns its own viewport, theme and caches.
@@ -161,7 +166,8 @@ What dirties what:
 | `setTheme`                              | background, scene |
 | Painter registry change                 | scene (background slot: background) |
 | Asset became ready or failed            | scene |
-| Container resized or pixel ratio changed | all three |
+| Container resized or pixel ratio changed | all three, painted at once (see below) |
+| Hover moved to or from a node whose painter sets `repaintOnHover` | scene (otherwise nothing) |
 | `interaction.add/invalidate`, `setPresence` | interaction |
 | Selection change; a committed change while a resize handle may show | interaction (the handle) |
 | Auto-pan frame during a drag | background, scene (the pan), interaction (the preview) |
@@ -176,9 +182,19 @@ of pixels. On a Retina/HiDPI display the device pixel ratio (DPR) is 2 or more: 
 is a 2x2 block of physical pixels. If the backing store were only CSS-sized, the browser
 would stretch it and everything would look blurry. The view therefore sizes every canvas to
 `cssSize x dpr` and applies a device matrix, so you draw in CSS-pixel and world units while
-the lines stay crisp. The DPR is watched: dragging the window to another monitor, or
-browser zoom, resizes the backing stores and repaints. `view.metrics()` returns the current
-`{ width, height, dpr }` if you want to check.
+the lines stay crisp. Where the browser reports the exact device-pixel box of the container
+(Chromium), that box is used, because `cssSize x dpr` rounded can land one pixel off the
+pixels the browser snapped the element to, which blurs lines at ratios such as 1.25 or 1.5.
+Each canvas's backing area is capped at 16 777 216 pixels (4096 x 4096), the per-canvas
+limit of iOS Safari, beyond which a canvas is silently blank there; above it the effective
+ratio is lowered and painting follows it. The DPR is watched: dragging the window to another
+monitor, or browser zoom, resizes the backing stores and repaints. `view.metrics()` returns
+the current `{ width, height, dpr }` (the effective ratio) if you want to check.
+
+Resizing a canvas clears it. The view repaints all three layers inside the resize
+observation, which runs after layout and before the browser paints, so a resize never shows
+a blank frame. Grid lines are placed on device-pixel centres, so they stay one device pixel
+wide at fractional ratios.
 
 ## 3. Geometry and painters are separate registrations
 
@@ -482,7 +498,7 @@ The input object (`NodePaintInput`) carries:
 | `detail`   | `DetailPolicy`: whether to draw the title and secondary labels (section 7). |
 | `unit`     | Local units per CSS pixel when line widths are screen-space, else 1. Multiply pixel-sized strokes by it. |
 | `assets`   | `AssetDrawer`; `assets.drawAsset(ref, rect)` returns `"drawn"`, `"pending"` or `"failed"`. |
-| `state`    | `{ selected, hovered, diagnostics }` from the view state and the node's `status`. |
+| `state`    | `{ selected, hovered, diagnostics }` from the view state and the node's `status`. `hovered` is current whenever the scene paints; set `repaintOnHover: true` on the painter if it draws hover, so a hover change repaints the scene (otherwise it does not, since no built-in painter draws hover). |
 
 Port glyph painters run in *world* space and receive `port`, `position`, an outward unit
 `normal`, `style`, `detail` and `unit`. Unlike node and connection painters they are **not**
@@ -497,6 +513,12 @@ own body in `ctx.save()`/`ctx.restore()`. Connection painters also run in world 
 receive the `connection`, its `path` (`PathGeometry`), `style`, `detail`, `unit` and
 `selected`. Selection outlines and error/warning badges are drawn by the scene layer *after*
 your painter, so no painter or detail level can hide them.
+
+A painter that throws does not break the view. The canvas state saved before the call is
+restored (a clip it set is gone), the rest of the frame paints, and every layer paint starts
+from a reset context. The error goes to `view.on("paint-error", ({ layer, error }) => ...)`,
+once per layer per frame; with no listener it is rethrown asynchronously, so it still
+reaches the console. A port glyph that throws loses only its own glyph.
 
 Painters should not load images or fetch anything themselves. Ask the `assets` drawer.
 
@@ -564,9 +586,16 @@ Key behaviors:
   1 MiB), declares entities, is not well-formed, or contains `script`, `foreignObject`,
   `iframe`, `object`, `embed`, `link`, `meta`, `base` and similar elements, `on*` event
   attributes, or any reference other than an in-document `#fragment` or inline
-  `data:image/` (including external `url(...)` and `@import`). A rejected asset gets code
-  `"unsafe"`. If your host needs a different policy, sanitize inside your resolver.
-  `screenSvg(text)` is exported if you want to run the same check yourself.
+  `data:image/` (including external `url(...)` and `@import`), and `set` or `animate`
+  elements that target `href`. A blob is screened as SVG when its media type starts with
+  `image/svg+xml` (so `image/svg+xml;charset=utf-8` is too). A rejected asset gets code
+  `"unsafe"`. The screen is a second layer: the real isolation is that SVG is decoded only
+  through an image element, and browsers run no script and fetch nothing for SVG used as an
+  image. If your host needs a different policy, sanitize inside your resolver.
+  `screenSvg(text)` is exported if you want to run the same check yourself. An SVG's
+  intrinsic size (its `width` and `height`, else its `viewBox`) is scaled down, keeping the
+  aspect ratio, to at most 4096 on the longer side, so a declared size of 30 000 cannot claim
+  the budget.
 - **Why bitmaps.** Drawing an SVG through Canvas2D means decoding and rasterizing its vector
   data. Doing that for every node on every frame during a pan would be far too slow. Instead
   each SVG is rasterized once into an `ImageBitmap` (a ready-to-blit pixel buffer in the
@@ -575,13 +604,22 @@ Key behaviors:
   invalidate when the scale changes.
 - **Zoom buckets.** Re-rasterizing at every zoom step would defeat the cache, so bitmaps are
   rendered only at power-of-two multiples (1/8x to 16x) of the picture's intrinsic size,
-  chosen from `zoom * devicePixelRatio`, and capped at 4096 pixels on the long side. Smooth
+  chosen from `zoom * devicePixelRatio`, and capped at 4096 pixels on the long side for every
+  source, raster pictures included. Smooth
   zooming reuses a handful of bitmaps. When zoom crosses into a new bucket the nearest
   cached bitmap is drawn scaled while the sharper one is prepared, so there is no blank
   flash.
 - **Bounded memory.** Bitmaps live in a least-recently-used cache with a byte budget
-  (`budgetBytes`, default 64 MiB, counted as `width x height x 4`, with decoded sources
-  included). Evicted bitmaps are `close()`d immediately so their memory returns at once.
+  (`budgetBytes`, default 64 MiB). Bitmaps count `width x height x 4`; decoded sources count
+  too, an SVG by its text (two bytes per character) and a raster picture by its pixels.
+  Evicted bitmaps are `close()`d immediately so their memory returns at once. What the frame
+  being painted and the last painted frame drew is pinned and never evicted, so a visible set
+  larger than the budget does not thrash: the cache goes over budget instead and
+  `stats().overBudget` says so, with `stats().pinnedBytes` telling how much the frames need
+  (raise `budgetBytes` if it stays). An asset whose last bitmap is evicted keeps its decoded
+  source, so drawing it again rasterizes without calling your resolver; only assets drawn in
+  neither of those frames are released whole when bitmaps alone cannot make room. A host
+  that uses `createAssetService` on its own must call `endFrame()` after each frame.
 - **Failures are sticky.** A failed asset is not retried every frame. Inspect and recover
   through the handle:
 
@@ -589,8 +627,10 @@ Key behaviors:
 view.assets.status("pump-symbol");   // "unrequested" | "resolving" | "decoding" | "ready" | "failed"
 view.assets.diagnostics();           // [{ ref, code, message }], code: "no-resolver" | "resolve-failed" | "unsafe" | "decode-failed"
 view.assets.retry("pump-symbol");    // forget the failure and load again
+view.assets.invalidate("pump-symbol"); // forget a ready (or failed) asset: the next draw resolves it again
+view.assets.invalidate();            // the same for every asset, for a swapped symbol library
 view.assets.setResolver(newResolve); // failed assets become eligible again; undefined removes the resolver
-view.assets.stats();                 // { resolves, rasterizations, cacheBytes, cacheEntries, sourceBytes }
+view.assets.stats();                 // { resolves, rasterizations, cacheBytes, cacheEntries, sourceBytes, pinnedBytes, overBudget }
 ```
 
 Without a resolver nothing is loaded and every asset reads as failed with `"no-resolver"`.
@@ -860,7 +900,9 @@ flight, and once more when a gesture ends, for whatever is then under the pointe
 target is a node, a port (only while ports are visible at the current zoom) or a connection,
 by stable ID. A node's event carries its rectangle on screen. A hovered entity that leaves
 the model raises a leave event. Delays and popover content are the host's: start a timer on
-enter and cancel it on leave. The same state feeds the `hovered` flag that painters receive.
+enter and cancel it on leave. The same state feeds the `hovered` flag that painters receive
+(a hover change repaints the scene only for painters that set `repaintOnHover`; to show
+hover without a scene repaint, draw it on the interaction layer from this event).
 Hover needs editing input; with `input: false` nothing is tracked. The pointer moving over
 host content in the overlay layer (a popover, the controls panel) is not over the canvas: it
 neither hovers the node underneath nor ends the current hover, so a popover anchored to a
@@ -915,7 +957,7 @@ changes), `"hover"`, `"lock"`, `"availability"` (what a command
 can do changed because a command was registered or removed, the clipboard buffer was
 filled, or the zoom limits moved), `"connection-rejected"` (a connection was refused;
 see "Host verdicts" below), `"gesture-cancelled"` (a gesture ended because of something other
-than the user) and `"context-menu"`. There is no
+than the user), `"paint-error"` (a painter threw; section 3) and `"context-menu"`. There is no
 other subscription style on the viewport or the selection; the selection model's own `on`
 is internal to the view.
 
@@ -1062,10 +1104,10 @@ answer arrives, without the pointer moving.
   view.on("connection-rejected", ({ rejection }) => statusLine.show(rejection.message));
   ```
 
-- **`"gesture-cancelled"`** carries `{ reason, ids }`: `"entity-removed"` or
-  `"external-change"` (an entity the gesture uses was removed, or changed by an external
-  change, with its ID), `"locked"` or `"reset"`. Escape and the user's own actions are not
-  reported.
+- **`"gesture-cancelled"`** carries `{ reason, ids }`: `"entity-removed"`,
+  `"external-change"` or `"entity-changed"` (an entity the gesture uses was removed, changed
+  by an external change, or changed by a local edit, undo or redo it did not make, with its
+  ID), `"locked"` or `"reset"`. Escape and the user's own actions are not reported.
 - The view reads the verdicts from `model.verdicts`; the mount option `verdicts` passes
   another service (a host with an external adapter). Several views on one model share a
   request, and disposing one aborts a request only when no other view wants it.

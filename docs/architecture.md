@@ -270,10 +270,17 @@ flowchart TB
 Each layer repaints only when marked dirty, at most once per animation frame. When
 nothing changes, nothing runs: there is no render loop while idle. A tool preview repaints
 the interaction layer, not the thousands of nodes underneath. Each canvas has a backing
-store of `cssSize × devicePixelRatio`, resized when the container or the pixel ratio
-changes. The scene layer asks the geometry scene for items in the visible rectangle
-(culling), paints connections, nodes and port glyphs in the configured z-order, and then
-always draws selection and diagnostic decorations, whatever a painter did.
+store of the container's device-pixel box (or `cssSize × devicePixelRatio` where the browser
+does not report one), capped in area, resized and repainted at once when the container or
+the pixel ratio changes. The scene layer asks the geometry scene for items in the visible
+rectangle (culling), paints connections, nodes and port glyphs in the configured z-order,
+and then always draws selection and diagnostic decorations, whatever a painter did.
+
+Painters are host code. Every call is isolated: the canvas state is restored after a
+painter that throws, the rest of the frame paints, each layer starts from a reset context,
+and the error is reported through the view's `paint-error` event. QtNodes has no such
+guard because a throwing C++ painter ends the process anyway; in a page one bad painter
+would otherwise leave a clip in place for every later frame.
 
 Level of detail is a theme decision by zoom: painters are told to drop titles and labels
 when zoomed out, ports disappear below `lodHidePortsBelow`, and below `lodOverviewBelow`
@@ -288,7 +295,9 @@ SVG symbols are screened for unsafe content, then rasterized into `ImageBitmap`s
 zoom bucket (power-of-two multiples, 1/8× to 16×, of the picture's intrinsic size, chosen
 from zoom × device pixel ratio) and copied each frame. When zoom crosses into a new
 bucket, the nearest cached bitmap is drawn while a sharp one is prepared in the background.
-Least-recently-used bitmaps are evicted under a byte budget. Raster images (PNG, WebP) use
+Least-recently-used bitmaps are evicted under a byte budget, except what the last two frames
+drew: a visible set larger than the budget leaves the cache over budget (and says so)
+rather than resolving and rasterizing the same pictures every frame. Raster images (PNG, WebP) use
 the same service. The library never fetches anything by itself: the host supplies a
 resolver, and a failed asset shows a placeholder while the node keeps its geometry.
 
