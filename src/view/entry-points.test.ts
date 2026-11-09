@@ -68,6 +68,11 @@ describe("one import path per public name", () => {
     expect(Object.keys(advanced).filter((n) => runtime.has(n))).toEqual([]);
   });
 
+  it("exports the gesture types that the tool router signatures mention from view/advanced", () => {
+    expect(NAMES.advanced.has("GestureChange")).toBe(true);
+    expect(NAMES.advanced.has("GestureCancellation")).toBe(true);
+  });
+
   it("re-exports no core name from @paceholder/nodeeditor-js/view or view/advanced", () => {
     expect(NAMES.core.size).toBeGreaterThan(0);
     expect(shared(NAMES.core, NAMES.view)).toEqual([]);

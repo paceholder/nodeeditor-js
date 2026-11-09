@@ -112,10 +112,12 @@ export {
 } from "./interact/tools/tool-context.js";
 export type {
   Gesture,
+  GestureChange,
   RouteResult,
   ToolRouter,
 } from "./interact/tools/tool-router.js";
 export { createToolRouter } from "./interact/tools/tool-router.js";
+export type { GestureCancellation } from "./interact/tools/tool-types.js";
 export type { ContainerMetrics } from "./platform/dom/container-metrics.js";
 export type { LayerStack } from "./platform/dom/layer-stack.js";
 export type { FrameScheduler } from "./platform/frame-scheduler.js";
