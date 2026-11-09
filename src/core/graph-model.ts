@@ -173,7 +173,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     adapter.on("change", (e) => cache.invalidate(touchedBy(e.patch)));
     adapter.on("reset", () => cache.reset());
   }
-  const validators = [
+  const builtIn = [
     createCapabilityValidator({
       readOnly: () => options.readOnly === true,
       ...(options.capabilityPolicy ? { policy: options.capabilityPolicy } : {}),
@@ -181,7 +181,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     }),
     createPolicyValidator(policy),
   ];
-  for (const validator of validators) adapter.addValidator(validator);
+  for (const validator of builtIn) adapter.addValidator(validator);
   const core = buildCore(adapter);
   const api = createCommandApi(
     {
@@ -199,7 +199,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
     {
       registry,
       policy,
-      validators,
+      validators: () => adapter.validators(),
       ...(options.sizeLimits ? { sizeLimits: options.sizeLimits } : {}),
       fragments: createFragmentPlanners({
         ...(options.payloadCodecs ? { codecs: options.payloadCodecs } : {}),

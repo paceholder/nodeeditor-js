@@ -57,6 +57,8 @@ export interface LocalAdapter extends ModelAdapter {
   on: EventHub["on"];
   /** Register a validator; returns a function that removes it. */
   addValidator(validator: PatchValidator): () => void;
+  /** The registered validators in registration order, as commits run them. */
+  validators(): readonly PatchValidator[];
   /** Current ID cursor; only ever moves forward. */
   idCursor(): IdCursor;
   revision(): Revision;
@@ -233,6 +235,7 @@ export function createLocalAdapter(
         if (at >= 0) validators.splice(at, 1);
       };
     },
+    validators: () => validators,
     idCursor: () => cursor,
     revision,
     mintOperationId: mint,

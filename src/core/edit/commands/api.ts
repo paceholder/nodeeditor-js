@@ -49,8 +49,11 @@ export interface CommandHost {
 export interface CommandEnvironment {
   readonly registry: NodeTypeRegistry;
   readonly policy: ConnectionPolicy;
-  /** Validators that `plan` dry-runs; the same ones registered for commits. */
-  readonly validators: readonly PatchValidator[];
+  /**
+   * The validators `plan` dry-runs: the live list registered for commits, read on every
+   * plan, so validators a host adds later are seen too.
+   */
+  validators(): readonly PatchValidator[];
   /** Host refinement of the type's size limits. */
   readonly sizeLimits?: SizeLimitPolicy;
   /** Paste and duplicate planners; without them those commands are unsupported. */
@@ -99,7 +102,7 @@ export function createCommandApi(
         : { kind: "rejected", error: state.reason };
     }
     if (planned.kind !== "ready") return planned;
-    const refused = dryRun(host.reader, planned.patch, env.validators);
+    const refused = dryRun(host.reader, planned.patch, env.validators());
     if (!refused) return planned;
     if (refused.code !== "pending-validation") {
       return { kind: "rejected", error: refused };

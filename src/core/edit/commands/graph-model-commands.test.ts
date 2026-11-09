@@ -142,7 +142,7 @@ describe("paste and duplicate need fragment planners", () => {
       {
         registry: createNodeTypeRegistry(),
         policy: createDefaultConnectionPolicy(),
-        validators: [],
+        validators: () => [],
       },
     );
     const revision = adapter.revision();

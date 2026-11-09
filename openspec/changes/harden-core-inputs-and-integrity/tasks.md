@@ -21,7 +21,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 ## 3. Editing rules (core/edit, facade)
 
 - [x] 3.1 Capabilities before the patch: `ValidationContext.before`, the capability validator resolves against pre-patch records (D1); verify `src/core/edit/capabilities/before-patch.test.ts` cases titled "capabilities are judged before the patch"
-- [ ] 3.2 Planning sees `addValidator` validators: the command environment reads the adapter's live list; verify `src/core/edit/commands/graph-model-commands.test.ts` case titled "planning sees every registered validator"
+- [x] 3.2 Planning sees `addValidator` validators: the command environment reads the adapter's live list; verify `src/core/edit/commands/host-validators.test.ts` case titled "planning sees every registered validator"
 - [ ] 3.3 Reserved IDs for queued plans: planning cursor in the local adapter (D8); verify `src/core/edit/adapter/local-adapter.test.ts` case titled "commands issued from inside a handler get distinct IDs"
 - [ ] 3.4 Event order and commit hook: a queued job's events go before the next job, verdict cache cleared in `onCommit` (D9); verify `src/core/edit/events/event-hub.test.ts`, `src/core/edit/adapter/local-adapter.test.ts` and `src/core/model-verdicts.test.ts` cases titled "a queued edit's events precede the next queued edit" and "host verdicts are cleared right after commit"
 - [ ] 3.5 Queued undo and redo operation IDs; verify `src/core/edit/adapter/local-adapter.test.ts` case titled "queued undo and redo report their own operation ID"
