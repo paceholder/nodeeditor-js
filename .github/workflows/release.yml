@@ -3,6 +3,15 @@ name: Release
 # Publishes to npm when a version tag is pushed. Tags in this repository have no "v"
 # prefix (for example 0.1.0).
 #
+# Guards:
+# - The job runs in the "release" environment. Create it in the repository settings
+#   (Settings, Environments) and add required reviewers, so a pushed tag alone cannot
+#   publish. See docs/guide-releasing.md.
+# - The tagged commit must be on the main branch.
+# - Every third-party action is pinned to a full commit; the comment names the version.
+# - A version with a pre-release part (for example 1.0.0-rc.1) is published under the
+#   "next" dist-tag, never "latest".
+#
 # No long-lived npm token is used. Publishing authenticates through npm trusted publishing
 # (OIDC). Trusted publishing must be enabled on npmjs.com for this repository and this
 # workflow file (release.yml) after the first manual publish, because the package has to exist
@@ -19,19 +28,32 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The whole history, to tell whether the tagged commit is on main.
+          fetch-depth: 0
+
+      - name: Check that the tagged commit is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Commit $GITHUB_SHA is not on main; releases are published from main only" >&2
+            exit 1
+          fi
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      # Trusted publishing needs npm 11.5.1 or newer; Node 22 ships an older npm.
-      - run: npm install -g npm@^11.5.1
+      # Trusted publishing needs npm 11.5.1 or newer; Node 22 ships an older npm. The exact
+      # version keeps the publish tool the same from one release to the next.
+      - run: npm install -g npm@11.5.1
 
       - name: Check that the tag equals the package version
         run: |
@@ -41,6 +63,15 @@ jobs:
             exit 1
           fi
 
+      - name: Choose the dist-tag
+        id: dist-tag
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          case "$version" in
+            *-*) echo "tag=next" >> "$GITHUB_OUTPUT" ;;
+            *) echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
@@ -49,4 +80,6 @@ jobs:
       - run: node scripts/consumer-smoke.mjs
 
       # prepublishOnly repeats lint, typecheck and tests; the build runs again through prepare.
-      - run: npm publish --provenance --access public
+      - run: npm publish --provenance --access public --tag "$DIST_TAG"
+        env:
+          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}

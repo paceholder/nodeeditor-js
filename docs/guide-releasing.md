@@ -47,9 +47,31 @@ created for CI.
 4. Push the commit and then the tag: `git push` and `git push origin 0.1.1`.
 
 The workflow refuses to publish when the tag name differs from the `version` in
-`package.json`. It runs lint, typecheck, tests, the build and the consumer smoke before
-`npm publish --provenance --access public`. Do not push pre-release tags such as `1.0.0-rc.1`:
-they would publish under the `latest` dist-tag.
+`package.json`, or when the tagged commit is not on `main`. It runs lint, typecheck, tests,
+the build and the consumer smoke before `npm publish --provenance --access public`.
+
+A version with a pre-release part, such as `1.0.0-rc.1`, is published under the `next`
+dist-tag, so `npm install @paceholder/nodeeditor-js` keeps installing the last stable
+version. Users opt in with `npm install @paceholder/nodeeditor-js@next`.
+
+### Repository settings the workflow relies on
+
+These are set once on GitHub; the workflow cannot create them:
+
+1. **The `release` environment.** Settings, Environments, New environment, named `release`.
+   Add yourself as a required reviewer, so a pushed tag waits for your approval before the
+   job runs, and restrict deployment to protected branches and tags if you like.
+2. **Trusted publisher.** Section 3: the trusted publisher on npmjs.com can also name the
+   `release` environment, which ties publishing to the approved job.
+3. **Protect `main`**, so only reviewed commits can be tagged for release.
+
+### Updating the pinned actions
+
+Third-party actions are referenced by full commit, with the version in a comment, so a
+moved tag cannot change what runs. To update one, look up the commit of the new tag
+(`git ls-remote --tags https://github.com/actions/checkout 'v4*'`, or the release page),
+replace the commit and the comment in both workflow files, and run `npm test` (a test checks
+the format).
 
 ## 5. Mistakes
 
