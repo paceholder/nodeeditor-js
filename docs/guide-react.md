@@ -28,10 +28,11 @@ A working example with an inspector, a toolbar, a hover popover and the controls
 ```tsx
 import { createGraphModel } from "@paceholder/nodeeditor-js";
 import { EditorProvider, NodeEditor } from "@paceholder/nodeeditor-js/react";
-
-const model = createGraphModel();
+import { useState } from "react";
 
 function App() {
+  // The model holds the document: keep it in state, not in useMemo.
+  const [model] = useState(() => createGraphModel());
   return (
     <EditorProvider>
       <NodeEditor model={model} style={{ height: 600 }} />
@@ -67,6 +68,15 @@ the view's overlay layer (the controls and overlays do) or position themselves.
 `onReady(view)` receives the view handle each time one is mounted, again after a remount;
 use `useEditor()` instead when the code sits below a provider.
 
+To keep the handle yourself, pass a `ref` (a callback or an object from `useRef`). It gets
+the view when one is mounted and `null` when that view is disposed, on unmount and before
+a remount, so you never hold a disposed view:
+
+```tsx
+const view = useRef<ViewHandle | null>(null);
+<NodeEditor model={model} ref={view} />
+```
+
 One provider serves one editor. If a second `NodeEditor` mounts into a provider that
 already has one, the hooks follow the newest and, in development, a warning says so. An
 editor that unmounts clears the slot only when the slot is still its own. For two editors
@@ -84,13 +94,19 @@ deciding which kind it is.
 
 | Kind | Props | What a change does |
 | --- | --- | --- |
-| Live | `theme`, `locked`, `zoomLimits`, `input.toolOptions`, `input.chooseConnection` | Applied to the live view. Selection, viewport and any gesture stay. |
+| Live | `theme`, `locked`, `zoomLimits`, `input.toolOptions`, `input.chooseConnection` | Applied to the live view. Selection, viewport and any gesture stay; `chooseConnection` can be an inline function (the view always calls the latest one, and a pending choice is kept). |
 | Initial | `initialViewport`, `initialFit` | Read once at mount, ignored afterwards. An inline object costs nothing. |
-| Remount | `model`, `geometry`, `routes`, `routeEditors`, `zOrder`, `painters`, `assets`, `viewState`, `gestureBitmap`, `frameClock`, `input` (on or off), `input.tools`, `input.keymap`, `input.platform`, `input.clipboard` | A fresh view replaces the old one, which is disposed first. Viewport and selection start over. |
+| Remount | `model`, `geometry`, `routes`, `routeEditors`, `zOrder`, `painters`, `assets`, `viewState`, `gestureBitmap`, `frameClock`, `input` (on or off), `input.tools`, `input.keymap`, `input.platform`, `input.clipboard` | A fresh view replaces the old one, which is disposed first. The new view keeps the viewport, selection and lock of the old one for the same model. |
 
 Identity decides, not content: a new object with the same fields still remounts. Create
-registries, keymaps and similar values once (module scope or `useMemo`), as the example
-does. A remount does not leak: the old view is disposed before the new one mounts. In
+registries, keymaps and similar values once (module scope, or `useState(() => ...)` inside
+a component), as the example does. Use `useState`, not `useMemo`, for anything that holds
+state, the model above all: React may drop a memoized value, and Fast Refresh does, which
+would replace the document with a fresh one. When a remount happens for the same model (a remount option changed, or the editor was
+hidden with `<Activity>` and shown again), the new view starts with the viewport and the
+selection the previous one had, and with its lock state. A different model starts fresh. A
+host that passes its own `viewState` keeps the selection in it.
+A remount does not leak: the old view is disposed before the new one mounts. In
 development the component warns once when the view remounts on three renders in a row,
 which usually means a remount option is created anew on every render.
 
@@ -145,7 +161,9 @@ Use it for state of your own: `read` gets the view handle, `events` names what t
 and `fallback` is the value before an editor is mounted and on the server. `read` and
 `events` can be written inline; the subscription follows the event names. `isEqual` defaults
 to a shallow comparison, so a `read` that builds a new object or array on every call (as
-below) does not loop and does not re-render while its entries are unchanged. Pass your own
+below) does not re-render while its entries are unchanged. The hook calls `read` again only
+after one of the named events fires or when you pass a different `read` function, so even a
+`read` that returns a new nested value each time cannot loop. Pass your own
 `isEqual` for a deeper value.
 
 ```tsx
@@ -225,8 +243,7 @@ function DeleteButton() {
 ```
 
 `useCommandAvailability(id, args?)` is the read-only part when you do not need `run`, and
-`useHistory` reports the undo and redo labels. `args` is part of the answer's identity: pass
-a stable value (a constant or a memoized object), not a new literal on every render.
+`useHistory` reports the undo and redo labels. `args` is compared by value, so an inline object that is equal to the last one costs nothing.
 
 A model that is read-only gets an inert history: `useHistory` reports nothing to undo. The
 test is `hasHistory(model)` from `@paceholder/nodeeditor-js/view`, a type guard you can use for your own
