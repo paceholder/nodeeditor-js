@@ -23,6 +23,12 @@ export interface IdGenerator {
    * as-is.
    */
   observe?(id: string, cursor: IdCursor): IdCursor;
+  /**
+   * Merge a committed patch's cursor into the model's cursor. Must be pure and must never
+   * move the cursor backwards. Without it, a number replaces a smaller number and any
+   * other incoming value replaces the current one.
+   */
+  merge?(current: IdCursor, incoming: IdCursor): IdCursor;
 }
 
 const PREFIX_BY_KIND: Readonly<Record<IdKind, string>> = {

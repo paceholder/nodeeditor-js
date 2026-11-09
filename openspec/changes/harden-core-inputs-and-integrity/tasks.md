@@ -16,7 +16,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 ## 2. IDs (core/base, core/edit/adapter, core/io)
 
 - [x] 2.1 Counter bounds: `observe` ignores counters above 2^50, `next` throws on an unsafe counter or on passing the largest safe integer, snapshot and patch cursors reject unsafe integers, a `__proto__` snapshot cursor key is an error (D6, D16); verify `src/core/base/ids/id-counter-bounds.test.ts` and `src/core/io/snapshot/id-cursor.test.ts` cases titled "ID counters never wrap or reset" and "ID cursor keys are checked, not dropped"
-- [ ] 2.2 Cursor merging: optional `IdGenerator.merge`, text values replace (D7); verify `src/core/edit/adapter/local-adapter.test.ts` case titled "ID cursors merge forward for numbers and text"
+- [x] 2.2 Cursor merging: optional `IdGenerator.merge`, text values replace (D7); verify `src/core/edit/adapter/cursor-merge.test.ts` cases titled "ID cursors merge forward for numbers and text"
 
 ## 3. Editing rules (core/edit, facade)
 

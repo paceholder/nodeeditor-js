@@ -1,10 +1,11 @@
 /**
  * Forward-only ID cursor merging.
  *
- * Generator cursors are opaque, so the model cannot compare them in general. For the
- * numeric counters the default generator uses, the larger value wins per key. A
- * non-numeric entry is kept as is once present. Ids supplied by a patch also pass through
- * the generator's `observe` hook, when it has one.
+ * Generator cursors are opaque, so the model cannot compare them in general. A generator
+ * with a `merge` hook decides itself. Otherwise, per key, a number replaces a smaller
+ * number, and any other incoming value (text, or a change of type) replaces the current
+ * one: the generator produced the patch's cursor from the cursor the planner read. Ids
+ * supplied by a patch also pass through the generator's `observe` hook, when it has one.
  */
 import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
 import type { Patch } from "../../data/patch/types.js";
@@ -15,9 +16,9 @@ export function mergeCursor(current: IdCursor, incoming: IdCursor): IdCursor {
     const existing = current[key];
     const takes =
       existing === undefined ||
-      (typeof existing === "number" &&
-        typeof value === "number" &&
-        value > existing);
+      (typeof existing === "number" && typeof value === "number"
+        ? value > existing
+        : value !== existing);
     if (takes) {
       merged ??= { ...current };
       // Defined, not assigned, so no key can reach the prototype.
@@ -38,7 +39,12 @@ export function advanceCursor(
   cursor: IdCursor,
   patch: Patch,
 ): IdCursor {
-  let next = patch.idCursor ? mergeCursor(cursor, patch.idCursor) : cursor;
+  const incoming = patch.idCursor;
+  let next = !incoming
+    ? cursor
+    : generator.merge
+      ? generator.merge(cursor, incoming)
+      : mergeCursor(cursor, incoming);
   if (generator.observe) {
     for (const op of patch.ops) {
       if (op.op === "add") next = generator.observe(op.record.id, next);
