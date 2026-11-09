@@ -43,6 +43,7 @@ export function dryRun(
     const refused = validator.validate(stage, patch, {
       origin: "local",
       operationId: "plan",
+      before: reader,
     });
     if (refused) return refused;
   }

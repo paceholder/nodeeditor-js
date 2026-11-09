@@ -14,6 +14,8 @@ import type { ChangeOrigin, Patch } from "./types.js";
 export interface ValidationContext {
   readonly origin: ChangeOrigin;
   readonly operationId: string;
+  /** The committed graph the patch was staged on, as it was before the patch. */
+  readonly before: GraphReader;
 }
 
 export interface PatchValidator {

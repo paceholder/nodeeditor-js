@@ -126,7 +126,10 @@ export function applyPatch(
   const broken = checkIntegrity(stage, patch.ops);
   if (broken) return err(broken);
   for (const validator of validators) {
-    const refused = validator.validate(stage, patch, context);
+    const refused = validator.validate(stage, patch, {
+      ...context,
+      before: reader,
+    });
     if (refused) return err(refused);
   }
   const assigned = commit(store, stage.writes());
