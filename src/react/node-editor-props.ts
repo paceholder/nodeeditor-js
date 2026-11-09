@@ -26,6 +26,7 @@ export const OPTION_KIND: { readonly [K in keyof ViewOptions]-?: OptionKind } =
     painters: "remount",
     assets: "remount",
     viewState: "remount",
+    verdicts: "remount",
     gestureBitmap: "remount",
     frameClock: "remount",
     initialViewport: "initial",

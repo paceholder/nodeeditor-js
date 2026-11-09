@@ -12,7 +12,9 @@ import {
   type Rejection,
   type RouteRegistry,
   rejectionOf,
+  type VerdictService,
 } from "../core/index.js";
+import { choiceVerification } from "./interact/choice/choice-verification.js";
 import {
   attachClipboardEvents,
   type ClipboardEvents,
@@ -87,6 +89,10 @@ import {
 } from "./interact/tools/tool-context.js";
 import { createToolRouter } from "./interact/tools/tool-router.js";
 import type { ToolPreview } from "./interact/tools/tool-types.js";
+import {
+  createVerdictDriver,
+  type VerdictDriver,
+} from "./interact/verdicts/verdict-driver.js";
 import type { FrameClock } from "./platform/frame-scheduler.js";
 import { removedIds, type ViewModel } from "./platform/model-binding.js";
 import type { ViewRect } from "./platform/view-rect.js";
@@ -133,6 +139,8 @@ export interface EditingDeps {
   readonly zoomLimits: ResolvedZoomLimits;
   /** Start locked. */
   readonly locked: boolean;
+  /** Host connection verdicts; defaults to the model's own `verdicts`. */
+  readonly verdicts?: VerdictService;
 }
 
 export interface Editing {
@@ -246,6 +254,7 @@ export function attachEditing(deps: EditingDeps): Editing {
   const menu = createViewContextMenu(deps.root, events);
   let hover: HoverTracker | undefined;
   let input: DomInput | undefined;
+  let verdictDriver: VerdictDriver | undefined;
   let choices: ViewConnectionChoice | undefined;
   let bridge: ClipboardEvents | undefined;
   let handles: ReturnType<typeof createResizeHandles> | undefined;
@@ -278,6 +287,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       detectPlatform(deps.root.ownerDocument.defaultView?.navigator);
     const keymap = createKeymap(platform, options.keymap ?? DEFAULT_KEYMAP);
     const router = createToolRouter(options.tools ?? defaultToolSlots());
+    const verdicts =
+      deps.verdicts ?? (model as { verdicts?: VerdictService }).verdicts;
     const sizeLimits = sizeLimitsOf(model);
     const probe = editable
       ? capabilityProbe({
@@ -318,12 +329,27 @@ export function attachEditing(deps: EditingDeps): Editing {
       hidePortsBelow: deps.hidePortsBelow,
       zoomRange: deps.zoomLimits,
       chooserInstalled: () => choices?.installed() === true,
+      verdictsInstalled: () => verdicts !== undefined,
       routeEditors: {
         get: (kind) => (lock.get() ? undefined : deps.routeEditors.get(kind)),
       },
       reroute: (entry, route) =>
         rerouteEntry(entry, route, { reader, scene, routes: deps.routes }),
     });
+    if (verdicts && editable) {
+      verdictDriver = createVerdictDriver({
+        verdicts,
+        plan: (command) => editable.plan(command),
+        gestureActive: () =>
+          router.activeTool === "connect" || choices?.pending() === true,
+        // A verdict changes no model revision, so cached evaluations are dropped by hand.
+        settled() {
+          context.invalidate();
+          input?.verdictSettled();
+          choices?.verdictSettled();
+        },
+      });
+    }
     handles = editable
       ? createResizeHandles({
           model,
@@ -345,6 +371,10 @@ export function attachEditing(deps: EditingDeps): Editing {
         preview: deps.setPreview,
         commit,
         choose: (release) => choices?.open(release),
+        requestVerdict: (source, target) =>
+          verdictDriver?.request(source, target),
+        rejected: (rejection) =>
+          events.emit("connection-rejected", { rejection, source: "gesture" }),
         selection,
         viewport(op) {
           if (op.kind === "panBy") viewport.panBy(op.dx, op.dy);
@@ -373,6 +403,10 @@ export function attachEditing(deps: EditingDeps): Editing {
       hoverCursor: (world) =>
         live?.cursorAt(world) ?? routeCursorAt(world, context()),
       autoPan: { clock: deps.clock, size: deps.size },
+      // A pending choice still wants its requests; it ends them itself when it is over.
+      onGestureEnd: () => {
+        if (choices?.pending() !== true) verdictDriver?.gestureEnded();
+      },
       onGestureCancelled: (cancellation) =>
         events.emit("gesture-cancelled", cancellation),
     });
@@ -403,6 +437,18 @@ export function attachEditing(deps: EditingDeps): Editing {
       commit,
       clearPreview: () => deps.setPreview(null),
       chooser: options.chooseConnection,
+      cancelled: (cancellation) =>
+        events.emit("gesture-cancelled", cancellation),
+      ...(verdictDriver && editable
+        ? {
+            verification: choiceVerification({
+              driver: verdictDriver,
+              plan: (command) => editable.plan(command),
+              context,
+              setPreview: deps.setPreview,
+            }),
+          }
+        : {}),
     });
     menu.attach({
       overlay: deps.overlay,
@@ -464,6 +510,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       bridge = undefined;
       input?.dispose();
       input = undefined;
+      verdictDriver?.dispose();
+      verdictDriver = undefined;
       handles?.dispose();
       handles = undefined;
       clipboard?.dispose();

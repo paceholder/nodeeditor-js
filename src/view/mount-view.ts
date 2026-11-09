@@ -270,6 +270,7 @@ export function mountView(
     hidePortsBelow: () => theme.lodHidePortsBelow,
     zoomLimits,
     locked: options.locked === true,
+    ...(options.verdicts ? { verdicts: options.verdicts } : {}),
   });
 
   // The view moved under a resting pointer: the entity beneath it may have changed.

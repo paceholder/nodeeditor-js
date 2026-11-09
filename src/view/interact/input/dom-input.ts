@@ -71,6 +71,8 @@ export interface DomInput {
    * involves was removed, or changed externally.
    */
   modelChanged(change: GestureChange): void;
+  /** A host verdict settled: a gesture showing or waiting on a pending target re-reads it. */
+  verdictSettled(): void;
   /** Tell the active tool the document was replaced: any gesture in flight cancels. */
   modelReset(): void;
   /** Cancel the gesture in flight, if any: nothing is committed. True if one ran. */
@@ -298,6 +300,9 @@ export function attachDomInput(
         }
         deps.onGestureCancelled?.(result.cancelled);
       });
+    },
+    verdictSettled() {
+      if (router.activeTool !== undefined) route({ type: "verdict" });
     },
     modelReset() {
       if (router.activeTool === undefined) return;

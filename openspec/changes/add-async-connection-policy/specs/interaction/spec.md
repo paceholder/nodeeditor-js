@@ -3,6 +3,16 @@
 ### Requirement: Pending target resolution
 While the connect tool's candidate target is pending, the target SHALL show the pending state, distinct from compatible, incompatible and choice-required and not color alone, and the gesture SHALL stay responsive: the preview follows the pointer and cancellation works. A release on a pending target SHALL keep the preview at the release point and commit nothing until the verdict arrives; an accepted verdict SHALL then submit one connect command, revalidated at commit, and a rejected, failed or timed-out verdict SHALL commit nothing, clear the preview and deliver the rejection as a `connection-rejected` event. Escape, a new press outside overlay content, disposal, locking the view, and the cancellations of the rule that gestures react to changes of the entities they involve (a reset, or removal of the source or target port) SHALL cancel the wait, abort the validator request, ignore a later verdict for it, and commit nothing. A cancelled wait SHALL NOT delay the next gesture: a new press cancels the waiting gesture and then starts normally. Validation SHALL NOT make a submitted edit cancellable because nothing is submitted while waiting.
 
+A connection alternative picked through the host chooser SHALL be judged the same way: when it lacks a verdict, the target SHALL show pending and the choice SHALL wait, committing one connect when the verdict is accepted and delivering a `connection-rejected` event otherwise. The wait SHALL end with nothing committed, and its validator request SHALL be aborted, on every cancellation above, and, as for a gesture, when a node or port of the picked connection is removed or is changed by a change with origin `external`; the view SHALL then emit a `gesture-cancelled` event carrying the reason and the entity IDs. A change committed by the choice itself SHALL NOT cancel it.
+
+#### Scenario: Picked alternative judged by the validator
+- **WHEN** the host chooser picks an alternative and the validator then accepts it
+- **THEN** exactly one connect command of the picked kind is submitted; if the validator rejects it, nothing is committed and a `connection-rejected` event carries the reason; Escape during the wait commits nothing and aborts the request
+
+#### Scenario: Picked alternative waiting while an involved entity changes
+- **WHEN** the picked alternative waits for its verdict and an external change updates one of its nodes, or any change removes one of its ports
+- **THEN** the wait is cancelled, the request is aborted, nothing is committed, a `gesture-cancelled` event names the reason and the entities, and a verdict that arrives later has no effect; a change of an unrelated node leaves the wait running
+
 #### Scenario: Pending shown during drag
 - **WHEN** the drag hovers a target whose verdict is unknown
 - **THEN** the target shows the pending cue, a later accepted verdict changes it to compatible without the pointer moving, and pan and zoom stay usable

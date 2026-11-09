@@ -10,6 +10,7 @@ import type {
   RouteRegistry,
   SceneLayer,
   SceneStats,
+  VerdictService,
   Viewport,
 } from "../core/index.js";
 import type { ConnectionChooser } from "./interact/choice/choice-types.js";
@@ -101,6 +102,14 @@ export interface ViewOptions {
    * inside it; fit never zooms in past `max`.
    */
   readonly zoomLimits?: ZoomLimits;
+  /**
+   * Where the host's connection verdicts live. Defaults to the model's own
+   * `verdicts`, present when the model was created with a `connectionValidator`; a host
+   * with an external adapter passes its own service. Connect gestures ask it about
+   * targets whose verdict is unknown and wait for the answer. Views on one model
+   * share it.
+   */
+  readonly verdicts?: VerdictService;
   /**
    * Start with the view locked. While locked, editing gestures and commands are
    * unavailable with a "view locked" reason; pan, zoom, fit, selection, inspection and

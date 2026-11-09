@@ -9,26 +9,41 @@
 import { type Command, type Point, worldToViewport } from "../core/index.js";
 import type { ConnectionChooser } from "./interact/choice/choice-types.js";
 import {
+  type ChoiceVerification,
   type ConnectionChoice,
   createConnectionChoice,
 } from "./interact/choice/connection-choice.js";
 import { isOverlayContent } from "./interact/input/input-scope.js";
-import type { ChoiceRelease } from "./interact/tools/tool-types.js";
-import { removedIds, type ViewModel } from "./platform/model-binding.js";
+import { gestureChangeOf } from "./interact/tools/gesture-change.js";
+import type {
+  ChoiceRelease,
+  GestureCancellation,
+} from "./interact/tools/tool-types.js";
+import type { ViewModel } from "./platform/model-binding.js";
 import type { ViewportState } from "./platform/viewport-state.js";
 
 export interface ViewConnectionChoiceDeps {
-  /** Removal of an involved node or port, or a reset, cancels a pending choice. */
+  /**
+   * Removal of an involved node or port, or a reset, cancels a pending choice; a picked
+   * connection waiting for its verdict is also cancelled by an external change of one.
+   */
   readonly model: ViewModel;
   readonly overlay: HTMLElement;
   readonly viewport: Pick<ViewportState, "get">;
   readonly commit: (command: Command) => void;
   readonly clearPreview: () => void;
   readonly chooser: ConnectionChooser | undefined;
+  /** Judges a picked alternative with the host validator; omitted without one. */
+  readonly verification?: ChoiceVerification;
+  /** A waiting pick was cancelled by a model change. */
+  readonly cancelled?: (cancellation: GestureCancellation) => void;
 }
 
 export interface ViewConnectionChoice
-  extends Pick<ConnectionChoice, "installed" | "setChooser" | "cancel"> {
+  extends Pick<
+    ConnectionChoice,
+    "installed" | "setChooser" | "cancel" | "verdictSettled" | "pending"
+  > {
   /** The effect host's `choose`: a release on a choice target. */
   open(release: ChoiceRelease): void;
   dispose(): void;
@@ -42,6 +57,8 @@ export function attachViewConnectionChoice(
     {
       commit: deps.commit,
       clearPreview: deps.clearPreview,
+      ...(deps.cancelled ? { cancelled: deps.cancelled } : {}),
+      ...(deps.verification ? { verification: deps.verification } : {}),
       place(world: Point<"world">) {
         const viewport = worldToViewport(deps.viewport.get(), world);
         const r = root.getBoundingClientRect();
@@ -71,9 +88,12 @@ export function attachViewConnectionChoice(
   root.addEventListener("keydown", onKeyDown, true);
   root.addEventListener("pointerdown", onPointerDown, true);
   const offs = [
-    deps.model.on("change", (e) =>
-      choice.entitiesRemoved(removedIds(e.patch.ops)),
-    ),
+    deps.model.on("change", (e) => {
+      const change = gestureChangeOf(e);
+      choice.entitiesRemoved(change.removed);
+      if (change.origin === "external")
+        choice.externallyChanged(change.changed);
+    }),
     deps.model.on("reset", () => choice.cancel()),
   ];
 
@@ -82,6 +102,8 @@ export function attachViewConnectionChoice(
     installed: choice.installed,
     setChooser: choice.setChooser,
     cancel: choice.cancel,
+    verdictSettled: choice.verdictSettled,
+    pending: choice.pending,
     dispose() {
       root.removeEventListener("keydown", onKeyDown, true);
       root.removeEventListener("pointerdown", onPointerDown, true);
