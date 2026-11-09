@@ -98,7 +98,7 @@ export function parseConnection(
     sink.add("invalid-shape", "Connection must be an object", path);
     return undefined;
   }
-  const before = sink.errors.length;
+  const before = sink.count();
   onlyKeys(raw, ["id", "kind", "from", "to", "route"], path, sink);
   const id = reqStr(raw, "id", path, sink);
   if (id !== undefined && !isWellFormedId(id)) {
@@ -114,7 +114,7 @@ export function parseConnection(
     Math.min(limits.maxRouteConstraints, MAX_ROUTE_CONSTRAINTS),
     sink,
   );
-  if (sink.errors.length > before || id === undefined || !from || !to)
+  if (sink.count() > before || id === undefined || !from || !to)
     return undefined;
   const connection: ConnectionSnapshot = {
     id,

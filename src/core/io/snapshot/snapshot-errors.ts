@@ -13,24 +13,72 @@ import type { Payload } from "../../data/model/records.js";
 import type { JsonValue } from "./json-value.js";
 import type { SnapshotError } from "./snapshot-types.js";
 
+/**
+ * Collects errors up to a bound: hostile input with a million bad entries costs
+ * a hundred error objects, not a million. Parsers tell whether an entry failed from
+ * `count()`, which keeps counting past the bound.
+ */
 export interface ErrorSink {
-  readonly errors: SnapshotError[];
   add(
     code: RejectionCode,
     message: string,
     path: string,
     entities?: readonly string[],
   ): void;
+  /** Every error added so far, including those past the bound. */
+  count(): number;
+  /** The kept errors sorted by path, then one `limit-exceeded` entry if any were dropped. */
+  report(): SnapshotError[];
 }
 
-export function createErrorSink(): ErrorSink {
-  const errors: SnapshotError[] = [];
+export const DEFAULT_MAX_ERRORS = 100;
+
+export function createErrorSink(max = DEFAULT_MAX_ERRORS): ErrorSink {
+  const kept: SnapshotError[] = [];
+  let total = 0;
   return {
-    errors,
     add(code, message, path, entities = []) {
-      errors.push({ code, message, path, entities });
+      total += 1;
+      if (kept.length < max) kept.push({ code, message, path, entities });
+    },
+    count: () => total,
+    report() {
+      const out = sortErrors(kept);
+      const omitted = total - kept.length;
+      if (omitted > 0) {
+        out.push({
+          code: "limit-exceeded",
+          message: `${omitted} more errors were omitted; the limit is ${max}`,
+          path: "",
+          entities: [],
+        });
+      }
+      return out;
     },
   };
+}
+
+/** A view of `sink` that files every error under `prefix` (an inner value's path). */
+export function prefixedSink(sink: ErrorSink, prefix: string): ErrorSink {
+  return {
+    add(code, message, path, entities) {
+      const at = prefixError(
+        { code, message, path, entities: [] },
+        prefix,
+      ).path;
+      sink.add(code, message, at, entities);
+    },
+    count: () => sink.count(),
+    report: () => sink.report(),
+  };
+}
+
+/** Add errors that were already built (decoded payloads, inner results). */
+export function addErrors(
+  sink: ErrorSink,
+  errors: readonly SnapshotError[],
+): void {
+  for (const e of errors) sink.add(e.code, e.message, e.path, e.entities);
 }
 
 const TOKEN = /[^.[\]]+/gu;
@@ -83,6 +131,8 @@ export interface SnapshotLimits {
   readonly maxRouteConstraints: number;
   /** Applies to text input of `loadDocument`, checked before parsing. */
   readonly maxDocumentChars: number;
+  /** Errors reported per validation; more are counted in one last entry. */
+  readonly maxErrors: number;
 }
 
 export const DEFAULT_SNAPSHOT_LIMITS: SnapshotLimits = {
@@ -92,6 +142,7 @@ export const DEFAULT_SNAPSHOT_LIMITS: SnapshotLimits = {
   maxPayloadDepth: 64,
   maxRouteConstraints: 256,
   maxDocumentChars: 64 * 1024 * 1024,
+  maxErrors: DEFAULT_MAX_ERRORS,
 };
 
 export function resolveLimits(

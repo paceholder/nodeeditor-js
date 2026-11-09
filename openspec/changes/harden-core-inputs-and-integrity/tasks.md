@@ -40,7 +40,7 @@ audit's scenario and must fail before the fix. Every task's commit passes `npm r
 ## 5. I/O (core/io)
 
 - [x] 5.1 `diffSnapshot` codecs and strict `jsonEqual` (D14); verify `src/core/io/snapshot/diff-codecs.test.ts` cases titled "snapshot diff honours payload codecs"
-- [ ] 5.2 Bounded error lists (D13); verify `src/core/io/snapshot/validate.test.ts` case titled "error lists are bounded"
+- [x] 5.2 Bounded error lists, `maxErrors` in snapshot limits, for snapshots, fragments, payload codecs and document extras (D13); verify `src/core/io/snapshot/error-bound.test.ts` cases titled "error lists are bounded"
 - [ ] 5.3 Strict document extras (D16); verify `src/core/io/snapshot/document.test.ts` case titled "document extras are validated as strictly as the graph"
 - [ ] 5.4 Load paths never throw (D17); verify `src/core/io/snapshot/document.test.ts` and `src/core/io/snapshot/validate.test.ts` cases titled "loading never throws"
 - [ ] 5.5 Fragment external entries and paste at extreme positions (D18); verify `src/core/io/fragment/fragment-text.test.ts` and `src/core/io/fragment/plan-paste.test.ts` cases titled "fragment external entries have exactly one inside end"

@@ -8,6 +8,7 @@
 
 import { isWellFormedId } from "../../base/ids/ids.js";
 import { err, ok, type Result } from "../../base/result.js";
+import { createErrorSink } from "./snapshot-errors.js";
 import {
   DOCUMENT_FORMAT,
   FORMAT_VERSION,
@@ -112,8 +113,12 @@ export function runMigrations(
 export function parseExtras(
   raw: { readonly viewport?: unknown; readonly selection?: unknown },
   graph: GraphSnapshot,
+  maxErrors?: number,
 ): Result<DocumentExtras, readonly SnapshotError[]> {
-  const errors: SnapshotError[] = [];
+  const sink = createErrorSink(maxErrors);
+  const errors = {
+    push: (e: SnapshotError) => sink.add(e.code, e.message, e.path, e.entities),
+  };
   let viewport: DocumentViewportData | undefined;
   const v = raw.viewport;
   if (v !== undefined) {
@@ -167,7 +172,7 @@ export function parseExtras(
       });
     }
   }
-  if (errors.length > 0) return err(errors);
+  if (sink.count() > 0) return err(sink.report());
   return ok({
     ...(viewport ? { viewport } : {}),
     ...(selection ? { selection } : {}),

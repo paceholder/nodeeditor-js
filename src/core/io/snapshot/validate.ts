@@ -10,7 +10,6 @@ import {
   type ErrorSink,
   resolveLimits,
   type SnapshotLimits,
-  sortErrors,
 } from "./snapshot-errors.js";
 import {
   FORMAT_VERSION,
@@ -30,7 +29,21 @@ export function validateSnapshot(
   input: unknown,
   options: ValidateOptions = {},
 ): Result<GraphSnapshot, readonly SnapshotError[]> {
-  const sink = createErrorSink();
+  const sink = createErrorSink(resolveLimits(options.limits).maxErrors);
+  const snapshot = validateSnapshotInto(input, options, sink);
+  return snapshot ? ok(snapshot) : err(sink.report());
+}
+
+/**
+ * The validator writing into a caller's sink, for callers that check more around the
+ * snapshot (fragments). Returns the snapshot when this input added no error.
+ */
+export function validateSnapshotInto(
+  input: unknown,
+  options: ValidateOptions,
+  sink: ErrorSink,
+): GraphSnapshot | undefined {
+  const before = sink.count();
   const parts = parseShape(
     input,
     {
@@ -40,14 +53,14 @@ export function validateSnapshot(
     sink,
   );
   if (parts) checkReferences(parts, sink);
-  if (sink.errors.length > 0 || !parts) return err(sortErrors(sink.errors));
-  return ok({
+  if (sink.count() > before || !parts) return undefined;
+  return {
     format: SNAPSHOT_FORMAT,
     version: FORMAT_VERSION,
     ...(parts.cursor ? { idCursor: parts.cursor } : {}),
     nodes: parts.nodes.map((n) => n.value),
     connections: parts.connections.map((c) => c.value),
-  });
+  };
 }
 
 /**

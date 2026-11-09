@@ -15,11 +15,11 @@ import { parseConnection } from "../snapshot/parse-connection.js";
 import { isObj } from "../snapshot/parse-fields.js";
 import {
   createErrorSink,
+  type ErrorSink,
   type PayloadCodecRegistry,
-  prefixError,
+  prefixedSink,
   resolveLimits,
   type SnapshotLimits,
-  sortErrors,
 } from "../snapshot/snapshot-errors.js";
 import {
   FORMAT_VERSION,
@@ -27,7 +27,7 @@ import {
   SNAPSHOT_FORMAT,
   type SnapshotError,
 } from "../snapshot/snapshot-types.js";
-import { validateSnapshot } from "../snapshot/validate.js";
+import { validateSnapshotInto } from "../snapshot/validate.js";
 import {
   type ClipboardFragment,
   type ExternalConnection,
@@ -82,18 +82,19 @@ export function fragmentToText(fragment: ClipboardFragment): string {
 function decodePayloads(
   snapshot: GraphSnapshot,
   codecs: PayloadCodecRegistry | undefined,
-  errors: SnapshotError[],
+  sink: ErrorSink,
 ): Payload[] {
   return snapshot.nodes.map((node, i) => {
     const codec = codecs?.get(node.type);
     if (!codec) return cloneJson(node.payload);
     const decoded = codec.decode(node.payload);
     if (decoded.ok) return decoded.value;
-    errors.push({
-      ...decoded.error,
-      path: `fragment.nodes[${i}].payload`,
-      entities: [node.id, ...decoded.error.entities],
-    });
+    sink.add(
+      decoded.error.code,
+      decoded.error.message,
+      `fragment.nodes[${i}].payload`,
+      [node.id, ...decoded.error.entities],
+    );
     return null;
   });
 }
@@ -114,7 +115,7 @@ export function readFragment(
     );
   }
   const limits = resolveLimits(options.limits);
-  const sink = createErrorSink();
+  const sink = createErrorSink(limits.maxErrors);
   for (const key of Object.keys(value)) {
     if (!ENVELOPE_KEYS.includes(key)) {
       sink.add("invalid-shape", `Unknown key "${key}"`, key);
@@ -136,22 +137,19 @@ export function readFragment(
       if (c) external.push(c);
     });
   }
-  const errors: SnapshotError[] = [...sink.errors];
-  const validated = validateSnapshot(value.fragment, {
-    fragment: true,
-    limits,
-  });
-  if (!validated.ok) {
-    errors.push(...validated.error.map((e) => prefixError(e, "fragment")));
-    return err(sortErrors(errors));
-  }
-  const payloads = decodePayloads(validated.value, options.codecs, errors);
-  if (errors.length > 0) return err(sortErrors(errors));
+  const validated = validateSnapshotInto(
+    value.fragment,
+    { fragment: true, limits },
+    prefixedSink(sink, "fragment"),
+  );
+  if (!validated) return err(sink.report());
+  const payloads = decodePayloads(validated, options.codecs, sink);
+  if (sink.count() > 0) return err(sink.report());
   return ok({
     fragment: ordered({
       format: FRAGMENT_FORMAT,
       version: FRAGMENT_VERSION,
-      fragment: validated.value,
+      fragment: validated,
       external,
     }),
     payloads,

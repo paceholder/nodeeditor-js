@@ -41,7 +41,7 @@ export function parsePort(
     sink.add("invalid-shape", "Port must be an object", path);
     return undefined;
   }
-  const before = sink.errors.length;
+  const before = sink.count();
   onlyKeys(raw, PORT_KEYS, path, sink);
   const id = reqStr(raw, "id", path, sink);
   if (id !== undefined && !isWellFormedId(id)) {
@@ -72,7 +72,7 @@ export function parsePort(
     raw.placement === undefined
       ? undefined
       : placement(raw.placement, `${path}.placement`, sink);
-  if (sink.errors.length > before || id === undefined || typeKey === undefined)
+  if (sink.count() > before || id === undefined || typeKey === undefined)
     return undefined;
   const port: PortSnapshot = {
     id,
@@ -121,7 +121,7 @@ export function parseNode(
     sink.add("invalid-shape", "Node must be an object", path);
     return undefined;
   }
-  const before = sink.errors.length;
+  const before = sink.count();
   onlyKeys(raw, NODE_KEYS, path, sink);
   const id = reqStr(raw, "id", path, sink);
   if (id !== undefined && !isWellFormedId(id)) {
@@ -191,7 +191,7 @@ export function parseNode(
     });
   }
   if (
-    sink.errors.length > before ||
+    sink.count() > before ||
     id === undefined ||
     type === undefined ||
     !position ||

@@ -24,6 +24,7 @@ import {
   type SnapshotTarget,
 } from "./load.js";
 import {
+  createErrorSink,
   type PayloadCodecRegistry,
   prefixError,
   resolveLimits,
@@ -66,8 +67,9 @@ function encodePayloads(
   snapshot: GraphSnapshot,
   options: SaveOptions,
 ): Result<GraphSnapshot, readonly SnapshotError[]> {
-  const errors: SnapshotError[] = [];
-  const depth = resolveLimits(options.limits).maxPayloadDepth;
+  const limits = resolveLimits(options.limits);
+  const errors = createErrorSink(limits.maxErrors);
+  const depth = limits.maxPayloadDepth;
   const nodes = snapshot.nodes.map((node, i) => {
     const path = `nodes[${i}].payload`;
     const codec = options.codecs?.get(node.type);
@@ -75,21 +77,21 @@ function encodePayloads(
       const encoded = codec.encode(node.payload);
       if (encoded.ok) return { ...node, payload: encoded.value };
       const e: Rejection = encoded.error;
-      errors.push({ ...e, path, entities: [node.id, ...e.entities] });
+      errors.add(e.code, e.message, path, [node.id, ...e.entities]);
       return node;
     }
     const problem = checkJson(node.payload, path, depth);
     if (problem) {
-      errors.push({
-        code: problem.kind === "depth" ? "limit-exceeded" : "non-json-payload",
-        message: `Payload of node ${node.id} cannot be saved: ${problem.reason} (register a codec for type ${node.type})`,
-        path: problem.path,
-        entities: [node.id],
-      });
+      errors.add(
+        problem.kind === "depth" ? "limit-exceeded" : "non-json-payload",
+        `Payload of node ${node.id} cannot be saved: ${problem.reason} (register a codec for type ${node.type})`,
+        problem.path,
+        [node.id],
+      );
     }
     return node;
   });
-  return errors.length > 0 ? err(errors) : ok({ ...snapshot, nodes });
+  return errors.count() > 0 ? err(errors.report()) : ok({ ...snapshot, nodes });
 }
 
 export function saveDocument(
@@ -102,6 +104,7 @@ export function saveDocument(
   const extras = parseExtras(
     { viewport: options.viewport, selection: options.selection },
     encoded.value,
+    resolveLimits(options.limits).maxErrors,
   );
   if (!extras.ok) return extras;
   const doc = {
@@ -151,7 +154,11 @@ export function loadDocument(
   const prepared = prepareLoad(target, doc.graph, options);
   if (!prepared.ok)
     return err(prepared.error.map((e) => prefixError(e, "graph")));
-  const extras = parseExtras(doc, prepared.value.snapshot);
+  const extras = parseExtras(
+    doc,
+    prepared.value.snapshot,
+    resolveLimits(options.limits).maxErrors,
+  );
   if (!extras.ok) return extras;
   const report = commitLoad(target, prepared.value);
   return ok({ ...report, ...extras.value, warnings });

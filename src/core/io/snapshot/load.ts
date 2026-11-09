@@ -19,7 +19,11 @@ import type { DocumentReplacement } from "../../edit/adapter/replace-document.js
 import type { Revision } from "../../edit/adapter/types.js";
 import { cloneJson } from "./json-value.js";
 import { connectionToRecord, nodeToRecord, portToRecord } from "./records.js";
-import type { PayloadCodecRegistry } from "./snapshot-errors.js";
+import {
+  createErrorSink,
+  type PayloadCodecRegistry,
+  resolveLimits,
+} from "./snapshot-errors.js";
 import type {
   GraphSnapshot,
   SnapshotDiagnostic,
@@ -75,7 +79,7 @@ export function prepareLoad(
   const validated = validateSnapshot(input, options);
   if (!validated.ok) return validated;
   const snapshot = validated.value;
-  const errors: SnapshotError[] = [];
+  const errors = createErrorSink(resolveLimits(options.limits).maxErrors);
   const diagnostics: SnapshotDiagnostic[] = [];
   const nodes = snapshot.nodes.map((node, i) => {
     if (target.registry && !target.registry.has(node.type)) {
@@ -90,15 +94,16 @@ export function prepareLoad(
     if (codec) {
       const decoded = codec.decode(node.payload);
       if (decoded.ok) return nodeToRecord(node, decoded.value);
-      errors.push({
-        ...decoded.error,
-        path: `nodes[${i}].payload`,
-        entities: [node.id, ...decoded.error.entities],
-      });
+      errors.add(
+        decoded.error.code,
+        decoded.error.message,
+        `nodes[${i}].payload`,
+        [node.id, ...decoded.error.entities],
+      );
     }
     return nodeToRecord(node, cloneJson(node.payload));
   });
-  if (errors.length > 0) return err(errors);
+  if (errors.count() > 0) return err(errors.report());
   return ok({
     snapshot,
     diagnostics,
