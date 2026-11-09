@@ -2,8 +2,13 @@
  * Local undo/redo stacks.
  *
  * One entry per recorded submission. Undo applies the entry's inverse, redo re-applies its
- * patch; the adapter does the applying and tells the history when it succeeded, so a
- * rejected undo leaves both stacks unchanged. A new recorded edit clears the redo stack.
+ * patch; the adapter does the applying and tells the history the outcome. A new recorded
+ * edit clears the redo stack.
+ *
+ * When an undo (or redo) is rejected, its entry can no longer be applied, and every entry
+ * under it was recorded against the state that entry would have restored. So the adapter
+ * drops that whole stack, keeping the reason for `state()`; the other stack is kept, since
+ * its entries carry their own old values and are checked when they run.
  */
 
 import type { Patch } from "../../data/patch/types.js";
@@ -25,6 +30,8 @@ export interface LocalHistory {
   completeUndo(): void;
   /** Move the top redo entry back to the undo stack after it was re-applied. */
   completeRedo(): void;
+  /** Drop every entry of one stack after its top entry was rejected; `reason` says why. */
+  drop(direction: "undo" | "redo", reason: string): void;
   state(): HistoryState;
   clear(): void;
 }
@@ -32,21 +39,40 @@ export interface LocalHistory {
 export function createLocalHistory(): LocalHistory {
   let undoStack: HistoryEntry[] = [];
   let redoStack: HistoryEntry[] = [];
+  let undoDropped: string | undefined;
+  let redoDropped: string | undefined;
 
   return {
     record(entry) {
       undoStack.push(entry);
       redoStack = [];
+      undoDropped = undefined;
+      redoDropped = undefined;
     },
     peekUndo: () => undoStack[undoStack.length - 1],
     peekRedo: () => redoStack[redoStack.length - 1],
     completeUndo() {
       const entry = undoStack.pop();
-      if (entry) redoStack.push(entry);
+      if (entry) {
+        redoStack.push(entry);
+        redoDropped = undefined;
+      }
     },
     completeRedo() {
       const entry = redoStack.pop();
-      if (entry) undoStack.push(entry);
+      if (entry) {
+        undoStack.push(entry);
+        undoDropped = undefined;
+      }
+    },
+    drop(direction, reason) {
+      if (direction === "undo") {
+        undoStack = [];
+        undoDropped = reason;
+      } else {
+        redoStack = [];
+        redoDropped = reason;
+      }
     },
     state() {
       const undo = undoStack[undoStack.length - 1];
@@ -56,15 +82,17 @@ export function createLocalHistory(): LocalHistory {
         canRedo: redo !== undefined,
         ...(undo
           ? { undoLabel: undo.label }
-          : { undoReason: "Nothing to undo" }),
+          : { undoReason: undoDropped ?? "Nothing to undo" }),
         ...(redo
           ? { redoLabel: redo.label }
-          : { redoReason: "Nothing to redo" }),
+          : { redoReason: redoDropped ?? "Nothing to redo" }),
       };
     },
     clear() {
       undoStack = [];
       redoStack = [];
+      undoDropped = undefined;
+      redoDropped = undefined;
     },
   };
 }

@@ -119,7 +119,7 @@ describe("local history", () => {
     expect(model.historyState().canUndo).toBe(false);
   });
 
-  it("a rejected undo leaves both stacks unchanged and fires a failure event", () => {
+  it("a rejected undo drops the undo stack with a reason and fires a failure event", () => {
     const model = createGraphModel();
     const a = addNode(model);
     // An external-style change makes the recorded inverse stale.
@@ -144,10 +144,12 @@ describe("local history", () => {
     model.on("failure", (f) => {
       if (f.source === "rejection") failures.push(f.rejection.code);
     });
-    const before = model.historyState();
     expect(model.undo()).toMatchObject({ ok: false });
     expect(failures.length).toBe(1);
-    expect(model.historyState()).toEqual(before);
+    expect(model.historyState()).toMatchObject({
+      canUndo: false,
+      undoReason: expect.stringMatching(/^Undo is no longer possible/),
+    });
   });
 });
 

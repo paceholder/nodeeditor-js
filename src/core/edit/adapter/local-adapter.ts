@@ -229,7 +229,7 @@ export function createLocalAdapter(
         rejectionOf("history-unavailable", `Nothing to ${kind}`),
       );
     }
-    return run(
+    const result = run(
       {
         operationId,
         baseRevision: revision(),
@@ -244,6 +244,16 @@ export function createLocalAdapter(
         return true;
       },
     );
+    if (!result.ok) {
+      // The entry can never apply now, nor can the ones recorded under it.
+      const what = kind === "undo" ? "Undo" : "Redo";
+      history.drop(
+        kind,
+        `${what} is no longer possible: ${result.error.message}`,
+      );
+      hub.emit("history", history.state());
+    }
+    return result;
   }
 
   const stepOrQueue = (kind: "undo" | "redo"): SubmitResult => {
