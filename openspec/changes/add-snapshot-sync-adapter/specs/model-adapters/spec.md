@@ -187,6 +187,10 @@ Creating a node SHALL stay one `createNode` command used by every creation path,
 - **WHEN** the host accepted a creation but no pushed snapshot contains the node before the timeout
 - **THEN** the outcome is unknown, the placeholder is marked unknown and a resync-requested event is published
 
+#### Scenario: The named ID must be one the snapshot contains
+- **WHEN** the host answers a creation with the ID of a wrapper record (an ID that identifies its own operation record) that no pushed snapshot ever contains, while the node itself appears under a different ID
+- **THEN** the wrapper ID never matches a node, the pending result does not settle from the pushed node, and after the timeout the outcome is unknown; the ID the host names in its answer must therefore be the ID the node has in later snapshots
+
 #### Scenario: ID already claimed
 - **WHEN** the host answers a creation with an ID that another operation already claimed
 - **THEN** that creation settles as rejected with the reason `node-id-claimed`, the placeholder is dropped, and the event is logged

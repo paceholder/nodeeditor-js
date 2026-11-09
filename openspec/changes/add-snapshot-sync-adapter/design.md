@@ -320,6 +320,13 @@ calls made from inside an event handler are queued like submissions.
 
 ## Risks / Trade-offs
 
+- The sizes and times in the performance task (500 and 5000 nodes) are planning figures. They
+  remain planning figures until the snapshot adapter exists and the benchmark has run against
+  it; do not quote them as measured results before then.
+- The ID in the host's answer to a creation must be the ID the node carries in later
+  snapshots. An ID that identifies only the host's own operation record never matches a node,
+  so the creation ends as unknown after the timeout; the guide says so.
+
 - Confirmed state is a second copy of the document in memory, in exchange for rebasing that
   cannot go wrong; the performance task records the cost at 5000 nodes.
 
