@@ -38,8 +38,8 @@ describe("loading never throws", () => {
     const r = loadDocument(model, text, { migrations: { 0: boom } });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error[0]?.path).toBe("version");
-      expect(r.error[0]?.message).toMatch(/version 0.*boom/);
+      expect(r.rejection[0]?.path).toBe("version");
+      expect(r.rejection[0]?.message).toMatch(/version 0.*boom/);
     }
     expect(model.revision()).toBe(revision);
   });
@@ -54,7 +54,7 @@ describe("loading never throws", () => {
       },
     };
     const r = validateSnapshot(evil);
-    expect(!r.ok && r.error.map((e) => e.code)).toEqual(["invalid-shape"]);
+    expect(!r.ok && r.rejection.map((e) => e.code)).toEqual(["invalid-shape"]);
     expect(loadSnapshot(loadedModel(), evil).ok).toBe(false);
     const fragment = {
       format: "@paceholder/nodeeditor-js/fragment",
@@ -71,7 +71,7 @@ describe("loading never throws", () => {
     const codecs = createPayloadCodecRegistry();
     codecs.register("pipe", { encode: boom, decode: boom });
     const r = loadSnapshot(loadedModel(), graph({ a: 1 }), { codecs });
-    expect(!r.ok && r.error.map((e) => [e.code, e.path])).toEqual([
+    expect(!r.ok && r.rejection.map((e) => [e.code, e.path])).toEqual([
       ["non-json-payload", "nodes[0].payload"],
     ]);
     const fragment = parseFragmentValue(

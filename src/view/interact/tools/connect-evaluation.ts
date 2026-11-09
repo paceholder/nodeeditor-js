@@ -26,7 +26,7 @@ export function evaluationOf(
         code: undefined,
       };
     case "rejected": {
-      const { code, message } = plan.error;
+      const { code, message } = plan.rejection;
       const state =
         code === "capacity-exhausted"
           ? "occupied"

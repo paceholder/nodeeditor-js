@@ -86,10 +86,10 @@ export function parsePort(
   const checked = validatePortRecord(portToRecord(port, owner));
   if (!checked.ok) {
     sink.add(
-      checked.error.code,
-      checked.error.message,
+      checked.rejection.code,
+      checked.rejection.message,
       path,
-      checked.error.entities,
+      checked.rejection.entities,
     );
     return undefined;
   }
@@ -223,10 +223,10 @@ export function parseNode(
   });
   if (!checked.ok) {
     sink.add(
-      checked.error.code,
-      checked.error.message,
+      checked.rejection.code,
+      checked.rejection.message,
       path,
-      checked.error.entities,
+      checked.rejection.entities,
     );
     return undefined;
   }

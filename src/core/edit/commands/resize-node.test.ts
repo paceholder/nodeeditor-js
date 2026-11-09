@@ -65,8 +65,8 @@ describe("resizeNode command", () => {
       const result = model.resizeNode(a.node, size, { x: -1, y: -1 });
       expect(result.status).toBe("rejected");
       if (result.status === "rejected") {
-        expect(result.error.code).toBe("out-of-range");
-        expect(result.error.entities).toEqual([a.node]);
+        expect(result.rejection.code).toBe("out-of-range");
+        expect(result.rejection.entities).toEqual([a.node]);
       }
     }
     expect(nodeOf(model, a.node).size).toEqual(SIZE);
@@ -77,7 +77,7 @@ describe("resizeNode command", () => {
     const model = tankModel();
     const a = make(model, "tank");
     const code = (r: ReturnType<typeof model.resizeNode>) =>
-      r.status === "rejected" ? r.error.code : r.status;
+      r.status === "rejected" ? r.rejection.code : r.status;
     expect(code(model.resizeNode("n404" as never, SIZE))).toBe(
       "unknown-entity",
     );
@@ -136,7 +136,7 @@ describe("resizeNode command", () => {
     if (!big) throw new Error("no node");
     const w30 = { width: 30, height: 20 };
     const refused = model.resizeNode(big, w30);
-    expect(refused.status === "rejected" && refused.error.code).toBe(
+    expect(refused.status === "rejected" && refused.rejection.code).toBe(
       "out-of-range",
     );
     expect(model.resizeNode(plain, w30).status).toBe("accepted");

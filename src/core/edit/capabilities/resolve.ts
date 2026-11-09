@@ -42,7 +42,7 @@ export function resolveCapability(
   ctx: CapabilityContext,
   graph: GraphReader,
 ): Result<void> {
-  if (ctx.readOnly()) return { ok: false, error: readOnlyRejection() };
+  if (ctx.readOnly()) return { ok: false, rejection: readOnlyRejection() };
   const layers = [
     ctx.policy?.decide(action, node, graph),
     node.capabilities?.[action],
@@ -51,6 +51,6 @@ export function resolveCapability(
   ];
   const decision = layers.find((v) => v !== undefined);
   return decision === false
-    ? { ok: false, error: denied(action, node) }
+    ? { ok: false, rejection: denied(action, node) }
     : ok(undefined);
 }

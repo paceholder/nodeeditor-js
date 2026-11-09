@@ -55,7 +55,7 @@ describe("affine transforms", () => {
     ]) {
       const r = invert(m);
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error.code).toBe("non-invertible");
+      if (!r.ok) expect(r.rejection.code).toBe("non-invertible");
     }
   });
 });

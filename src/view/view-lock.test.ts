@@ -89,13 +89,13 @@ describe("view lock", () => {
         id === COMMAND_IDS.nudge ? { dx: 5, dy: 0 } : undefined,
       );
       expect(a.available, id).toBe(false);
-      if (!a.available) expect(a.reason).toEqual(VIEW_LOCKED);
+      if (!a.available) expect(a.rejection).toEqual(VIEW_LOCKED);
       const r = commands.run(
         id,
         id === COMMAND_IDS.nudge ? { dx: 5, dy: 0 } : undefined,
       );
       expect(r.ok, id).toBe(false);
-      if (!r.ok) expect(r.error).toEqual(VIEW_LOCKED);
+      if (!r.ok) expect(r.rejection).toEqual(VIEW_LOCKED);
     }
     expect(h.model.reader.revision()).toBe(revision);
     expect(h.model.historyState()).toEqual(history);
@@ -123,7 +123,7 @@ describe("view lock", () => {
     expect(clipboard.canDuplicate().available).toBe(false);
     const cut = clipboard.cut();
     expect(cut.ok).toBe(false);
-    if (!cut.ok) expect(cut.error).toEqual(VIEW_LOCKED);
+    if (!cut.ok) expect(cut.rejection).toEqual(VIEW_LOCKED);
     const dup = clipboard.duplicate();
     expect(dup.ok).toBe(false);
     expect(h.model.reader.nodes()).toHaveLength(2);

@@ -53,7 +53,7 @@ export interface Rejected {
   readonly ok: false;
   readonly status: "rejected";
   readonly operationId: OperationId;
-  readonly error: Rejection;
+  readonly rejection: Rejection;
 }
 
 /** The authority did not answer in time and the edit may or may not have applied. */

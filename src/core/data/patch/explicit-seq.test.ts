@@ -17,14 +17,14 @@ describe("explicit insertion sequences are bounded and unique", () => {
     const { reader, apply } = seeded();
     const taken = reader.seqOf(nodeId("n1")) ?? 0;
     const r = apply({ ops: [addNode("n9", taken)] });
-    expect(!r.ok && r.error.code).toBe("conflict");
+    expect(!r.ok && r.rejection.code).toBe("conflict");
     expect(reader.getNode(nodeId("n9"))).toBeUndefined();
   });
 
   it("rejects two adds of one kind with the same sequence in one patch", () => {
     const { apply } = seeded();
     const r = apply({ ops: [addNode("n8", 500), addNode("n9", 500)] });
-    expect(!r.ok && r.error.code).toBe("conflict");
+    expect(!r.ok && r.rejection.code).toBe("conflict");
   });
 
   it("accepts a sequence another kind uses, and one freed in the same patch", () => {
@@ -45,7 +45,7 @@ describe("explicit insertion sequences are bounded and unique", () => {
   it("rejects a sequence above 2^40 and later automatic sequences stay distinct", () => {
     const { reader, apply } = seeded();
     const r = apply({ ops: [addNode("n9", Number.MAX_SAFE_INTEGER)] });
-    expect(!r.ok && r.error.code).toBe("malformed-record");
+    expect(!r.ok && r.rejection.code).toBe("malformed-record");
     expect(apply({ ops: [addNode("n9", 2 ** 40)] }).ok).toBe(true);
     apply({ ops: [addNode("na")] });
     apply({ ops: [addNode("nb")] });

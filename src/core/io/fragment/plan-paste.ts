@@ -75,8 +75,8 @@ function planFragment(
 ): PlanResult {
   const read = readFragment(command.fragment, options);
   if (!read.ok) {
-    const [first] = read.error;
-    const more = read.error.length - 1;
+    const [first] = read.rejection;
+    const more = read.rejection.length - 1;
     if (!first) return rejected("invalid-shape", "Fragment is invalid");
     return rejectedWith(
       rejectionOf(
@@ -137,7 +137,7 @@ export function createFragmentPlanners(
       { nodes: command.nodes },
       options,
     );
-    if (!extracted.ok) return rejectedWith(extracted.error);
+    if (!extracted.ok) return rejectedWith(extracted.rejection);
     return planFragment(
       { ...command, fragment: extracted.value.fragment },
       ctx,

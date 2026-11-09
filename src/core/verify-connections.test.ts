@@ -54,7 +54,7 @@ describe("verifyConnections", () => {
       message: "Not these two",
       entities: [],
     };
-    const { model } = setup({ valid: false, reason });
+    const { model } = setup({ valid: false, rejection: reason });
     const src = make(model, "source");
     const dst = make(model, "sink");
     const first = model.connect(end(src), end(dst));
@@ -62,7 +62,7 @@ describe("verifyConnections", () => {
     await model.verifyConnections(first.missing);
     expect(model.connect(end(src), end(dst))).toMatchObject({
       status: "rejected",
-      error: reason,
+      rejection: reason,
     });
     expect(model.reader.connections()).toEqual([]);
   });

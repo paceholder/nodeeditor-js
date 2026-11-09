@@ -44,7 +44,7 @@ function runFactories(
       const made = def.createPayload({ position: command.position });
       if (!made.ok) {
         return err(
-          rejectionOf("factory-failed", made.error.message, [def.type]),
+          rejectionOf("factory-failed", made.rejection.message, [def.type]),
         );
       }
       payload = made.value;
@@ -88,7 +88,7 @@ export const planCreateNode: PlannerFor<"createNode"> = (command, ctx) => {
     );
   }
   const made = runFactories(def, command);
-  if (!made.ok) return rejectedWith(made.error);
+  if (!made.ok) return rejectedWith(made.rejection);
 
   const id = ctx.ids.node();
   const ports = made.value.specs.map((spec) =>

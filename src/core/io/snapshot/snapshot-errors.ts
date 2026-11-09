@@ -91,7 +91,7 @@ export function guarded<T>(
   } catch (error) {
     return {
       ok: false,
-      error: [
+      rejection: [
         {
           code: "invalid-shape",
           message: `The input could not be read: ${thrownMessage(error)}`,

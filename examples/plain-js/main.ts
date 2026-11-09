@@ -289,7 +289,7 @@ const say = (text: string) => {
   if (status) status.textContent = text;
 };
 view.clipboard.on("paste", (outcome) => {
-  if (!outcome.ok) say(`Paste refused: ${outcome.error.message}`);
+  if (!outcome.ok) say(`Paste refused: ${outcome.rejection.message}`);
   else {
     const left = outcome.value.excluded.map((x) => x.connection);
     say(
@@ -315,7 +315,7 @@ const open = (value: string) => {
 document.getElementById("export")?.addEventListener("click", () => {
   const exported = view.clipboard.exportText();
   if (exported.ok) open(exported.value);
-  else say(`Export refused: ${exported.error.message}`);
+  else say(`Export refused: ${exported.rejection.message}`);
 });
 document.getElementById("import")?.addEventListener("click", () => open(""));
 document.getElementById("do-import")?.addEventListener("click", () => {

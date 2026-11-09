@@ -298,7 +298,7 @@ export function attachEditing(deps: EditingDeps): Editing {
           can: (command) => editable.can(command),
           ...(sizeLimits ? { sizeLimits } : {}),
         })
-      : () => ({ available: false, reason: NO_MODEL });
+      : () => ({ available: false, rejection: NO_MODEL });
     // While locked no editing action is available and no edit can be planned, so no tool
     // starts or finishes one; locking also ends gestures and cancels a pending choice, so
     // nothing planned earlier arrives late.
@@ -323,7 +323,7 @@ export function attachEditing(deps: EditingDeps): Editing {
         ? {
             plan: (command: Command): PlanResult =>
               lock.get()
-                ? { kind: "rejected", error: VIEW_LOCKED }
+                ? { kind: "rejected", rejection: VIEW_LOCKED }
                 : editable.plan(command),
           }
         : {}),

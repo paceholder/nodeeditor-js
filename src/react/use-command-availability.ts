@@ -8,7 +8,7 @@ import { useStableValue } from "./use-stable-value.js";
 
 const UNAVAILABLE: Availability = {
   available: false,
-  reason: {
+  rejection: {
     code: "unsupported-command",
     message: "No editor is mounted",
     entities: [],
@@ -18,9 +18,9 @@ const UNAVAILABLE: Availability = {
 const sameAvailability = (a: Availability, b: Availability): boolean => {
   if (a.available || b.available) return a.available === b.available;
   return (
-    a.reason.code === b.reason.code &&
-    a.reason.message === b.reason.message &&
-    a.reason.entities.join("\n") === b.reason.entities.join("\n")
+    a.rejection.code === b.rejection.code &&
+    a.rejection.message === b.rejection.message &&
+    a.rejection.entities.join("\n") === b.rejection.entities.join("\n")
   );
 };
 

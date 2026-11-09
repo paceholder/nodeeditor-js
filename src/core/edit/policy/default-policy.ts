@@ -37,7 +37,7 @@ const refuse = (
   entities: readonly string[],
 ): PolicyOutcome => ({
   kind: "reject",
-  reason: rejectionOf(code, message, entities),
+  rejection: rejectionOf(code, message, entities),
 });
 
 function occupied(

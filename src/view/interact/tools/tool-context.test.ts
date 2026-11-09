@@ -38,8 +38,8 @@ function setup() {
   return { model, add, probe: capabilityProbe(model) };
 }
 
-const codeOf = (a: { available: boolean; reason?: { code: string } }) =>
-  a.available ? "available" : a.reason?.code;
+const codeOf = (a: { available: boolean; rejection?: { code: string } }) =>
+  a.available ? "available" : a.rejection?.code;
 
 describe("capability probe for resize, rotate and mirror", () => {
   it("a type that did not opt in cannot resize but can rotate and mirror", () => {

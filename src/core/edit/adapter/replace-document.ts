@@ -54,7 +54,7 @@ function all<T>(
   if (!Array.isArray(list)) return misuse("records must be arrays");
   return list.map((input) => {
     const checked = validate(input);
-    return checked.ok ? checked.value : misuse(checked.error.message);
+    return checked.ok ? checked.value : misuse(checked.rejection.message);
   });
 }
 
@@ -86,7 +86,7 @@ export function checkReplacement(replacement: DocumentReplacement): Checked {
   };
   for (const connection of connections) {
     const ends = checkConnectionEndpoints(connection, lookup);
-    if (!ends.ok) misuse(ends.error.message);
+    if (!ends.ok) misuse(ends.rejection.message);
   }
   return { nodes, ports, connections };
 }

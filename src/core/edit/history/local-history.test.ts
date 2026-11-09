@@ -178,7 +178,7 @@ describe("history availability", () => {
     const r = model.undo();
     expect(r).toMatchObject({ ok: false, status: "rejected" });
     if (r.status === "rejected")
-      expect(r.error.code).toBe("history-unavailable");
+      expect(r.rejection.code).toBe("history-unavailable");
   });
 
   it("labels follow the submissions", () => {

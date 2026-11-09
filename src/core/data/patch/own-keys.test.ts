@@ -14,7 +14,7 @@ describe("update fields are the record's own fields", () => {
     const r = apply({
       ops: [{ op: "update", entity: "node", id: nodeId("n1"), fields }],
     });
-    expect(!r.ok && r.error.code).toBe("malformed-record");
+    expect(!r.ok && r.rejection.code).toBe("malformed-record");
     const node = reader.getNode(nodeId("n1"));
     expect(Object.getPrototypeOf(node)).toBe(Object.prototype);
     expect(node?.title).toBeUndefined();
@@ -27,7 +27,7 @@ describe("update fields are the record's own fields", () => {
       const r = apply({
         ops: [{ op: "update", entity: "node", id: nodeId("n1"), fields }],
       });
-      expect(!r.ok && r.error.code).toBe("malformed-record");
+      expect(!r.ok && r.rejection.code).toBe("malformed-record");
     }
   });
 
@@ -35,7 +35,7 @@ describe("update fields are the record's own fields", () => {
     const { apply } = seeded();
     const idCursor = JSON.parse('{"__proto__":{"n":5}}');
     const r = apply({ ops: [addNode("n3")], idCursor });
-    expect(!r.ok && r.error.code).toBe("malformed-record");
+    expect(!r.ok && r.rejection.code).toBe("malformed-record");
   });
 
   it("rejects a patch ID cursor whose values are not safe integers or text", () => {
@@ -49,7 +49,7 @@ describe("update fields are the record's own fields", () => {
     ];
     for (const idCursor of bad) {
       const r = apply({ ops: [addNode("n3")], idCursor } as unknown as Patch);
-      expect(!r.ok && r.error.code).toBe("malformed-record");
+      expect(!r.ok && r.rejection.code).toBe("malformed-record");
     }
     expect(reader.getNode(nodeId("n3"))).toBeUndefined();
   });

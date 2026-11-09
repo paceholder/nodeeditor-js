@@ -61,7 +61,7 @@ describe("node geometry contract", () => {
     expect(registry.register("symbol", custom).ok).toBe(true);
     const dup = registry.register("symbol", custom);
     expect(dup.ok).toBe(false);
-    if (!dup.ok) expect(dup.error.code).toBe("duplicate-type");
+    if (!dup.ok) expect(dup.rejection.code).toBe("duplicate-type");
     expect(registry.get("symbol")).toBe(custom);
     expect(registry.get("other")).toBe(placeholderGeometry);
     registry.replace("symbol", placeholderGeometry);

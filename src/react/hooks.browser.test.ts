@@ -82,7 +82,7 @@ function DeleteButton(): ReactNode {
   return createElement(
     "p",
     { id: "out" },
-    a.available ? "yes" : `no:${a.reason.code}`,
+    a.available ? "yes" : `no:${a.rejection.code}`,
   );
 }
 

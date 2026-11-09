@@ -78,7 +78,7 @@ export function createCommandApi(
       ? { available: true }
       : {
           available: false,
-          reason: rejectionOf(
+          rejection: rejectionOf(
             "history-unavailable",
             why ?? `Nothing to ${direction}`,
           ),
@@ -99,13 +99,13 @@ export function createCommandApi(
       const state = history(planned.direction);
       return state.available
         ? planned
-        : { kind: "rejected", error: state.reason };
+        : { kind: "rejected", rejection: state.rejection };
     }
     if (planned.kind !== "ready") return planned;
     const refused = dryRun(host.reader, planned.patch, env.validators());
     if (!refused) return planned;
     if (refused.code !== "pending-validation") {
-      return { kind: "rejected", error: refused };
+      return { kind: "rejected", rejection: refused };
     }
     // The patch is fine but some connection lacks a host verdict.
     const staged = stagedAfter(host.reader, planned.patch);
@@ -133,9 +133,9 @@ export function createCommandApi(
             ok: false,
             status: "rejected",
             operationId: host.mintOperationId(),
-            error: planned.error,
+            rejection: planned.rejection,
           };
-          host.reportRejection(result.operationId, result.error);
+          host.reportRejection(result.operationId, result.rejection);
           return result;
         }
         case "choice":
@@ -154,13 +154,13 @@ export function createCommandApi(
     can(command) {
       const planned = plan(command);
       if (planned.kind === "rejected") {
-        return { available: false, reason: planned.error };
+        return { available: false, rejection: planned.rejection };
       }
       // Unavailable for now: a host verdict is missing. `can` never asks for it.
       if (planned.kind === "pending") {
         return {
           available: false,
-          reason: rejectionOf(
+          rejection: rejectionOf(
             "pending-validation",
             planned.reason,
             planned.missing.flatMap((p) => [p.from.port, p.to.port]),

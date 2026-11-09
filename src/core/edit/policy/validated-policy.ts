@@ -23,7 +23,7 @@ export function createValidatedPolicy(
         case "valid":
           return outcome;
         case "invalid":
-          return { kind: "reject", reason: found.reason };
+          return { kind: "reject", rejection: found.rejection };
         case "pending":
         case "unknown":
           return {

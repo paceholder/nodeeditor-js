@@ -43,7 +43,7 @@ describe("availability without a verdict", () => {
       model.can({ kind: "connect", from: end(src), to: end(dst) }),
     ).toMatchObject({
       available: false,
-      reason: {
+      rejection: {
         code: "pending-validation",
         entities: [end(src).port, end(dst).port],
       },
@@ -62,7 +62,7 @@ describe("availability without a verdict", () => {
       }),
     ).toMatchObject({
       available: false,
-      reason: { code: "pending-validation" },
+      rejection: { code: "pending-validation" },
     });
     expect(calls()).toBe(asked);
   });
@@ -88,7 +88,7 @@ describe("availability without a verdict", () => {
     for (const availability of [duplicate, paste]) {
       expect(availability).toMatchObject({
         available: false,
-        reason: { code: "pending-validation" },
+        rejection: { code: "pending-validation" },
       });
     }
     expect(calls()).toBe(before);

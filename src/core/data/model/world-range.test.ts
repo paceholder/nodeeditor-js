@@ -8,8 +8,8 @@ import {
 } from "./validate-records.js";
 import { MAX_WORLD_COORD, MAX_WORLD_SIZE } from "./values.js";
 
-const code = (r: { ok: boolean; error?: { code: string } }) =>
-  r.ok ? "ok" : r.error?.code;
+const code = (r: { ok: boolean; rejection?: { code: string } }) =>
+  r.ok ? "ok" : r.rejection?.code;
 
 describe("records stay inside the supported world range", () => {
   it("rejects a node position outside the world range", () => {
@@ -58,6 +58,6 @@ describe("records stay inside the supported world range", () => {
         },
       ],
     });
-    expect(r.status === "rejected" && r.error.code).toBe("out-of-range");
+    expect(r.status === "rejected" && r.rejection.code).toBe("out-of-range");
   });
 });

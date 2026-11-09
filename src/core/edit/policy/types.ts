@@ -52,7 +52,7 @@ export interface ConnectionAlternative extends ConnectionPlan {
 
 export type PolicyOutcome =
   | { readonly kind: "accept"; readonly plan: ConnectionPlan }
-  | { readonly kind: "reject"; readonly reason: Rejection }
+  | { readonly kind: "reject"; readonly rejection: Rejection }
   | {
       readonly kind: "choice";
       readonly alternatives: readonly ConnectionAlternative[];

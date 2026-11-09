@@ -15,7 +15,10 @@ export const VIEW_LOCKED: Rejection = rejectionOf(
   "The view is locked",
 );
 
-export const LOCKED: Availability = { available: false, reason: VIEW_LOCKED };
+export const LOCKED: Availability = {
+  available: false,
+  rejection: VIEW_LOCKED,
+};
 
 export interface ViewLock {
   get(): boolean;

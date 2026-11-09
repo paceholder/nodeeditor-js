@@ -11,11 +11,11 @@ export function rejected(
   message: string,
   entities: readonly string[] = [],
 ): PlanResult {
-  return { kind: "rejected", error: rejectionOf(code, message, entities) };
+  return { kind: "rejected", rejection: rejectionOf(code, message, entities) };
 }
 
-export function rejectedWith(error: Rejection): PlanResult {
-  return { kind: "rejected", error };
+export function rejectedWith(rejection: Rejection): PlanResult {
+  return { kind: "rejected", rejection };
 }
 
 export function unknownEntity(id: string): PlanResult {

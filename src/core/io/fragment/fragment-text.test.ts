@@ -58,7 +58,7 @@ describe("foreign clipboard text", () => {
   it("refuses plain text and unmarked JSON as not-a-fragment", () => {
     for (const text of ["hello world", "{}", '{"format":"other"}', "[1,2]"]) {
       const r = parseFragmentText(text);
-      expect(!r.ok && r.error[0]?.code).toBe("not-a-fragment");
+      expect(!r.ok && r.rejection[0]?.code).toBe("not-a-fragment");
     }
     const graph = plain(sample()).fragment;
     expect(!parseFragmentValue(graph).ok).toBe(true);
@@ -67,7 +67,7 @@ describe("foreign clipboard text", () => {
   it("refuses a newer envelope version", () => {
     const value = { ...plain(sample()), version: 2 };
     const r = parseFragmentValue(value);
-    expect(!r.ok && r.error[0]?.code).toBe("unsupported-version");
+    expect(!r.ok && r.rejection[0]?.code).toBe("unsupported-version");
   });
 });
 
@@ -79,7 +79,7 @@ describe("untrusted fragment content", () => {
     if (!first) throw new Error("setup");
     first.to.node = "n99";
     const r = parseFragmentValue(value);
-    expect(!r.ok && r.error[0]).toMatchObject({
+    expect(!r.ok && r.rejection[0]).toMatchObject({
       code: "dangling-endpoint",
       path: "fragment.connections[0].to.node",
     });
@@ -88,7 +88,7 @@ describe("untrusted fragment content", () => {
   it("reports every error sorted by path, envelope included", () => {
     const value = { ...plain(sample()), extra: 1, external: [{ id: 3 }] };
     const r = parseFragmentValue(value);
-    const paths = r.ok ? [] : r.error.map((e) => e.path);
+    const paths = r.ok ? [] : r.rejection.map((e) => e.path);
     expect(paths.length).toBeGreaterThan(1);
     expect(paths).toContain("extra");
     expect(paths[0]?.startsWith("external[0]")).toBe(true);
@@ -130,7 +130,7 @@ describe("untrusted fragment content", () => {
 describe("fragment size limits", () => {
   it("rejects a fragment over the node limit", () => {
     const r = parseFragmentValue(plain(sample()), { limits: { maxNodes: 1 } });
-    expect(!r.ok && r.error[0]).toMatchObject({
+    expect(!r.ok && r.rejection[0]).toMatchObject({
       code: "limit-exceeded",
       path: "fragment.nodes",
     });
@@ -142,7 +142,7 @@ describe("fragment size limits", () => {
     const r = parseFragmentText(text, {
       limits: { maxDocumentChars: text.length - 1 },
     });
-    expect(!r.ok && r.error[0]?.code).toBe("limit-exceeded");
+    expect(!r.ok && r.rejection[0]?.code).toBe("limit-exceeded");
     expect(parse).not.toHaveBeenCalled();
   });
 });

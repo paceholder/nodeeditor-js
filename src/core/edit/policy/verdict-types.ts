@@ -50,7 +50,7 @@ export interface VerdictRequest {
 
 export type ConnectionVerdict =
   | { readonly valid: true }
-  | { readonly valid: false; readonly reason: Rejection };
+  | { readonly valid: false; readonly rejection: Rejection };
 
 export type ConnectionValidator = (
   request: VerdictRequest,

@@ -12,7 +12,7 @@ function target(mutate: (s: Record<string, unknown>) => void): GraphSnapshot {
   const raw = sampleSnapshot();
   mutate(raw);
   const checked = validateSnapshot(raw);
-  if (!checked.ok) throw new Error(JSON.stringify(checked.error));
+  if (!checked.ok) throw new Error(JSON.stringify(checked.rejection));
   return checked.value;
 }
 
@@ -22,7 +22,7 @@ const portsOf = (n: Record<string, unknown> | undefined): unknown[] =>
 /** The patch of a diff that cannot fail (no codecs). */
 const diffSnapshot = (...args: Parameters<typeof diffResult>) => {
   const r = diffResult(...args);
-  if (!r.ok) throw new Error(JSON.stringify(r.error));
+  if (!r.ok) throw new Error(JSON.stringify(r.rejection));
   return r.value;
 };
 

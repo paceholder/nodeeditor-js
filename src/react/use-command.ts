@@ -9,7 +9,7 @@ import { useStableValue } from "./use-stable-value.js";
 export interface CommandState {
   readonly available: boolean;
   /** Why the command cannot run, for a tooltip; undefined while it can. */
-  readonly reason: Rejection | undefined;
+  readonly rejection: Rejection | undefined;
   /** Run the command with the arguments given to the hook. */
   run(): CommandOutcome;
 }
@@ -25,7 +25,7 @@ export function useCommand(id: string, args?: unknown): CommandState {
   return useMemo(
     () => ({
       available: availability.available,
-      reason: availability.available ? undefined : availability.reason,
+      rejection: availability.available ? undefined : availability.rejection,
       run: () =>
         view
           ? view.commands.run(id, stableArgs)

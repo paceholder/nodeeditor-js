@@ -57,7 +57,7 @@ describe("payload codecs", () => {
     const model = withPayload({ when: new Date(0), ok: 1 });
     const saved = saveDocument(model);
     expect(saved.ok).toBe(false);
-    expect(!saved.ok && saved.error[0]).toMatchObject({
+    expect(!saved.ok && saved.rejection[0]).toMatchObject({
       code: "non-json-payload",
       path: "graph.nodes[0].payload.when",
       entities: ["n1"],
@@ -107,7 +107,7 @@ describe("payload codecs", () => {
     });
     const model = makeTestModel();
     const r = loadDocument(model, text, { codecs });
-    expect(!r.ok && r.error[0]?.path).toBe("graph.nodes[0].payload");
+    expect(!r.ok && r.rejection[0]?.path).toBe("graph.nodes[0].payload");
     expect(model.reader.nodes()).toEqual([]);
   });
 
@@ -147,7 +147,7 @@ describe("optional sections", () => {
       "viewport",
     );
     const bad = saveDocument(model, { selection: ["nope"] });
-    expect(!bad.ok && bad.error[0]?.code).toBe("dangling-reference");
+    expect(!bad.ok && bad.rejection[0]?.code).toBe("dangling-reference");
   });
 });
 
@@ -161,7 +161,7 @@ describe("loading", () => {
       graph: {},
     });
     const r = loadDocument(model, text);
-    expect(!r.ok && r.error[0]?.code).toBe("unsupported-version");
+    expect(!r.ok && r.rejection[0]?.code).toBe("unsupported-version");
     expect(JSON.stringify(exportSnapshot(model))).toBe(before);
   });
 
@@ -169,7 +169,7 @@ describe("loading", () => {
     const model = makeTestModel();
     const code = (text: string, limits = {}) => {
       const r = loadDocument(model, text, { limits });
-      return !r.ok && r.error[0]?.code;
+      return !r.ok && r.rejection[0]?.code;
     };
     expect(code("{")).toBe("invalid-shape");
     expect(code("[]")).toBe("invalid-shape");

@@ -229,7 +229,7 @@ describe("view controls", () => {
         labelKey: "command.view.fitAll",
         availability: () => ({
           available: false,
-          reason: rejectionOf("nothing-to-do", "No content"),
+          rejection: rejectionOf("nothing-to-do", "No content"),
         }),
         run: () => ({ ok: true, value: { changed: false } }),
       });

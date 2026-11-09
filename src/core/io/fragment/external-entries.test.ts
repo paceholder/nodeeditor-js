@@ -37,7 +37,7 @@ const ext = (from: [string, string], to: [string, string]) => ({
 
 const errors = (value: unknown) => {
   const r = parseFragmentValue(value);
-  return r.ok ? [] : r.error.map((e) => [e.code, e.path]);
+  return r.ok ? [] : r.rejection.map((e) => [e.code, e.path]);
 };
 
 describe("fragment external entries have exactly one inside end", () => {
@@ -71,7 +71,7 @@ describe("fragment external entries have exactly one inside end", () => {
       fragment: far,
       placement: { kind: "offset", by: { x: 5e6, y: 0 } },
     });
-    expect(planned.kind === "rejected" && planned.error.code).toBe(
+    expect(planned.kind === "rejected" && planned.rejection.code).toBe(
       "out-of-range",
     );
     expect(model.reader.nodes()).toHaveLength(0);

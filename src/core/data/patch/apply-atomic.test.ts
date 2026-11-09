@@ -46,7 +46,7 @@ describe("atomic patch application", () => {
         },
       ],
     });
-    expect(!r.ok && r.error.entities).toContain("p-missing");
+    expect(!r.ok && r.rejection.entities).toContain("p-missing");
     expect(reader.revision()).toBe(rev);
     expect(JSON.stringify(reader.state())).toBe(before);
     expect(reader.getNode(nodeId("n3"))).toBeUndefined();
@@ -71,7 +71,7 @@ describe("atomic patch application", () => {
         },
       },
     ]);
-    expect(!r.ok && r.error.message).toBe("no");
+    expect(!r.ok && r.rejection.message).toBe("no");
     expect(seen).toEqual(["n3/1/local"]);
     expect(reader.getNode(nodeId("n3"))).toBeUndefined();
   });
@@ -131,7 +131,7 @@ describe("round trip", () => {
         { op: "remove", entity: "node", record: n2, seq: 2 },
       ],
     });
-    if (!del.ok) throw new Error(JSON.stringify(del.error));
+    if (!del.ok) throw new Error(JSON.stringify(del.rejection));
     expect(reader.nodes()).toHaveLength(1);
     const undo = apply(invertPatch(del.value.patch));
     expect(undo.ok).toBe(true);
@@ -188,8 +188,8 @@ describe("every port keeps an owning node", () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error.code).toBe("dangling-reference");
-      expect(r.error.entities).toEqual(["n2", "p3"]);
+      expect(r.rejection.code).toBe("dangling-reference");
+      expect(r.rejection.entities).toEqual(["n2", "p3"]);
     }
     expect(reader.getPort(portId("p3"))?.node).toBe("n2");
     expect(reader.getNode(nodeId("n2"))?.ports).toEqual(["p2", "p3"]);

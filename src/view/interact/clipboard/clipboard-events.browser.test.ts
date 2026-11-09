@@ -72,7 +72,7 @@ describe("native clipboard events", () => {
     clip(view.element, "copy");
     const reasons: string[] = [];
     view.clipboard.on("paste", (o) => {
-      if (!o.ok) reasons.push(o.error.code);
+      if (!o.ok) reasons.push(o.rejection.code);
     });
     expect(() => clip(view.element, "paste", "hello")).not.toThrow();
     expect(model.reader.nodes()).toHaveLength(2);

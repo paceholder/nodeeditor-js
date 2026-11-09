@@ -2,7 +2,7 @@
 
 ## 1. One field name for refusals
 
-- [ ] 1.1 Add `src/core/refusal-field.test.ts` (titled "one field name for refusals") covering a rejected submit, a rejected plan, `can`, a policy reject, a failed `Result`, a refused host verdict and the failure event; rename every refusal field to `rejection` across core, view, react, examples, bench and tests in one commit; verify lint, typecheck, `npm test`, `npm run test:browser`
+- [x] 1.1 Add `src/core/refusal-field.test.ts` (titled "one field name for refusals") covering a rejected submit, a rejected plan, `can`, a policy reject, a failed `Result`, a refused host verdict and the failure event; rename every refusal field to `rejection` across core, view, react, examples, bench and tests in one commit; verify lint, typecheck, `npm test`, `npm run test:browser`
 
 ## 2. One revision type and a checked base revision
 

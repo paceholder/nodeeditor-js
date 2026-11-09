@@ -35,7 +35,7 @@ describe("node type registry", () => {
       defaultSize: size,
     });
     expect(again.ok).toBe(false);
-    if (!again.ok) expect(again.error.code).toBe("duplicate-type");
+    if (!again.ok) expect(again.rejection.code).toBe("duplicate-type");
     expect(registry.get("a")?.label).toBe("first");
   });
 });
@@ -49,7 +49,7 @@ describe("size limits on a node type", () => {
       sizeLimits: sizeLimits as never,
     });
   const code = (result: ReturnType<typeof register>) =>
-    result.ok ? "ok" : result.error.code;
+    result.ok ? "ok" : result.rejection.code;
 
   it.each([
     ["a negative min", { min: { width: -1, height: 5 } }],
@@ -65,7 +65,7 @@ describe("size limits on a node type", () => {
   ])("rejects %s with malformed-record", (_, limits) => {
     const result = register(limits);
     expect(code(result)).toBe("malformed-record");
-    if (!result.ok) expect(result.error.entities).toEqual(["t"]);
+    if (!result.ok) expect(result.rejection.entities).toEqual(["t"]);
   });
 
   it("accepts a type with only min, an infinite max, and min equal to max", () => {

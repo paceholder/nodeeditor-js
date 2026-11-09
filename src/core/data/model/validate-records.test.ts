@@ -29,8 +29,8 @@ const port = (over: Record<string, unknown> = {}): unknown => ({
   limit: 1,
   ...over,
 });
-const code = (r: { ok: boolean; error?: { code: string } }) =>
-  r.ok ? "ok" : r.error?.code;
+const code = (r: { ok: boolean; rejection?: { code: string } }) =>
+  r.ok ? "ok" : r.rejection?.code;
 
 describe("structural validation", () => {
   it("accepts well-formed records", () => {
@@ -123,8 +123,8 @@ describe("structural validation", () => {
     const r = checkConnectionEndpoints(conn, lookup);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error.code).toBe("dangling-endpoint");
-      expect(r.error.entities).toContain("p404");
+      expect(r.rejection.code).toBe("dangling-endpoint");
+      expect(r.rejection.entities).toContain("p404");
     }
     const bad = { ...conn, to: { node: nodeId("n2"), port: portId("p1") } };
     expect(code(checkConnectionEndpoints(bad, lookup))).toBe(

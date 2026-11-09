@@ -10,8 +10,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function readVerdict(reply: unknown): ConnectionVerdict | undefined {
   if (!isRecord(reply)) return undefined;
   if (reply.valid === true) return { valid: true };
-  if (reply.valid !== false || !isRecord(reply.reason)) return undefined;
-  const { code, message, entities } = reply.reason;
+  if (reply.valid !== false || !isRecord(reply.rejection)) return undefined;
+  const { code, message, entities } = reply.rejection;
   if (typeof code !== "string" || code === "") return undefined;
   if (typeof message !== "string") return undefined;
   const ids =
@@ -20,7 +20,7 @@ export function readVerdict(reply: unknown): ConnectionVerdict | undefined {
       : [];
   return {
     valid: false,
-    reason: { code: code as Rejection["code"], message, entities: ids },
+    rejection: { code: code as Rejection["code"], message, entities: ids },
   };
 }
 

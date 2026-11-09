@@ -97,7 +97,7 @@ function checkOp(stage: StagedState, op: PatchOp): Rejection | undefined {
       const connection = stage.getConnection(id);
       if (!connection) return undefined;
       const checked = checkConnectionEndpoints(connection, stage);
-      return checked.ok ? undefined : checked.error;
+      return checked.ok ? undefined : checked.rejection;
     }
   }
 }

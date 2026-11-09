@@ -56,7 +56,7 @@ describe("clipboard service: copy, paste, duplicate", () => {
     const s = clipboardSetup();
     const noView = () => ({
       ok: false as const,
-      error: rejectionOf("unknown-entity", "none"),
+      rejection: rejectionOf("unknown-entity", "none"),
     });
     const commands = createCommandRegistry(() => ({
       model: s.model,
@@ -131,7 +131,7 @@ describe("clipboard fallback and foreign text", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(errors).toEqual(["clipboard-unavailable"]);
     const read = await s.service.pasteFromSystem();
-    expect(!read.ok && read.error.code).toBe("clipboard-unavailable");
+    expect(!read.ok && read.rejection.code).toBe("clipboard-unavailable");
     const text = s.service.exportText();
     expect(text.ok).toBe(true);
     const target = clipboardSetup({ model: clipboardModel([], []) });
@@ -145,7 +145,7 @@ describe("clipboard fallback and foreign text", () => {
     s.service.copy();
     const revision = s.model.revision();
     const r = s.service.paste("just some words");
-    expect(!r.ok && r.error.code).toBe("not-a-fragment");
+    expect(!r.ok && r.rejection.code).toBe("not-a-fragment");
     expect(s.model.revision()).toBe(revision);
   });
 
@@ -194,7 +194,7 @@ describe("cut", () => {
     const before = s.service.buffer();
     selectBoth(s);
     const r = s.service.cut();
-    expect(!r.ok && r.error.code).toBe("capability-denied");
+    expect(!r.ok && r.rejection.code).toBe("capability-denied");
     expect(s.service.buffer()).toBe(before);
     expect(s.model.reader.nodes()).toHaveLength(2);
   });

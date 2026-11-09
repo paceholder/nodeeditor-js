@@ -115,11 +115,13 @@ describe("paste validation", () => {
       },
       contextOf(model),
     );
-    expect(plan.kind === "rejected" && plan.error).toMatchObject({
+    expect(plan.kind === "rejected" && plan.rejection).toMatchObject({
       code: "unknown-type",
       entities: ["gadget"],
     });
-    expect(plan.kind === "rejected" && plan.error.message).toContain("gadget");
+    expect(plan.kind === "rejected" && plan.rejection.message).toContain(
+      "gadget",
+    );
   });
 
   it("rejects an invalid fragment with the first error and a count", () => {
@@ -141,7 +143,7 @@ describe("paste validation", () => {
       contextOf(model),
     );
     expect(plan.kind).toBe("rejected");
-    expect(plan.kind === "rejected" && plan.error.message).toMatch(
+    expect(plan.kind === "rejected" && plan.rejection.message).toMatch(
       /more error/,
     );
   });

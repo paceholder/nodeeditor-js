@@ -47,7 +47,7 @@ function side(end: EndpointSnapshot, maps: IdMaps, ctx: PlanContext): Side {
 function refusalCode(outcome: Exclude<PolicyOutcome, { kind: "accept" }>) {
   switch (outcome.kind) {
     case "reject":
-      return outcome.reason.code;
+      return outcome.rejection.code;
     case "choice":
       return "choice-required" as const;
     case "pending":

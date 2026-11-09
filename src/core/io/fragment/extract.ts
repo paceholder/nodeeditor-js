@@ -67,7 +67,7 @@ function encodeNode(
   if (codec) {
     const encoded = codec.encode(node.payload);
     if (!encoded.ok) {
-      const e: Rejection = encoded.error;
+      const e: Rejection = encoded.rejection;
       return err({ ...e, entities: [node.id, ...e.entities] });
     }
     return ok({ ...snapshot, payload: encoded.value });

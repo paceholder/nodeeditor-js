@@ -61,7 +61,7 @@ async function decodeSvg(
   maxChars: number | undefined,
 ): Promise<DecodeResult> {
   const screened = screenSvg(text, maxChars);
-  if (!screened.ok) return fail("unsafe", screened.error.reason);
+  if (!screened.ok) return fail("unsafe", screened.rejection.reason);
   const { width, height } = screened.value;
   const url = URL.createObjectURL(
     new Blob([screened.value.text], { type: "image/svg+xml" }),

@@ -31,7 +31,7 @@ export function revalidate(
   );
   switch (outcome.kind) {
     case "reject":
-      return outcome.reason;
+      return outcome.rejection;
     case "choice":
       return rejectionOf(
         "choice-required",

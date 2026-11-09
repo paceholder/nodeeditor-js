@@ -42,7 +42,7 @@ describe("ID counters never wrap or reset", () => {
   it("a cursor value that is not a safe integer fails to load", () => {
     const model = makeTestModel();
     const r = loadSnapshot(model, graph([node("n5")], { n: 1e300 }));
-    expect(!r.ok && r.error.map((e) => e.path)).toEqual(["idCursor.n"]);
+    expect(!r.ok && r.rejection.map((e) => e.path)).toEqual(["idCursor.n"]);
   });
 });
 
@@ -51,7 +51,7 @@ describe("ID cursor keys are checked, not dropped", () => {
     const model = makeTestModel();
     const text = `{"format":"@paceholder/nodeeditor-js/document","version":1,"graph":{"format":"@paceholder/nodeeditor-js/graph","version":1,"idCursor":{"__proto__":5},"nodes":[],"connections":[]}}`;
     const r = loadDocument(model, text);
-    expect(!r.ok && r.error.map((e) => e.path)).toEqual([
+    expect(!r.ok && r.rejection.map((e) => e.path)).toEqual([
       "graph.idCursor.__proto__",
     ]);
   });

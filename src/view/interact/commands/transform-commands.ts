@@ -40,12 +40,12 @@ export interface MirrorArgs {
 
 type Planned =
   | Command
-  | { readonly available: false; readonly reason: Rejection };
+  | { readonly available: false; readonly rejection: Rejection };
 
 const unavailable = (
   code: Parameters<typeof rejectionOf>[0],
   message: string,
-): Planned => ({ available: false, reason: rejectionOf(code, message) });
+): Planned => ({ available: false, rejection: rejectionOf(code, message) });
 
 /** The selected nodes the action may touch, or the reason none may. */
 function permitted(
@@ -62,12 +62,12 @@ function permitted(
   let refused: Rejection | undefined;
   const nodes = selected.filter((id) => {
     const answer = can(action, id);
-    if (!answer.available) refused ??= answer.reason;
+    if (!answer.available) refused ??= answer.rejection;
     return answer.available;
   });
   if (nodes.length > 0) return { nodes };
   return refused
-    ? { available: false, reason: refused }
+    ? { available: false, rejection: refused }
     : unavailable("unknown-entity", "No selected node exists");
 }
 
@@ -85,7 +85,7 @@ function transformCommand<A>(
     },
     run(args, ctx) {
       const planned = plan(ctx, args);
-      if ("available" in planned) return err(planned.reason);
+      if ("available" in planned) return err(planned.rejection);
       return ctx.model
         ? outcomeOf(ctx.model.execute(planned))
         : err(rejectionOf("unknown-entity", "The view has no editable model"));

@@ -17,7 +17,7 @@ describe("planning sees every registered validator", () => {
     });
     const can = model.can(create);
     expect(can.available).toBe(false);
-    if (!can.available) expect(can.reason.message).toBe("host says no");
+    if (!can.available) expect(can.rejection.message).toBe("host says no");
     expect(model.plan(create).kind).toBe("rejected");
     expect(model.execute(create).status).toBe("rejected");
     off();

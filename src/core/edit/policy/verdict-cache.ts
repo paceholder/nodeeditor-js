@@ -46,7 +46,7 @@ export type VerdictLookup =
   | { readonly kind: "unknown" }
   | { readonly kind: "pending" }
   | { readonly kind: "valid" }
-  | { readonly kind: "invalid"; readonly reason: Rejection };
+  | { readonly kind: "invalid"; readonly rejection: Rejection };
 
 export interface VerdictRequestOptions {
   /** Who is asking, so `cancel` and `release` abort only unwanted requests. */
@@ -209,12 +209,12 @@ export function createVerdictCache(options: VerdictCacheOptions): VerdictCache {
           "The connection changed while it was being validated",
           flight.proposal,
         );
-        settle(key, flight, { valid: false, reason: stale }, true);
+        settle(key, flight, { valid: false, rejection: stale }, true);
       }
       return;
     }
     if ("valid" in outcome) settle(key, flight, outcome, false);
-    else settle(key, flight, { valid: false, reason: outcome }, true);
+    else settle(key, flight, { valid: false, rejection: outcome }, true);
   }
 
   function launch(key: VerdictKey, flight: Flight) {
@@ -284,7 +284,7 @@ export function createVerdictCache(options: VerdictCacheOptions): VerdictCache {
       entries.set(key, entry);
       return entry.verdict.valid
         ? { kind: "valid" }
-        : { kind: "invalid", reason: entry.verdict.reason };
+        : { kind: "invalid", rejection: entry.verdict.rejection };
     },
 
     request(plan, requestOptions = {}) {

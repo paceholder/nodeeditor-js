@@ -82,7 +82,7 @@ class Checker {
   ): Rejection | undefined {
     if (!node) return undefined;
     const result = resolveCapability(action, node, this.ctx, this.before);
-    return result.ok ? undefined : result.error;
+    return result.ok ? undefined : result.rejection;
   }
 
   /** The node as it was before the patch, or as staged when the patch adds it. */

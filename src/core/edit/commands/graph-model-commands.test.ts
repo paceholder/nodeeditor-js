@@ -19,7 +19,7 @@ describe("failure events", () => {
       source: "rejection",
       origin: "local",
       rejection: {
-        code: result.status === "rejected" ? result.error.code : "",
+        code: result.status === "rejected" ? result.rejection.code : "",
       },
     });
   });
@@ -68,8 +68,8 @@ describe("availability with reasons", () => {
     const can = model.can({ kind: "undo" });
     expect(can.available).toBe(false);
     if (!can.available) {
-      expect(can.reason.code).toBe("history-unavailable");
-      expect(can.reason.message.length).toBeGreaterThan(0);
+      expect(can.rejection.code).toBe("history-unavailable");
+      expect(can.rejection.message.length).toBeGreaterThan(0);
     }
     expect(model.can({ kind: "redo" }).available).toBe(false);
     make(model, "source");
@@ -96,7 +96,7 @@ describe("availability with reasons", () => {
       moves: [{ node: a.node, position: { x: 1, y: 1 } }],
     });
     expect(can.available).toBe(false);
-    if (!can.available) expect(can.reason.code).toBe("capability-denied");
+    if (!can.available) expect(can.rejection.code).toBe("capability-denied");
   });
 });
 
@@ -110,7 +110,7 @@ describe("host capability policy", () => {
     const a = make(model, "source");
     const b = make(model, "sink");
     const result = model.connect(end(a), end(b));
-    expect(result.status === "rejected" && result.error.code).toBe(
+    expect(result.status === "rejected" && result.rejection.code).toBe(
       "capability-denied",
     );
   });
@@ -152,7 +152,7 @@ describe("paste and duplicate need fragment planners", () => {
       { kind: "duplicate", nodes: [], placement },
     ] as const) {
       const plan = api.plan(command);
-      expect(plan.kind === "rejected" && plan.error.code).toBe(
+      expect(plan.kind === "rejected" && plan.rejection.code).toBe(
         "unsupported-command",
       );
       expect(api.execute(command).status).toBe("rejected");

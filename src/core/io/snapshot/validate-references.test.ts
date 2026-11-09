@@ -5,7 +5,7 @@ import { validateSnapshot } from "./validate.js";
 function errorsOf(input: unknown) {
   const r = validateSnapshot(input);
   if (r.ok) throw new Error("expected validation to fail");
-  return r.error;
+  return r.rejection;
 }
 
 describe("reference validation", () => {

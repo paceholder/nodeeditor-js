@@ -32,7 +32,7 @@ function kindPolicy(): ConnectionPolicy {
       if (!(KINDS as readonly string[]).includes(kind)) {
         return {
           kind: "reject",
-          reason: rejectionOf("type-mismatch", `No ${kind} links`),
+          rejection: rejectionOf("type-mismatch", `No ${kind} links`),
         };
       }
       return {
@@ -111,8 +111,8 @@ describe("choosing a policy alternative", () => {
     });
     expect(again.status).toBe("rejected");
     if (again.status === "rejected") {
-      expect(again.error.code).toBe("choice-required");
-      expect(again.error.message).toContain("fast");
+      expect(again.rejection.code).toBe("choice-required");
+      expect(again.rejection.message).toContain("fast");
     }
     expect(model.reader.connections()).toEqual([]);
     expect(asking.reader.connections()).toEqual([]);
@@ -138,7 +138,7 @@ describe("choosing a policy alternative", () => {
     });
     expect(r.status).toBe("rejected");
     if (r.status === "rejected")
-      expect(r.error.code).toBe("capacity-exhausted");
+      expect(r.rejection.code).toBe("capacity-exhausted");
     expect(model.reader.connections()).toHaveLength(1);
   });
 });

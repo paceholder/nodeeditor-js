@@ -125,7 +125,7 @@ export function createClipboardService(
     if (!model) return err(NO_MODEL);
     const parsed = parseFragmentText(text, parseOptions);
     if (!parsed.ok) {
-      const [first] = parsed.error;
+      const [first] = parsed.rejection;
       return err(
         first ? rejectionOf(first.code, first.message, first.entities) : EMPTY,
       );
@@ -165,7 +165,7 @@ export function createClipboardService(
         nodes: selection.nodeIds(),
         connections: selection.connectionIds(),
       });
-      if (result.status === "rejected") return err(result.error);
+      if (result.status === "rejected") return err(result.rejection);
       if (result.status === "choice-required" || result.status === "unverified")
         return err(
           rejectionOf("pending-validation", "The delete was not applied"),
@@ -220,15 +220,15 @@ export function createClipboardService(
     buffer: () => buffer,
     canPaste(text) {
       if (isLocked()) return LOCKED;
-      if (!model) return { available: false, reason: NO_MODEL };
+      if (!model) return { available: false, rejection: NO_MODEL };
       const source = text ?? buffer;
-      if (source === undefined) return { available: false, reason: EMPTY };
+      if (source === undefined) return { available: false, rejection: EMPTY };
       const parsed = parseFragmentText(source, parseOptions);
       if (!parsed.ok) {
-        const [first] = parsed.error;
+        const [first] = parsed.rejection;
         return {
           available: false,
-          reason: first
+          rejection: first
             ? rejectionOf(first.code, first.message, first.entities)
             : EMPTY,
         };
@@ -243,12 +243,12 @@ export function createClipboardService(
     },
     canDuplicate() {
       if (isLocked()) return LOCKED;
-      if (!model) return { available: false, reason: NO_MODEL };
+      if (!model) return { available: false, rejection: NO_MODEL };
       const nodes = selection.nodeIds();
       if (nodes.length === 0) {
         return {
           available: false,
-          reason: rejectionOf("empty-fragment", "Select at least one node"),
+          rejection: rejectionOf("empty-fragment", "Select at least one node"),
         };
       }
       return model.can({

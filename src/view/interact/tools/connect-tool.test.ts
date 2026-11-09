@@ -468,7 +468,7 @@ describe("connect tool waits for a host verdict", () => {
       "aR",
       "bL",
     ]);
-    await calls[0]?.answer({ valid: false, reason });
+    await calls[0]?.answer({ valid: false, rejection: reason });
     expect(h.router.activeTool).toBeUndefined();
     expect(h.log.commits).toEqual([]);
     expect(h.log.previews.at(-1)).toBeNull();

@@ -12,7 +12,7 @@ import { end, make, makeModel } from "./test-kit.js";
 
 const refusal = {
   valid: false,
-  reason: { code: "type-mismatch", message: "Not allowed", entities: [] },
+  rejection: { code: "type-mismatch", message: "Not allowed", entities: [] },
 } as const satisfies ConnectionVerdict;
 
 /** A model whose connections need a host verdict, with a tool-like way to obtain one. */
@@ -140,7 +140,7 @@ describe("commit after the tool obtained a verdict", () => {
     });
     expect(result).toMatchObject({
       status: "rejected",
-      error: { code: "pending-validation" },
+      rejection: { code: "pending-validation" },
     });
   });
 
@@ -204,7 +204,7 @@ describe("undo and redo restore an accepted state", () => {
     const result = model.undo();
     expect(result).toMatchObject({
       status: "rejected",
-      error: { code: "type-mismatch" },
+      rejection: { code: "type-mismatch" },
     });
     expect(model.reader.connections()).toEqual([]);
   });

@@ -4,7 +4,7 @@ import { createDefaultConnectionPolicy } from "./default-policy.js";
 import type { PolicyOutcome } from "./types.js";
 
 function code(outcome: PolicyOutcome): string {
-  return outcome.kind === "reject" ? outcome.reason.code : outcome.kind;
+  return outcome.kind === "reject" ? outcome.rejection.code : outcome.kind;
 }
 
 describe("default directed preset", () => {
@@ -56,7 +56,7 @@ describe("default directed preset", () => {
     const second = model.connect(end(b), end(dst));
     expect(second.status).toBe("rejected");
     if (second.status === "rejected")
-      expect(second.error.code).toBe("capacity-exhausted");
+      expect(second.rejection.code).toBe("capacity-exhausted");
   });
 
   it("allows a cycle through three different nodes", () => {
@@ -128,7 +128,7 @@ describe("default undirected preset", () => {
     const reverse = model.connect(end(s2), end(s1));
     expect(reverse.status).toBe("rejected");
     if (reverse.status === "rejected")
-      expect(reverse.error.code).toBe("duplicate-connection");
+      expect(reverse.rejection.code).toBe("duplicate-connection");
   });
 });
 

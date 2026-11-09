@@ -24,7 +24,7 @@ export function demoValidator(
           target?.title === "Vent valve"
             ? {
                 valid: false,
-                reason: rejectionOf(
+                rejection: rejectionOf(
                   "capability-denied",
                   "The plant refuses to feed the vent valve",
                   [proposal.to.port],

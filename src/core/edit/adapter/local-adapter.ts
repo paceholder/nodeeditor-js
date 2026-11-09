@@ -136,21 +136,18 @@ export function createLocalAdapter(
   const revision = (): Revision => toRevision(`r${store.revision()}`);
   const mint = (): OperationId => toOperationId(`op${++operations}`);
 
-  function reject(
-    sub: Submission,
-    error: ReturnType<typeof rejectionOf>,
-  ): Rejected {
+  function reject(sub: Submission, rejection: Rejection): Rejected {
     hub.emit("failure", {
       source: "rejection",
       operationId: sub.operationId,
       origin: sub.origin,
-      rejection: error,
+      rejection,
     });
     return {
       ok: false,
       status: "rejected",
       operationId: sub.operationId,
-      error,
+      rejection,
     };
   }
 
@@ -159,7 +156,7 @@ export function createLocalAdapter(
       origin: sub.origin,
       operationId: sub.operationId,
     });
-    if (!result.ok) return reject(sub, result.error);
+    if (!result.ok) return reject(sub, result.rejection);
     const applied = result.value;
     cursor = advanceCursor(generator, cursor, sub.patch);
     if (applied.patch.ops.length > 0)
@@ -200,7 +197,7 @@ export function createLocalAdapter(
       ok: false,
       status: "rejected",
       operationId,
-      error: rejectionOf(
+      rejection: rejectionOf(
         "disposed",
         "The model was disposed before this edit ran",
       ),
@@ -257,7 +254,7 @@ export function createLocalAdapter(
       const what = kind === "undo" ? "Undo" : "Redo";
       history.drop(
         kind,
-        `${what} is no longer possible: ${result.error.message}`,
+        `${what} is no longer possible: ${result.rejection.message}`,
       );
       hub.emit("history", history.state());
     }

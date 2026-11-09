@@ -79,7 +79,7 @@ describe("resizing through the model", () => {
       ],
     });
     const denied = model.resizeNode(a.id, { width: 80, height: 40 });
-    expect(denied.status === "rejected" && denied.error.code).toBe(
+    expect(denied.status === "rejected" && denied.rejection.code).toBe(
       "capability-denied",
     );
     expect(model.reader.getNode(a.id)?.size).toEqual(SIZE);
@@ -91,7 +91,7 @@ describe("resizing through the model", () => {
     });
     expect(loadSnapshot(viewOnly, exportSnapshot(model)).ok).toBe(true);
     const refused = viewOnly.resizeNode(a.id, { width: 80, height: 40 });
-    expect(refused.status === "rejected" && refused.error.code).toBe(
+    expect(refused.status === "rejected" && refused.rejection.code).toBe(
       "capability-denied",
     );
     expect(viewOnly.reader.getNode(a.id)?.size).toEqual(SIZE);

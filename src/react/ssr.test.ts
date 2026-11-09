@@ -103,7 +103,7 @@ describe("react entry in Node", () => {
     expect(seen[6]).toBeUndefined();
     expect(seen[7]).toMatchObject({
       available: false,
-      reason: expect.anything(),
+      rejection: expect.anything(),
     });
     expect(String((seen[7] as { run(): { ok: boolean } }).run().ok)).toBe(
       "false",

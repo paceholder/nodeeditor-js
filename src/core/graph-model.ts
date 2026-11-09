@@ -103,7 +103,7 @@ export interface GraphModelCore {
   readonly idGenerator: IdGenerator;
   /**
    * Apply a patch atomically. Outcomes: `accepted` (committed, the reader already shows
-   * it), `rejected` (nothing changed; see `error`), or `queued` when called from inside
+   * it), `rejected` (nothing changed; see `rejection`), or `queued` when called from inside
    * an event handler (applied after the current dispatch; await `settled`). Check
    * `status`: a queued result has no `ok`.
    */

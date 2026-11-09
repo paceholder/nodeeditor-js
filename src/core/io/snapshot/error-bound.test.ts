@@ -17,8 +17,8 @@ describe("error lists are bounded", () => {
   it("100,000 malformed nodes give 100 errors and one saying how many were left out", () => {
     const r = validateSnapshot(graph(junk(100_000)));
     if (r.ok) throw new Error("expected errors");
-    expect(r.error).toHaveLength(101);
-    const last = r.error.at(-1);
+    expect(r.rejection).toHaveLength(101);
+    const last = r.rejection.at(-1);
     expect(last?.code).toBe("limit-exceeded");
     expect(last?.path).toBe("");
     expect(last?.message).toMatch(/^699900 more errors were omitted/);
@@ -26,7 +26,7 @@ describe("error lists are bounded", () => {
 
   it("a host can choose the bound", () => {
     const r = validateSnapshot(graph(junk(3)), { limits: { maxErrors: 4 } });
-    expect(!r.ok && r.error).toHaveLength(5);
+    expect(!r.ok && r.rejection).toHaveLength(5);
   });
 
   it("fragments and document selections are bounded too", () => {
@@ -36,7 +36,7 @@ describe("error lists are bounded", () => {
       fragment: graph(junk(1000)),
       external: junk(1000),
     });
-    expect(!fragment.ok && fragment.error).toHaveLength(101);
+    expect(!fragment.ok && fragment.rejection).toHaveLength(101);
     const model = makeTestModel();
     const selection = Array.from({ length: 1000 }, (_, i) => `n${i + 1}`);
     const doc = loadDocument(
@@ -48,6 +48,6 @@ describe("error lists are bounded", () => {
         selection,
       }),
     );
-    expect(!doc.ok && doc.error).toHaveLength(101);
+    expect(!doc.ok && doc.rejection).toHaveLength(101);
   });
 });

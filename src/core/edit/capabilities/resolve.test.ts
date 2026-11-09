@@ -21,7 +21,7 @@ describe("capability resolution order", () => {
     const c = ctx({ typeDefaults: () => ({ move: false }) });
     const denied = resolveCapability("move", node, c, graph);
     expect(denied.ok).toBe(false);
-    if (!denied.ok) expect(denied.error.code).toBe("capability-denied");
+    if (!denied.ok) expect(denied.rejection.code).toBe("capability-denied");
     const overridden = mkNode("n1", { capabilities: { move: true } });
     expect(resolveCapability("move", overridden, c, graph).ok).toBe(true);
   });

@@ -13,7 +13,7 @@ describe("local history size limit", () => {
     expect(model.undo().status).toBe("accepted");
     expect(model.undo().status).toBe("accepted");
     const third = model.undo();
-    expect(third.status === "rejected" && third.error.code).toBe(
+    expect(third.status === "rejected" && third.rejection.code).toBe(
       "history-unavailable",
     );
     expect(model.reader.nodes().map((n) => n.id)).toEqual(["a"]);

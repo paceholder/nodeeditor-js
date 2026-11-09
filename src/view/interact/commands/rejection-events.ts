@@ -37,7 +37,7 @@ const POLICY_CODES: ReadonlySet<RejectionCode> = new Set([
 ]);
 
 function refusal(result: ExecuteResult | SubmitResult): Rejection | undefined {
-  if (result.status === "rejected") return result.error;
+  if (result.status === "rejected") return result.rejection;
   if (result.status === "unverified") {
     return rejectionOf(
       "pending-validation",

@@ -32,26 +32,26 @@ describe("applying a patch", () => {
       ],
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("conflict");
+    if (!result.ok) expect(result.rejection.code).toBe("conflict");
     expect(JSON.stringify(reader.state())).toBe(before);
   });
 
   it("rejects an add with an existing ID with duplicate-id", () => {
     const { apply } = seeded();
     const r = apply({ ops: [addNode("n1")] });
-    expect(!r.ok && r.error.code).toBe("duplicate-id");
+    expect(!r.ok && r.rejection.code).toBe("duplicate-id");
     // IDs are shared across kinds.
     const r2 = apply({
       ops: [{ op: "add", entity: "port", record: mkPort("n1", "n2") }],
     });
-    expect(!r2.ok && r2.error.code).toBe("duplicate-id");
+    expect(!r2.ok && r2.rejection.code).toBe("duplicate-id");
   });
 
   it("rejects unknown entities, immutable fields and bad records", () => {
     const { apply } = seeded();
     const code = (patch: Patch) => {
       const r = apply(patch);
-      return r.ok ? "ok" : r.error.code;
+      return r.ok ? "ok" : r.rejection.code;
     };
     const upd = (id: string, fields: object) =>
       ({
@@ -148,7 +148,7 @@ describe("port change integrity", () => {
         },
       ],
     });
-    expect(!r.ok && r.error.code).toBe("dangling-reference");
+    expect(!r.ok && r.rejection.code).toBe("dangling-reference");
     expect(reader.getPort(portId("p2"))).toBeDefined();
   });
 
@@ -165,7 +165,7 @@ describe("port change integrity", () => {
         { op: "remove", entity: "port", record: mkPort("p3", "n2"), seq: 5 },
       ],
     });
-    expect(!r.ok && r.error.code).toBe("dangling-reference");
+    expect(!r.ok && r.rejection.code).toBe("dangling-reference");
   });
 
   it("rejects removing a node that still has ports or connections", () => {
@@ -180,6 +180,6 @@ describe("port change integrity", () => {
         },
       ],
     });
-    expect(!r.ok && r.error.code).toBe("dangling-reference");
+    expect(!r.ok && r.rejection.code).toBe("dangling-reference");
   });
 });

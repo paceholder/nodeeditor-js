@@ -48,9 +48,9 @@ describe("host verdicts are cleared right after commit", () => {
     model.createNode("sink", { x: 600, y: 0 });
     const [, added] = (await Promise.all(settled)) as [
       unknown,
-      { status: string; error?: { code: string } },
+      { status: string; rejection?: { code: string } },
     ];
     expect(added.status).toBe("rejected");
-    expect(added.error?.code).toBe("pending-validation");
+    expect(added.rejection?.code).toBe("pending-validation");
   });
 });

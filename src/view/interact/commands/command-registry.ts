@@ -30,7 +30,7 @@ export function outcomeOf(
     case "accepted":
       return ok({ changed: true });
     case "rejected":
-      return err(result.error);
+      return err(result.rejection);
     case "queued":
     case "pending":
       return ok({ changed: false });
@@ -107,13 +107,13 @@ export function createCommandRegistry(
       const availability = command.availability(args, ctx);
       return availability.available
         ? command.run(args, ctx)
-        : err(availability.reason);
+        : err(availability.rejection);
     },
     availability(id, args) {
       const command = commands.get(id);
-      if (!command) return { available: false, reason: unknownCommand(id) };
+      if (!command) return { available: false, rejection: unknownCommand(id) };
       return locked() && !command.allowWhenLocked
-        ? { available: false, reason: VIEW_LOCKED }
+        ? { available: false, rejection: VIEW_LOCKED }
         : command.availability(args, context());
     },
     list: () =>

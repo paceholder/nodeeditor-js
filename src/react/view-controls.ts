@@ -145,7 +145,7 @@ export function ViewControls(props: ViewControlsProps): ReactNode {
     name: string,
     state: {
       available: boolean;
-      reason?: { message: string } | undefined;
+      rejection?: { message: string } | undefined;
       run(): unknown;
     },
   ): ReactNode =>
@@ -157,7 +157,7 @@ export function ViewControls(props: ViewControlsProps): ReactNode {
             label: label(which),
             className: `nodeeditor-controls__${name}`,
             disabled: !state.available,
-            ...(state.reason ? { title: state.reason.message } : {}),
+            ...(state.rejection ? { title: state.rejection.message } : {}),
             onClick: () => void state.run(),
           },
           glyph(which),

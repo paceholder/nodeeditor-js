@@ -81,7 +81,7 @@ export function installContextMenu(view: ViewHandle): () => void {
       item.setAttribute("role", "menuitem");
       item.textContent = label;
       item.disabled = !state.available;
-      if (!state.available) item.title = state.reason.message;
+      if (!state.available) item.title = state.rejection.message;
       item.addEventListener("click", () => {
         view.commands.run(id, args);
         close(true);

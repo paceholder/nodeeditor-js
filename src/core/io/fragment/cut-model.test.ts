@@ -44,7 +44,7 @@ describe("cut as copy plus atomic delete", () => {
     const a = make(model, "pipe");
     const can = model.can({ kind: "deleteEntities", nodes: [a.node] });
     expect(can.available).toBe(false);
-    if (!can.available) expect(can.reason.code).toBe("capability-denied");
+    if (!can.available) expect(can.rejection.code).toBe("capability-denied");
     expect(model.reader.nodes()).toHaveLength(1);
   });
 });

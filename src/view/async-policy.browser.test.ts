@@ -159,7 +159,7 @@ describe("pending target resolution in a mounted view", () => {
     dragTo(pointer);
     await calls[0]?.answer({
       valid: false,
-      reason: rejectionOf("type-mismatch", "Signals do not mix here", [
+      rejection: rejectionOf("type-mismatch", "Signals do not mix here", [
         "aR",
         "bL",
       ]),
@@ -364,7 +364,7 @@ describe("a picked alternative is judged by the host validator", () => {
     dragTo(pointer);
     await calls[0]?.answer({
       valid: false,
-      reason: rejectionOf("type-mismatch", "Slow links do not fit here", [
+      rejection: rejectionOf("type-mismatch", "Slow links do not fit here", [
         "aR",
         "bL",
       ]),

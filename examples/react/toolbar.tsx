@@ -28,7 +28,7 @@ export function Toolbar() {
       <button
         type="button"
         disabled={!del.available}
-        title={del.reason?.message ?? "Delete the selection"}
+        title={del.rejection?.message ?? "Delete the selection"}
         onClick={del.run}
       >
         Delete

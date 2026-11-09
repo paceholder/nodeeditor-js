@@ -24,7 +24,7 @@ export function executeAndSelect(
   const plan = model.plan(command);
   switch (plan.kind) {
     case "rejected":
-      return err(plan.error);
+      return err(plan.rejection);
     case "choice":
       return err(rejectionOf("choice-required", "A choice is required"));
     case "pending":
@@ -48,7 +48,7 @@ export function executeAndSelect(
       });
       return ok({ status: "pending", created, excluded });
     case "rejected":
-      return err(result.error);
+      return err(result.rejection);
     case "choice-required":
       return err(rejectionOf("choice-required", "A choice is required"));
     case "unverified":

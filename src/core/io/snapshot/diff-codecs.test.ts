@@ -75,7 +75,7 @@ describe("snapshot diff honours payload codecs", () => {
     };
     const { model, codecs } = loaded(failing);
     const diff = diffSnapshot(model.reader, snapshot(5), { codecs });
-    expect(!diff.ok && diff.error.map((e) => e.path)).toEqual([
+    expect(!diff.ok && diff.rejection.map((e) => e.path)).toEqual([
       "nodes[0].payload",
     ]);
     const throwing = createPayloadCodecRegistry();

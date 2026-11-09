@@ -72,7 +72,7 @@ describe("builtin commands", () => {
     h.selection.replace([nodeKey(nodeId("a"))]);
     const a = commands.availability(COMMAND_IDS.delete);
     expect(a.available).toBe(false);
-    if (!a.available) expect(a.reason.code).toBe("capability-denied");
+    if (!a.available) expect(a.rejection.code).toBe("capability-denied");
     const r = commands.run(COMMAND_IDS.delete);
     expect(r.ok).toBe(false);
     expect(h.model.reader.nodes()).toHaveLength(2);
@@ -228,7 +228,7 @@ describe("rotate and mirror commands", () => {
     expect(h.model.reader.nodes().map((n) => n.rotation)).toEqual([1, 0, 1]);
     h.selection.replace([nodeKey(nodeId("b"))]);
     const a = commands.availability(COMMAND_IDS.rotate, { turns: 1 });
-    expect(a.available === false && a.reason.code).toBe("capability-denied");
+    expect(a.available === false && a.rejection.code).toBe("capability-denied");
   });
 
   it("an empty selection is unavailable", () => {
@@ -244,8 +244,8 @@ describe("rotate and mirror commands", () => {
 });
 
 describe("clipboard commands", () => {
-  const reasonOf = (a: { available: boolean; reason?: { code: string } }) =>
-    a.available ? undefined : a.reason?.code;
+  const reasonOf = (a: { available: boolean; rejection?: { code: string } }) =>
+    a.available ? undefined : a.rejection?.code;
 
   it("availability explains each refusal", () => {
     const { h, commands } = setup({
@@ -283,7 +283,7 @@ describe("clipboard commands", () => {
     });
     expect(clipboard.importText(text.ok ? text.value : "").ok).toBe(false);
     const a = clipboard.canPaste(text.ok ? text.value : "");
-    expect(!a.available && a.reason.message).toMatch(/read-only/);
+    expect(!a.available && a.rejection.message).toMatch(/read-only/);
     expect(commands.run(COMMAND_IDS.paste).ok).toBe(false);
   });
 

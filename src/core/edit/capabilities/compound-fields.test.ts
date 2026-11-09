@@ -30,7 +30,9 @@ function update(model: GraphModel, id: NodeId, fields: NodeFieldChanges) {
 }
 
 function refusal(result: ReturnType<GraphModel["submit"]>) {
-  return result.status === "rejected" ? result.error.message : result.status;
+  return result.status === "rejected"
+    ? result.rejection.message
+    : result.status;
 }
 
 describe("compound capability rules", () => {

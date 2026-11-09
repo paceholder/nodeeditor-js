@@ -170,7 +170,7 @@ export function capabilityProbe(model: {
     if (!node) {
       return {
         available: false,
-        reason: rejectionOf("unknown-entity", `Node ${id} does not exist`, [
+        rejection: rejectionOf("unknown-entity", `Node ${id} does not exist`, [
           id,
         ]),
       };
@@ -193,7 +193,7 @@ export function capabilityProbe(model: {
           ? model.can({ kind: "resizeNode", node: id, size })
           : {
               available: false,
-              reason: rejectionOf(
+              rejection: rejectionOf(
                 "out-of-range",
                 `Node ${id} has a fixed size`,
                 [id],

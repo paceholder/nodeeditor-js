@@ -58,7 +58,7 @@ describe("fragment extraction", () => {
   it("rejects a selection without nodes as empty-fragment", () => {
     const { model, ab } = chain();
     const r = extractFragment(model.reader, { nodes: [], connections: [ab] });
-    expect(!r.ok && r.error.code).toBe("empty-fragment");
+    expect(!r.ok && r.rejection.code).toBe("empty-fragment");
   });
 });
 
@@ -106,8 +106,8 @@ describe("payload codecs on copy", () => {
     const a = make(model, "pipe");
     setRawPayload(model, a.node, { when: new Date(5) });
     const bare = extractFragment(model.reader, { nodes: [a.node] });
-    expect(!bare.ok && bare.error.code).toBe("non-json-payload");
-    expect(!bare.ok && bare.error.entities).toEqual([a.node]);
+    expect(!bare.ok && bare.rejection.code).toBe("non-json-payload");
+    expect(!bare.ok && bare.rejection.entities).toEqual([a.node]);
     const coded = extractFragment(
       model.reader,
       { nodes: [a.node] },

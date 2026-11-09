@@ -65,7 +65,7 @@ export function loadedModel(
   const model = makeTestModel(registerPipe);
   const result = loadSnapshot(model, input);
   if (!result.ok)
-    throw new Error(`fixture failed: ${JSON.stringify(result.error)}`);
+    throw new Error(`fixture failed: ${JSON.stringify(result.rejection)}`);
   return model;
 }
 

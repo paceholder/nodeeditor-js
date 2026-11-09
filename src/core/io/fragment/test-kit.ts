@@ -84,6 +84,6 @@ export function fragmentOf(
   nodes: readonly NodeId[],
 ): ClipboardFragment {
   const r = extractFragment(model.reader, { nodes });
-  if (!r.ok) throw new Error(`extract failed: ${r.error.message}`);
+  if (!r.ok) throw new Error(`extract failed: ${r.rejection.message}`);
   return r.value.fragment;
 }

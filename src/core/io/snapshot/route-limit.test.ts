@@ -45,7 +45,7 @@ describe("route constraints are bounded", () => {
       true,
     );
     const r = validateConnectionRecord({ ...base, route: pins(257) });
-    expect(!r.ok && r.error.code).toBe("limit-exceeded");
+    expect(!r.ok && r.rejection.code).toBe("limit-exceeded");
   });
 
   it("a snapshot route with a million pins fails fast at the route path", () => {
@@ -53,7 +53,7 @@ describe("route constraints are bounded", () => {
     const started = Date.now();
     const r = validateSnapshot(input);
     expect(Date.now() - started).toBeLessThan(100);
-    expect(!r.ok && r.error.map((e) => [e.code, e.path])).toEqual([
+    expect(!r.ok && r.rejection.map((e) => [e.code, e.path])).toEqual([
       ["limit-exceeded", "connections[0].route"],
     ]);
   });
@@ -62,7 +62,7 @@ describe("route constraints are bounded", () => {
     const r = validateSnapshot(snapshotWithRoute(pins(5)), {
       limits: { maxRouteConstraints: 4 },
     });
-    expect(!r.ok && r.error.map((e) => e.code)).toEqual(["limit-exceeded"]);
+    expect(!r.ok && r.rejection.map((e) => e.code)).toEqual(["limit-exceeded"]);
     expect(validateSnapshot(snapshotWithRoute(pins(4))).ok).toBe(true);
   });
 
@@ -84,6 +84,6 @@ describe("route constraints are bounded", () => {
         },
       ],
     });
-    expect(r.status === "rejected" && r.error.code).toBe("limit-exceeded");
+    expect(r.status === "rejected" && r.rejection.code).toBe("limit-exceeded");
   });
 });

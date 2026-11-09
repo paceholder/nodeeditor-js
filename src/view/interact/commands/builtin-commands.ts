@@ -64,12 +64,12 @@ export const COMMAND_IDS = deepFreeze({
 
 interface Refusal {
   readonly available: false;
-  readonly reason: Rejection;
+  readonly rejection: Rejection;
 }
 
 const refusal = (message: string, ids: readonly string[] = []): Refusal => ({
   available: false,
-  reason: rejectionOf("unknown-entity", message, ids),
+  rejection: rejectionOf("unknown-entity", message, ids),
 });
 
 const READ_ONLY: Refusal = refusal("The view has no editable model");
@@ -97,11 +97,11 @@ function modelEdit<A>(
     run(args, ctx) {
       const r = resolve(ctx, args);
       if ("available" in r) {
-        return err(r.reason);
+        return err(r.rejection);
       }
       return ctx.model
         ? outcomeOf(ctx.model.execute(r))
-        : err(READ_ONLY.reason);
+        : err(READ_ONLY.rejection);
     },
   };
 }
@@ -161,7 +161,7 @@ function history(direction: "undo" | "redo"): EditorCommand {
     run: (_args, { model }) =>
       model
         ? outcomeOf(direction === "undo" ? model.undo() : model.redo())
-        : err(READ_ONLY.reason),
+        : err(READ_ONLY.rejection),
   };
 }
 

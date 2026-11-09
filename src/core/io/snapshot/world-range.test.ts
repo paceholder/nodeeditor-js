@@ -23,7 +23,7 @@ describe("records stay inside the supported world range", () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.error.map((e) => [e.code, e.path])).toEqual([
+      expect(r.rejection.map((e) => [e.code, e.path])).toEqual([
         ["out-of-range", "nodes[2]"],
       ]);
     }
@@ -50,6 +50,6 @@ describe("records stay inside the supported world range", () => {
         },
       ],
     });
-    expect(!r.ok && r.error.map((e) => e.code)).toEqual(["out-of-range"]);
+    expect(!r.ok && r.rejection.map((e) => e.code)).toEqual(["out-of-range"]);
   });
 });

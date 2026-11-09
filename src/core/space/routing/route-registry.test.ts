@@ -33,7 +33,7 @@ describe("route registry", () => {
     expect(routes.register("direct", straight).ok).toBe(true);
     const again = routes.register("direct", createBezierRouter());
     expect(again.ok).toBe(false);
-    if (!again.ok) expect(again.error.code).toBe("duplicate-type");
+    if (!again.ok) expect(again.rejection.code).toBe("duplicate-type");
     expect(routes.get("direct")).toBe(straight);
     const orthogonal = createOrthogonalRouter();
     routes.replace("delayed", orthogonal);

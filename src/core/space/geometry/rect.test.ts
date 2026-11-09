@@ -34,9 +34,9 @@ describe("rectangles and finite ranges", () => {
     expect(isFiniteRect(rect(0, 0, -1, 1))).toBe(false);
     const bad = checkWorldPoint({ x: Number.POSITIVE_INFINITY, y: 0 });
     expect(bad.ok).toBe(false);
-    if (!bad.ok) expect(bad.error.code).toBe("non-finite");
+    if (!bad.ok) expect(bad.rejection.code).toBe("non-finite");
     const far = checkWorldPoint({ x: MAX_WORLD_COORD * 2, y: 0 });
-    if (!far.ok) expect(far.error.code).toBe("out-of-range");
+    if (!far.ok) expect(far.rejection.code).toBe("out-of-range");
     expect(far.ok).toBe(false);
     expect(isInWorldRange({ x: MAX_WORLD_COORD, y: -MAX_WORLD_COORD })).toBe(
       true,

@@ -120,7 +120,7 @@ describe("the model owns the verdict cache", () => {
     await vi.advanceTimersByTimeAsync(50);
     expect(await answer).toMatchObject({
       valid: false,
-      reason: { code: "validator-timeout" },
+      rejection: { code: "validator-timeout" },
     });
   });
 });

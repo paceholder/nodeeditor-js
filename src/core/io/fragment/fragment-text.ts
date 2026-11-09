@@ -92,10 +92,10 @@ function decodePayloads(
     const decoded = runCodec(() => codec.decode(node.payload));
     if (decoded.ok) return decoded.value;
     sink.add(
-      decoded.error.code,
-      decoded.error.message,
+      decoded.rejection.code,
+      decoded.rejection.message,
       `fragment.nodes[${i}].payload`,
-      [node.id, ...decoded.error.entities],
+      [node.id, ...decoded.rejection.entities],
     );
     return null;
   });

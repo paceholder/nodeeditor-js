@@ -5,7 +5,7 @@ import { validateSnapshot } from "./validate.js";
 function errorsOf(input: unknown, options = {}) {
   const r = validateSnapshot(input, options);
   if (r.ok) throw new Error("expected validation to fail");
-  return r.error;
+  return r.rejection;
 }
 
 function withNode(patch: Record<string, unknown>): Record<string, unknown> {

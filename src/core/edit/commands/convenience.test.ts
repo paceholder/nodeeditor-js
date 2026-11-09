@@ -68,7 +68,7 @@ describe("convenience methods equal commands", () => {
     expect(viaMethod.status).toBe("rejected");
     expect(viaCommand.status).toBe("rejected");
     if (viaMethod.status === "rejected" && viaCommand.status === "rejected") {
-      expect(viaMethod.error).toEqual(viaCommand.error);
+      expect(viaMethod.rejection).toEqual(viaCommand.rejection);
     }
   });
 });

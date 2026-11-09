@@ -38,7 +38,7 @@ describe("validated policy", () => {
     );
     expect(outcome).toMatchObject({
       kind: "reject",
-      reason: { code: "direction-mismatch" },
+      rejection: { code: "direction-mismatch" },
     });
     expect(calls()).toBe(0);
   });
@@ -73,14 +73,17 @@ describe("validated policy", () => {
       message: "Not these two",
       entities: [],
     };
-    const { policy, cache, model, src, dst } = setup({ valid: false, reason });
+    const { policy, cache, model, src, dst } = setup({
+      valid: false,
+      rejection: reason,
+    });
     const proposal = { from: end(src), to: end(dst) };
     const pending = policy.evaluate(proposal, model.reader);
     if (pending.kind !== "pending" || !pending.plan) throw new Error("no plan");
     await cache.request(pending.plan);
     expect(policy.evaluate(proposal, model.reader)).toEqual({
       kind: "reject",
-      reason,
+      rejection: reason,
     });
   });
 

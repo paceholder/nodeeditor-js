@@ -26,8 +26,8 @@ describe("one policy for all input routes", () => {
     });
     expect(viaPatch.status).toBe("rejected");
     if (viaPatch.status === "rejected" && viaCommand.status === "rejected") {
-      expect(viaPatch.error.code).toBe("direction-mismatch");
-      expect(viaPatch.error.code).toBe(viaCommand.error.code);
+      expect(viaPatch.rejection.code).toBe("direction-mismatch");
+      expect(viaPatch.rejection.code).toBe(viaCommand.rejection.code);
     }
     expect(model.reader.connections()).toEqual([]);
   });
@@ -72,7 +72,7 @@ describe("one policy for all input routes", () => {
     });
     expect(result.status).toBe("rejected");
     if (result.status === "rejected")
-      expect(result.error.code).toBe("type-mismatch");
+      expect(result.rejection.code).toBe("type-mismatch");
   });
 });
 
@@ -104,7 +104,7 @@ describe("commit-time revalidation", () => {
     const stale = model.submit(plan.patch);
     expect(stale.status).toBe("rejected");
     if (stale.status === "rejected")
-      expect(stale.error.code).toBe("capacity-exhausted");
+      expect(stale.rejection.code).toBe("capacity-exhausted");
     expect(model.reader.connections()).toHaveLength(1);
   });
 });
@@ -215,7 +215,8 @@ describe("structured policy outcomes", () => {
         ],
       });
       expect(result.status).toBe("rejected");
-      if (result.status === "rejected") expect(result.error.code).toBe(code);
+      if (result.status === "rejected")
+        expect(result.rejection.code).toBe(code);
     }
   });
 });

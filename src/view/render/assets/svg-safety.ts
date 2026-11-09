@@ -22,7 +22,7 @@ export interface SvgViolation {
 
 export type SvgScreen =
   | { readonly ok: true; readonly value: SvgInfo }
-  | { readonly ok: false; readonly error: SvgViolation };
+  | { readonly ok: false; readonly rejection: SvgViolation };
 
 const FORBIDDEN_ELEMENTS: ReadonlySet<string> = new Set([
   "script",
@@ -43,7 +43,10 @@ const DEFAULT_SIDE = 100;
 /** Longest intrinsic side kept; larger declared sizes are scaled down to it. */
 export const MAX_SVG_SIDE = 4096;
 
-const bad = (reason: string): SvgScreen => ({ ok: false, error: { reason } });
+const bad = (reason: string): SvgScreen => ({
+  ok: false,
+  rejection: { reason },
+});
 
 /** True when `value` is a reference that stays inside the document or is inline image data. */
 function isLocalRef(value: string): boolean {

@@ -126,10 +126,10 @@ export function parseConnection(
   const checked = validateConnectionRecord(connectionToRecord(connection));
   if (!checked.ok) {
     sink.add(
-      checked.error.code,
-      checked.error.message,
+      checked.rejection.code,
+      checked.rejection.message,
       path,
-      checked.error.entities,
+      checked.rejection.entities,
     );
     return undefined;
   }

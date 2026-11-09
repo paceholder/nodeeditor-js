@@ -51,21 +51,21 @@ function needNode(ctx: CommandContext): Availability {
   if (!ctx.reader) {
     return {
       available: false,
-      reason: rejectionOf("unknown-entity", "The view has no model"),
+      rejection: rejectionOf("unknown-entity", "The view has no model"),
     };
   }
   return ctx.selection.nodeIds().length > 0
     ? OK
     : {
         available: false,
-        reason: rejectionOf("empty-fragment", "Select at least one node"),
+        rejection: rejectionOf("empty-fragment", "Select at least one node"),
       };
 }
 
 const changed = (
   r: Result<unknown, Rejection>,
   yes: boolean,
-): CommandOutcome => (r.ok ? ok({ changed: yes }) : err(r.error));
+): CommandOutcome => (r.ok ? ok({ changed: yes }) : err(r.rejection));
 
 function command<A>(
   id: string,
@@ -102,7 +102,7 @@ export function registerClipboardCommands(
         if (!ctx.model) {
           return {
             available: false,
-            reason: rejectionOf(
+            rejection: rejectionOf(
               "unknown-entity",
               "The view has no editable model",
             ),

@@ -37,9 +37,9 @@ export function createPayloadDiffer(
       const r = step();
       if (r.ok) return { value: r.value };
       errors.push({
-        ...r.error,
+        ...r.rejection,
         path,
-        entities: [snap.id, ...r.error.entities],
+        entities: [snap.id, ...r.rejection.entities],
       });
     } catch (error) {
       errors.push({

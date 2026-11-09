@@ -106,7 +106,7 @@ describe("connection-rejected", () => {
                   ok: false,
                   status: "rejected",
                   operationId: "op-test" as OperationId,
-                  error: refusal,
+                  rejection: refusal,
                 }
               : m.execute(command);
           },

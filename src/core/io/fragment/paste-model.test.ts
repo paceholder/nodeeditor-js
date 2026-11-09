@@ -62,7 +62,7 @@ describe("paste is validated before anything changes", () => {
     const fragment = chainOfThree(model);
     const revision = model.revision();
     const result = model.execute({ kind: "paste", fragment, placement });
-    expect(result.status === "rejected" && result.error.code).toBe(
+    expect(result.status === "rejected" && result.rejection.code).toBe(
       "limit-exceeded",
     );
     expect(model.revision()).toBe(revision);
@@ -75,8 +75,8 @@ describe("paste is validated before anything changes", () => {
     const can = model.can({ kind: "paste", fragment, placement });
     expect(can.available).toBe(false);
     if (!can.available) {
-      expect(can.reason.code).toBe("capability-denied");
-      expect(can.reason.message).toMatch(/read-only/);
+      expect(can.rejection.code).toBe("capability-denied");
+      expect(can.rejection.message).toMatch(/read-only/);
     }
     expect(model.reader.nodes()).toHaveLength(0);
   });
@@ -90,7 +90,7 @@ describe("paste is validated before anything changes", () => {
           refuse
             ? {
                 kind: "reject",
-                reason: {
+                rejection: {
                   code: "type-mismatch",
                   message: "Host forbids this connection",
                   entities: [],
@@ -103,7 +103,7 @@ describe("paste is validated before anything changes", () => {
     refuse = true;
     const before = count(model);
     const result = model.execute({ kind: "paste", fragment, placement });
-    expect(result.status === "rejected" && result.error.message).toBe(
+    expect(result.status === "rejected" && result.rejection.message).toBe(
       "Host forbids this connection",
     );
     expect(count(model)).toEqual(before);

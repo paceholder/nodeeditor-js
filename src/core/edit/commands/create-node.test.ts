@@ -55,10 +55,10 @@ describe("create node at a position", () => {
     });
     const unknown = model.createNode("nope", { x: 0, y: 0 });
     const legacy = model.createNode("legacy", { x: 0, y: 0 });
-    expect(unknown.status === "rejected" && unknown.error.code).toBe(
+    expect(unknown.status === "rejected" && unknown.rejection.code).toBe(
       "unknown-type",
     );
-    expect(legacy.status === "rejected" && legacy.error.code).toBe(
+    expect(legacy.status === "rejected" && legacy.rejection.code).toBe(
       "not-creatable",
     );
   });
@@ -82,7 +82,7 @@ describe("factory failure", () => {
     });
     const before = model.idCursor();
     const result = model.createNode("bad", { x: 0, y: 0 });
-    expect(result.status === "rejected" && result.error.code).toBe(
+    expect(result.status === "rejected" && result.rejection.code).toBe(
       "factory-failed",
     );
     expect(model.reader.nodes()).toEqual([]);
@@ -101,7 +101,7 @@ describe("factory failure", () => {
     });
     const model = createGraphModel({ registry });
     const result = model.createNode("bad", { x: 0, y: 0 });
-    expect(result.status === "rejected" && result.error.code).toBe(
+    expect(result.status === "rejected" && result.rejection.code).toBe(
       "factory-failed",
     );
     expect(model.reader.nodes()).toEqual([]);

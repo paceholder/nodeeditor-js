@@ -126,7 +126,7 @@ function add<R extends { readonly id: string }>(
   seq: number | undefined,
 ): Rejection | undefined {
   const checked = kind.validate(input);
-  if (!checked.ok) return checked.error;
+  if (!checked.ok) return checked.rejection;
   const id = checked.value.id;
   if (idInUse(stage, id)) {
     return rejectionOf("duplicate-id", `${kind.label} ${id} already exists`, [
@@ -222,7 +222,7 @@ function update<R extends { readonly id: string }>(
     else next[key] = change.new;
   }
   const checked = kind.validate(next);
-  if (!checked.ok) return checked.error;
+  if (!checked.ok) return checked.rejection;
   kind.put(stage, checked.value, stage.seqOf(id as NodeId));
   return undefined;
 }

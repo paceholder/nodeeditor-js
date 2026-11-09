@@ -177,8 +177,8 @@ describe("route constraints on load", () => {
       const result = loadSnapshot(makeTestModel(), pinned(bad));
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error[0]?.path).toBe("connections[0].route[0]");
-        expect(result.error[0]?.entities).toEqual(["c1"]);
+        expect(result.rejection[0]?.path).toBe("connections[0].route[0]");
+        expect(result.rejection[0]?.entities).toEqual(["c1"]);
       }
     }
   });

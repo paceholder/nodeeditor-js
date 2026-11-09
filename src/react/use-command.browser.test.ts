@@ -39,7 +39,7 @@ function DeleteButton(): ReactNode {
       id: "del",
       type: "button",
       disabled: !del.available,
-      title: del.reason?.message ?? "",
+      title: del.rejection?.message ?? "",
       onClick: del.run,
     },
     "Delete",

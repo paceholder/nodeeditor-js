@@ -25,7 +25,7 @@ function State(props: { command: string }): ReactNode {
   return createElement(
     "p",
     { id: props.command },
-    c.available ? "yes" : (c.reason?.message ?? "no"),
+    c.available ? "yes" : (c.rejection?.message ?? "no"),
   );
 }
 

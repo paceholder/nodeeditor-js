@@ -30,7 +30,7 @@ const load = (extras: Record<string, unknown>) =>
   );
 
 const paths = (r: ReturnType<typeof load>) =>
-  r.ok ? [] : r.error.map((e) => [e.code, e.path]);
+  r.ok ? [] : r.rejection.map((e) => [e.code, e.path]);
 
 describe("document extras are validated as strictly as the graph", () => {
   it("rejects a duplicate selection entry, an unknown viewport key and a tiny zoom", () => {
@@ -64,6 +64,6 @@ describe("document extras are validated as strictly as the graph", () => {
     const r = saveDocument(loadedModel(), {
       viewport: { x: 0, y: 0, zoom: 0 },
     });
-    expect(!r.ok && r.error.map((e) => e.path)).toEqual(["viewport.zoom"]);
+    expect(!r.ok && r.rejection.map((e) => e.path)).toEqual(["viewport.zoom"]);
   });
 });

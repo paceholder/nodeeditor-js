@@ -47,7 +47,9 @@ describe("capabilities are judged before the patch", () => {
     const r = m.submit({
       ops: [update("a", { type: { old: "locked", new: "free" }, ...moveA() })],
     });
-    expect(r.status === "rejected" && r.error.code).toBe("capability-denied");
+    expect(r.status === "rejected" && r.rejection.code).toBe(
+      "capability-denied",
+    );
     expect(m.reader.getNode(nodeId("a"))?.type).toBe("locked");
   });
 
@@ -59,7 +61,7 @@ describe("capabilities are judged before the patch", () => {
         update("b", moveA()),
       ],
     });
-    expect(split.status === "rejected" && split.error.code).toBe(
+    expect(split.status === "rejected" && split.rejection.code).toBe(
       "capability-denied",
     );
     const joined = m.submit({
@@ -67,7 +69,7 @@ describe("capabilities are judged before the patch", () => {
         update("b", { capabilities: { old: { move: false } }, ...moveA() }),
       ],
     });
-    expect(joined.status === "rejected" && joined.error.code).toBe(
+    expect(joined.status === "rejected" && joined.rejection.code).toBe(
       "capability-denied",
     );
   });

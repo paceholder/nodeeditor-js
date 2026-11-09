@@ -23,7 +23,7 @@ function nonAccept(
 ): PlanResult {
   switch (outcome.kind) {
     case "reject":
-      return rejectedWith(outcome.reason);
+      return rejectedWith(outcome.rejection);
     case "pending":
       return {
         kind: "pending",

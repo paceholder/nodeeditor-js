@@ -76,7 +76,7 @@ function encodePayloads(
     if (codec) {
       const encoded = codec.encode(node.payload);
       if (encoded.ok) return { ...node, payload: encoded.value };
-      const e: Rejection = encoded.error;
+      const e: Rejection = encoded.rejection;
       errors.add(e.code, e.message, path, [node.id, ...e.entities]);
       return node;
     }
@@ -100,7 +100,7 @@ export function saveDocument(
 ): Result<string, readonly SnapshotError[]> {
   const encoded = encodePayloads(exportSnapshot(source), options);
   if (!encoded.ok)
-    return err(encoded.error.map((e) => prefixError(e, "graph")));
+    return err(encoded.rejection.map((e) => prefixError(e, "graph")));
   const extras = parseExtras(
     { viewport: options.viewport, selection: options.selection },
     encoded.value,
@@ -153,7 +153,7 @@ export function loadDocument(
   const { doc, warnings } = migrated.value;
   const prepared = prepareLoad(target, doc.graph, options);
   if (!prepared.ok)
-    return err(prepared.error.map((e) => prefixError(e, "graph")));
+    return err(prepared.rejection.map((e) => prefixError(e, "graph")));
   const extras = parseExtras(
     doc,
     prepared.value.snapshot,

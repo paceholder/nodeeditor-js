@@ -87,7 +87,7 @@ describe("local adapter", () => {
     await expect(inner.settled).resolves.toMatchObject({
       ok: false,
       status: "rejected",
-      error: { code: "disposed" },
+      rejection: { code: "disposed" },
     });
   });
 

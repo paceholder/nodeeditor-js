@@ -46,7 +46,7 @@ describe("composed validator", () => {
     (s.nodes as Record<string, unknown>[])[0] = { id: "n1" };
     s.groups = [1];
     const r = validateSnapshot(s);
-    expect(!r.ok && r.error.map((e) => e.code)).toEqual(
+    expect(!r.ok && r.rejection.map((e) => e.code)).toEqual(
       expect.arrayContaining(["invalid-shape", "unsupported-section"]),
     );
   });

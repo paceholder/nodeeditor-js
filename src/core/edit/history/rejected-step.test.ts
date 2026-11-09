@@ -23,13 +23,15 @@ describe("a rejected undo or redo does not block history", () => {
     const history: unknown[] = [];
     model.on("history", (h) => history.push(h));
     const undone = model.undo();
-    expect(undone.status === "rejected" && undone.error.code).toBe("conflict");
+    expect(undone.status === "rejected" && undone.rejection.code).toBe(
+      "conflict",
+    );
     const state = model.historyState();
     expect(state.canUndo).toBe(false);
     expect(state.undoReason).toMatch(/no longer possible/);
     expect(history).toHaveLength(1);
     const again = model.undo();
-    expect(again.status === "rejected" && again.error.code).toBe(
+    expect(again.status === "rejected" && again.rejection.code).toBe(
       "history-unavailable",
     );
     expect(model.reader.getNode(a)?.position).toEqual({ x: 2, y: 0 });
@@ -48,7 +50,7 @@ describe("a rejected undo or redo does not block history", () => {
       ],
     });
     const undone = model.undo();
-    expect(undone.status === "rejected" && undone.error.code).toBe(
+    expect(undone.status === "rejected" && undone.rejection.code).toBe(
       "capability-denied",
     );
     expect(model.historyState().canUndo).toBe(false);

@@ -96,10 +96,10 @@ export function prepareLoad(
       const decoded = runCodec(() => codec.decode(node.payload));
       if (decoded.ok) return nodeToRecord(node, decoded.value);
       errors.add(
-        decoded.error.code,
-        decoded.error.message,
+        decoded.rejection.code,
+        decoded.rejection.message,
         `nodes[${i}].payload`,
-        [node.id, ...decoded.error.entities],
+        [node.id, ...decoded.rejection.entities],
       );
     }
     return nodeToRecord(node, cloneJson(node.payload));

@@ -21,7 +21,7 @@ const touching = (ports: string[], nodes: string[] = []): TouchedEntities => ({
 const valid: ConnectionVerdict = { valid: true };
 const invalid: ConnectionVerdict = {
   valid: false,
-  reason: { code: "type-mismatch", message: "No", entities: [] },
+  rejection: { code: "type-mismatch", message: "No", entities: [] },
 };
 
 const flush = async () => {
@@ -105,7 +105,7 @@ describe("verdict cache requests", () => {
     await flush();
     expect(cache.lookup(p)).toEqual({
       kind: "invalid",
-      reason: { code: "type-mismatch", message: "No", entities: [] },
+      rejection: { code: "type-mismatch", message: "No", entities: [] },
     });
   });
 });
@@ -137,7 +137,7 @@ describe("verdict staleness", () => {
     const settled = await answer;
     expect(settled).toMatchObject({
       valid: false,
-      reason: { code: "validator-stale" },
+      rejection: { code: "validator-stale" },
     });
     expect(calls).toHaveLength(2);
   });
@@ -184,8 +184,11 @@ describe("verdict failures", () => {
   it.each([
     ["a missing reply", undefined],
     ["a reply without valid", { ok: true }],
-    ["a rejection without a reason", { valid: false }],
-    ["a reason without a message", { valid: false, reason: { code: "x" } }],
+    ["a refusal without a rejection", { valid: false }],
+    [
+      "a rejection without a message",
+      { valid: false, rejection: { code: "x" } },
+    ],
   ])("treats %s as a validator failure", async (_name, reply) => {
     const { cache, calls } = setup();
     const p = plan("a", "b");
@@ -194,7 +197,7 @@ describe("verdict failures", () => {
     await flush();
     expect(cache.lookup(p)).toMatchObject({
       kind: "invalid",
-      reason: { code: "validator-failed", entities: ["a", "b"] },
+      rejection: { code: "validator-failed", entities: ["a", "b"] },
     });
   });
 
@@ -206,7 +209,7 @@ describe("verdict failures", () => {
     await flush();
     expect(cache.lookup(p)).toMatchObject({
       kind: "invalid",
-      reason: { code: "validator-failed", message: "offline" },
+      rejection: { code: "validator-failed", message: "offline" },
     });
     const throwing = createVerdictCache({
       validator: () => {
@@ -218,7 +221,7 @@ describe("verdict failures", () => {
     await throwing.request(q);
     expect(throwing.lookup(q)).toMatchObject({
       kind: "invalid",
-      reason: { code: "validator-failed", message: "boom" },
+      rejection: { code: "validator-failed", message: "boom" },
     });
   });
 
@@ -237,7 +240,7 @@ describe("verdict failures", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(timed.cache.lookup(p)).toMatchObject({
       kind: "invalid",
-      reason: { code: "validator-timeout" },
+      rejection: { code: "validator-timeout" },
     });
     expect(timed.calls[0]?.request.signal.aborted).toBe(true);
   });

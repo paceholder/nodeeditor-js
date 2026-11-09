@@ -28,8 +28,8 @@ describe("API enforcement", () => {
     });
     expect(result.status).toBe("rejected");
     if (result.status === "rejected") {
-      expect(result.error.code).toBe("capability-denied");
-      expect(result.error.entities).toContain(a.node);
+      expect(result.rejection.code).toBe("capability-denied");
+      expect(result.rejection.entities).toContain(a.node);
     }
     expect(model.reader.getNode(a.node)?.position).toEqual({ x: 0, y: 0 });
     // The command route reports the same reason before submitting.
@@ -167,17 +167,17 @@ describe("resizing is opt-in", () => {
     const model = makeModel();
     const a = make(model, "source");
     const command = model.resizeNode(a.node, WIDER);
-    expect(command.status === "rejected" && command.error.code).toBe(
+    expect(command.status === "rejected" && command.rejection.code).toBe(
       "capability-denied",
     );
     expect(
       model.can({ kind: "resizeNode", node: a.node, size: WIDER }),
     ).toEqual({
       available: false,
-      reason: expect.objectContaining({ code: "capability-denied" }),
+      rejection: expect.objectContaining({ code: "capability-denied" }),
     });
     const result = model.submit({ ops: [sizeOp(a.node, SIZE, WIDER)] });
-    expect(result.status === "rejected" && result.error.code).toBe(
+    expect(result.status === "rejected" && result.rejection.code).toBe(
       "capability-denied",
     );
     expect(model.reader.getNode(a.node)?.size).toEqual(SIZE);
@@ -217,7 +217,7 @@ describe("resizing is opt-in", () => {
       "accepted",
     );
     const denied = model.submit({ ops: [sizeOp(b.node, SIZE, WIDER)] });
-    expect(denied.status === "rejected" && denied.error.code).toBe(
+    expect(denied.status === "rejected" && denied.rejection.code).toBe(
       "capability-denied",
     );
     expect(model.reader.getNode(b.node)?.size).toEqual(SIZE);

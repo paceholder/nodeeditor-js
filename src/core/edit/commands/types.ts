@@ -195,7 +195,7 @@ export type PlanResult =
       readonly label: string;
       readonly effects: PlanEffects;
     }
-  | { readonly kind: "rejected"; readonly error: Rejection }
+  | { readonly kind: "rejected"; readonly rejection: Rejection }
   /** The policy needs the caller to pick one of several plans. */
   | {
       readonly kind: "choice";
@@ -233,7 +233,7 @@ export type ExecuteResult =
 
 export type Availability =
   | { readonly available: true }
-  | { readonly available: false; readonly reason: Rejection };
+  | { readonly available: false; readonly rejection: Rejection };
 
 /** Everything a planner may read. Planners never write. */
 export interface PlanContext {
