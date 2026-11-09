@@ -5,9 +5,9 @@ it fails, the following fix task applies, otherwise mark it "not needed" in `not
 
 ## 1. Consumer smoke
 
-- [ ] 1.1 Add `scripts/consumer-smoke.mjs` and `examples/consumer-smoke/` that packs, installs into a temp project, imports each entry point, runs `vite build` and `tsc --noEmit`, and repeats without React; add a second run that installs from a git URL pinned to a commit into an empty project and imports all four entry points; verify `node scripts/consumer-smoke.mjs` exits 0, named for the consumable build rule, the ESM package with typed entry points rule and the no global side effects rule
-- [ ] 1.2 Fix export map, `.d.ts`, peer metadata (React 19 optional peer, ESM only) or install-time build failures (a `prepare` build script with the build tools available at install); verify 1.1 again and `npm run build`
-- [ ] 1.3 Single React copy: extend the consumer smoke of 1.1 named for the consumable build rule and the no global side effects rule to bundle a small React component that uses the react entry point and assert the output holds one React runtime (for example by counting the React scheduler or reconciler marker in the bundle, and by a hook call that fails if two copies exist), both from the packed tarball and from a linked folder with the host bundler's dedupe setting; verify the smoke exits 0
+- [x] 1.1 Add `scripts/consumer-smoke.mjs` and `examples/consumer-smoke/` that packs, installs into a temp project, imports each entry point, runs `vite build` and `tsc --noEmit`, and repeats without React; add a second run that installs from a git URL pinned to a commit into an empty project and imports all four entry points; verify `node scripts/consumer-smoke.mjs` exits 0, covering the consumable-build requirement, the one-import-path rule and the single-React-copy rule
+- [x] 1.2 Fix export map, `.d.ts`, peer metadata (React 19 optional peer, ESM only) or install-time build failures (a `prepare` build script with the build tools available at install); verify 1.1 again and `npm run build`
+- [x] 1.3 Single React copy: extend the consumer smoke of 1.1 (consumable-build and single-React-copy rules) to bundle a small React component that uses the react entry point and assert the output holds one React runtime (for example by counting the React scheduler or reconciler marker in the bundle, and by a hook call that fails if two copies exist), both from the packed tarball and from a linked folder with the host bundler's dedupe setting; verify the smoke exits 0
 
 ## 2. Node versions
 

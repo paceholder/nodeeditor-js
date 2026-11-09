@@ -3,12 +3,13 @@
   "compilerOptions": {
     "types": ["node"],
     "paths": {
-      "nodeeditor-js": ["./src/core/index.ts"],
-      "nodeeditor-js/view": ["./src/view/index.ts"],
-      "nodeeditor-js/view/advanced": ["./src/view/advanced.ts"]
+      "@paceholder/nodeeditor-js": ["./src/core/index.ts"],
+      "@paceholder/nodeeditor-js/view": ["./src/view/index.ts"],
+      "@paceholder/nodeeditor-js/view/advanced": ["./src/view/advanced.ts"]
     },
     "allowJs": true,
     "checkJs": true
   },
-  "include": ["bench", "scripts"]
+  "include": ["bench", "scripts"],
+  "exclude": ["scripts/consumer-smoke.mjs"]
 }

@@ -33,6 +33,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepare": "tsup",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit && tsc -p tsconfig.examples.json --noEmit && tsc -p tsconfig.bench.json --noEmit",
     "test": "vitest run --project node",
     "test:watch": "vitest",
