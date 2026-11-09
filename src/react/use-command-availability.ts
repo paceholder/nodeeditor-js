@@ -4,6 +4,7 @@ import type { Availability } from "../core/index.js";
 import { useEditorSlot } from "./editor-context.js";
 import { onModelChange } from "./model-subscription.js";
 import { useExternalValue } from "./use-external-value.js";
+import { useStableValue } from "./use-stable-value.js";
 
 const UNAVAILABLE: Availability = {
   available: false,
@@ -32,6 +33,7 @@ export function useCommandAvailability(
   args?: unknown,
 ): Availability {
   const { view, model } = useEditorSlot();
+  const stableArgs = useStableValue(args);
   const subscribe = useMemo(
     () =>
       view
@@ -53,8 +55,8 @@ export function useCommandAvailability(
     [view, model],
   );
   const read = useMemo(
-    () => (view ? () => view.commands.availability(id, args) : undefined),
-    [view, id, args],
+    () => (view ? () => view.commands.availability(id, stableArgs) : undefined),
+    [view, id, stableArgs],
   );
   return useExternalValue(subscribe, read, sameAvailability, UNAVAILABLE);
 }

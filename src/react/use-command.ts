@@ -4,6 +4,7 @@ import { err, type Rejection, rejectionOf } from "../core/index.js";
 import type { CommandOutcome } from "../view/index.js";
 import { useEditor } from "./editor-context.js";
 import { useCommandAvailability } from "./use-command-availability.js";
+import { useStableValue } from "./use-stable-value.js";
 
 export interface CommandState {
   readonly available: boolean;
@@ -19,6 +20,7 @@ export interface CommandState {
  */
 export function useCommand(id: string, args?: unknown): CommandState {
   const view = useEditor();
+  const stableArgs = useStableValue(args);
   const availability = useCommandAvailability(id, args);
   return useMemo(
     () => ({
@@ -26,9 +28,9 @@ export function useCommand(id: string, args?: unknown): CommandState {
       reason: availability.available ? undefined : availability.reason,
       run: () =>
         view
-          ? view.commands.run(id, args)
+          ? view.commands.run(id, stableArgs)
           : err(rejectionOf("unsupported-command", "No editor is mounted")),
     }),
-    [view, id, args, availability],
+    [view, id, stableArgs, availability],
   );
 }
