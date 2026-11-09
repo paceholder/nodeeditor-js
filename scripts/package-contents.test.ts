@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Published package requirement: the published tarball holds only the built output and the package files.
@@ -36,6 +36,22 @@ describe("published package", () => {
     expect(stray).toEqual([]);
     for (const name of allowed) expect(files).toContain(name);
     expect(files.some((f) => f.startsWith("dist/core/index"))).toBe(true);
+  });
+
+  it("keeps the changelog, security policy and contribution guide in the repository but out of the tarball", {
+    timeout: 120_000,
+  }, () => {
+    const files = packedFiles();
+    for (const name of ["CHANGELOG.md", "SECURITY.md", "CONTRIBUTING.md"]) {
+      expect(existsSync(name), name).toBe(true);
+      expect(files).not.toContain(name);
+    }
+  });
+
+  it("the installing guide names the real repository, not a placeholder", () => {
+    const guide = readFileSync("docs/guide-installing.md", "utf8");
+    expect(guide).not.toContain("example.invalid");
+    expect(guide).toContain("github.com/paceholder/nodeeditor-js.git");
   });
 
   it("metadata is public, scoped and registry-ready", () => {
