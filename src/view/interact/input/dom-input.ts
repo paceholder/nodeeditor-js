@@ -262,10 +262,13 @@ export function attachDomInput(
     const result = route({
       type: "wheel",
       viewport: at.viewport,
+      deltaX: e.deltaX * scale,
       deltaY: e.deltaY * scale,
+      pinch: e.ctrlKey,
       modifiers: modifiers(e),
     });
-    // Only a wheel that changed the viewport is consumed; otherwise the page scrolls.
+    // A wheel that changed the viewport is consumed, and a pinch always is (the browser
+    // would zoom the page); otherwise the page scrolls.
     if (result.handled) e.preventDefault();
   };
 

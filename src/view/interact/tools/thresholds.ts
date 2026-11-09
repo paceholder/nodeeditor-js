@@ -20,10 +20,20 @@ export interface ToolOptions {
   readonly emptyDrag: "pan" | "marquee";
   /** `direction`: left-to-right contains, right-to-left intersects (D5). */
   readonly marquee: "direction" | "contain" | "intersect";
-  /** `scroll-page-unless-modifier`: the wheel zooms only with the primary modifier. */
-  readonly wheel: "zoom" | "scroll-page-unless-modifier";
+  /**
+   * What a plain wheel does. `zoom` zooms at the cursor. `scroll-page-unless-modifier`
+   * leaves it to the page and zooms only with the primary modifier. `pan` pans the view by
+   * both deltas (two-finger trackpad scrolling) and zooms with the primary modifier. A
+   * pinch (Control-wheel) zooms in every mode.
+   */
+  readonly wheel: "zoom" | "scroll-page-unless-modifier" | "pan";
   /** Wheel zoom exponent: `factor = exp(-deltaY * wheelSensitivity)`. */
   readonly wheelSensitivity: number;
+  /**
+   * Pinch (Control-wheel) zoom exponent per CSS pixel of delta, applied to a delta clamped
+   * to ±10 per event. Pinch deltas are small, so it is larger than `wheelSensitivity`.
+   */
+  readonly pinchSensitivity: number;
   /**
    * Pan the view while a node, connection, marquee or resize drag is near an edge;
    * `false` turns it off.
@@ -49,6 +59,7 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = deepFreeze({
   marquee: "direction",
   wheel: "zoom",
   wheelSensitivity: 0.0015,
+  pinchSensitivity: 0.01,
   autoPan: DEFAULT_AUTO_PAN,
   longPressMs: 500,
   doubleClickMs: 500,

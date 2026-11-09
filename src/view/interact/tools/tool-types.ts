@@ -130,8 +130,15 @@ export type ToolInput =
   | {
       readonly type: "wheel";
       readonly viewport: Point<"viewport">;
+      /** Horizontal delta, normalized to CSS pixels; omitted: 0. */
+      readonly deltaX?: number;
       /** Normalized to CSS pixels by the adapter. */
       readonly deltaY: number;
+      /**
+       * The Control key was held. Browsers report a trackpad pinch this way, on macOS even
+       * with no key held, so it always means zoom. Omitted: false.
+       */
+      readonly pinch?: boolean;
       readonly modifiers: Modifiers;
     }
   | {
