@@ -46,7 +46,7 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 ## 7. Mount surface
 
 - [x] 7.1 Give the root a role, role description and default name, and hide the canvases (D19); verify `mount-view.browser.test.ts` (default name and role; the host can replace the name)
-- [ ] 7.2 Move the tool-writing contract to `view/advanced` and mark it unstable (D20); verify `entry-points.test.ts` (the tool type is on the advanced entry, not the view entry) and `npm run typecheck` over the examples
+- [x] 7.2 Move the tool-writing contract to `view/advanced` and mark it unstable (D20); verify `entry-points.test.ts` (the tool type is on the advanced entry, not the view entry) and `npm run typecheck` over the examples
 
 ## 8. Docs and gates
 

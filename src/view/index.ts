@@ -88,38 +88,19 @@ export type {
 } from "./interact/selection/view-selection.js";
 export type { AutoPanOptions } from "./interact/tools/auto-pan.js";
 export { DEFAULT_AUTO_PAN } from "./interact/tools/auto-pan.js";
-export { connectTool } from "./interact/tools/connect-tool.js";
 export { defaultToolSlots } from "./interact/tools/default-tools.js";
-export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";
-export { marqueeTool } from "./interact/tools/marquee-tool.js";
-export { panTool } from "./interact/tools/pan-tool.js";
-export { createRouteEditTool } from "./interact/tools/route-edit-tool.js";
-export { selectMoveTool } from "./interact/tools/select-move-tool.js";
 export type { ToolOptions } from "./interact/tools/thresholds.js";
 export { DEFAULT_TOOL_OPTIONS } from "./interact/tools/thresholds.js";
 export type { ToolSlot } from "./interact/tools/tool-router.js";
-export { toolSlot } from "./interact/tools/tool-router.js";
+// Writing a tool (the contract, the slot factory, the built-in tools) is in view/advanced.
 export type {
   CancelReason,
   CandidateState,
-  ChoiceRelease,
   ConnectCandidate,
   ConnectionEvaluation,
-  CursorKind,
   Modifiers,
-  PointerInput,
-  PointerType,
-  PressInfo,
-  Tool,
-  ToolContext,
-  ToolEffect,
-  ToolInput,
   ToolPreview,
-  Transition,
-  ViewportOp,
 } from "./interact/tools/tool-types.js";
-export { NO_MODIFIERS } from "./interact/tools/tool-types.js";
-export { wheelZoom } from "./interact/tools/wheel-zoom.js";
 export type { InputOptions, ViewHandle, ViewOptions } from "./mount-view.js";
 export { mountView } from "./mount-view.js";
 export type { FrameClock, LayerName } from "./platform/frame-scheduler.js";

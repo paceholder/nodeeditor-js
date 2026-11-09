@@ -87,6 +87,12 @@ export {
   startArm,
   updateArm,
 } from "./interact/tools/auto-pan.js";
+// The tool contract and the built-in tools: for hosts that write or reorder tools. The
+// contract may change before 1.0.
+export { connectTool } from "./interact/tools/connect-tool.js";
+export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";
+export { marqueeTool } from "./interact/tools/marquee-tool.js";
+export { panTool } from "./interact/tools/pan-tool.js";
 export type {
   ResizeHandles,
   ResizeHandlesDeps,
@@ -100,6 +106,8 @@ export type {
 export { fixedFor, resizeStep } from "./interact/tools/resize-math.js";
 export type { ResizeState } from "./interact/tools/resize-tool.js";
 export { resizeTargetOf, resizeTool } from "./interact/tools/resize-tool.js";
+export { createRouteEditTool } from "./interact/tools/route-edit-tool.js";
+export { selectMoveTool } from "./interact/tools/select-move-tool.js";
 export { resolveToolOptions } from "./interact/tools/thresholds.js";
 export type {
   SizeLimitsLookup,
@@ -116,8 +124,23 @@ export type {
   RouteResult,
   ToolRouter,
 } from "./interact/tools/tool-router.js";
-export { createToolRouter } from "./interact/tools/tool-router.js";
-export type { GestureCancellation } from "./interact/tools/tool-types.js";
+export { createToolRouter, toolSlot } from "./interact/tools/tool-router.js";
+export type {
+  ChoiceRelease,
+  CursorKind,
+  GestureCancellation,
+  PointerInput,
+  PointerType,
+  PressInfo,
+  Tool,
+  ToolContext,
+  ToolEffect,
+  ToolInput,
+  Transition,
+  ViewportOp,
+} from "./interact/tools/tool-types.js";
+export { NO_MODIFIERS } from "./interact/tools/tool-types.js";
+export { wheelZoom } from "./interact/tools/wheel-zoom.js";
 export type { ContainerMetrics } from "./platform/dom/container-metrics.js";
 export type { LayerStack } from "./platform/dom/layer-stack.js";
 export type { FrameScheduler } from "./platform/frame-scheduler.js";

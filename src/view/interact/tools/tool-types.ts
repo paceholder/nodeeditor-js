@@ -3,7 +3,7 @@
  * discriminated-union state; it returns the next state plus effects that a runner
  * executes. Nothing in `tools/` touches DOM types, so tools run in Node tests.
  *
- * Experimental: the contract is public but may change before Slice B adds routing tools.
+ * Unstable: the contract is public, from `view/advanced`, and may change before 1.0.
  */
 
 import type {

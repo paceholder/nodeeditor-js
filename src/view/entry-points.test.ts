@@ -80,6 +80,50 @@ describe("one import path per public name", () => {
   });
 });
 
+describe("tool contract on the advanced entry", () => {
+  const WRITING_A_TOOL = [
+    "Tool",
+    "Transition",
+    "ToolContext",
+    "ToolInput",
+    "ToolEffect",
+    "PressInfo",
+    "PointerInput",
+    "PointerType",
+    "ViewportOp",
+    "CursorKind",
+    "ChoiceRelease",
+    "NO_MODIFIERS",
+    "toolSlot",
+    "wheelZoom",
+    "connectTool",
+    "emptyPanTool",
+    "marqueeTool",
+    "panTool",
+    "createRouteEditTool",
+    "selectMoveTool",
+  ];
+
+  it("names needed only to write a tool come from view/advanced, not view", () => {
+    expect(WRITING_A_TOOL.filter((n) => NAMES.view.has(n))).toEqual([]);
+    expect(WRITING_A_TOOL.filter((n) => !NAMES.advanced.has(n))).toEqual([]);
+  });
+
+  it("the view entry keeps what mounting and configuring tools needs", () => {
+    for (const name of [
+      "ToolSlot",
+      "defaultToolSlots",
+      "ToolOptions",
+      "DEFAULT_TOOL_OPTIONS",
+      "CancelReason",
+      "Modifiers",
+      "ToolPreview",
+    ]) {
+      expect(NAMES.view.has(name), name).toBe(true);
+    }
+  });
+});
+
 describe("the react entry holds only its own names", () => {
   it("re-exports no name of core, view or view/advanced", () => {
     expect(NAMES.react.size).toBeGreaterThan(0);
