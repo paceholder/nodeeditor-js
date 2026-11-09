@@ -10,12 +10,18 @@ product decisions and code conventions are in the `context` of `openspec/config.
 read it before designing anything. `docs/architecture.md` explains the design (with
 QtNodes comparisons) and `docs/guide-*.md` walk through implemented code; update them when
 a change alters what they describe. `docs/archive/` holds the original AI-drafted
-baseline and research notes: historical input only, not authoritative.
+baseline and research notes: history only, not authoritative.
 
-Requirements (for example Headless in-memory model or Local undo and redo) are stable — reference them in
-tests, never in commit messages. Specs are written in plain English and must stand alone:
-define every term in the spec itself and never rely on `docs/archive` or another document
-the reader would have to open. Every MUST needs linked evidence (a test naming its ID).
+Requirement codes (a short letters-and-number notation) came from the original, now
+archived requirements document and are not used for current or future work. New
+requirements get plain-English titles and are written to stand alone: define every term in
+the spec itself and never rely on `docs/archive` or another document the reader would have
+to open. Tests name the rule they prove in words. Commits and docs never use codes.
+Existing codes survive only as headings of requirements already in the specs and in test
+titles that already use them, so those can still be matched until a later migration; do not
+mass-rewrite them and do not add new ones. `docs/archive/` and the archived requirements
+document are history, not a source to follow. Every MUST needs linked evidence (a test
+that names the rule).
 
 Delivery slices A–E proceed in order (Slice A: headless model, patches/history, commands
 and policy, graph snapshot, geometry and spatial index, minimal Canvas2D view and basic
@@ -128,4 +134,4 @@ Layering rules that are release gates in the spec:
   transition function, testable headlessly.
 - Failures that callers can expect (policy rejection, invalid input) return Result objects;
   throw only for programmer misuse.
-- Tests name the requirement IDs they cover in `describe`/`it` titles.
+- Tests name the rule they prove in words in `describe`/`it` titles.
