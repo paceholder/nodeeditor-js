@@ -41,15 +41,12 @@ function drawUprightLabel(
   font: string,
 ): void {
   const m = ctx.getTransform();
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const [x, y] of [
-    [bounds.x, bounds.y],
-    [bounds.x + bounds.w, bounds.y],
-    [bounds.x, bounds.y + bounds.h],
-    [bounds.x + bounds.w, bounds.y + bounds.h],
-  ] as const) {
-    maxY = Math.max(maxY, m.b * x + m.d * y + m.f);
-  }
+  // Lowest screen y of the four corners, without building a corner list.
+  const x0 = m.b * bounds.x;
+  const x1 = m.b * (bounds.x + bounds.w);
+  const y0 = m.d * bounds.y;
+  const y1 = m.d * (bounds.y + bounds.h);
+  const maxY = Math.max(x0, x1) + Math.max(y0, y1) + m.f;
   const cx =
     m.a * (bounds.x + bounds.w / 2) + m.c * (bounds.y + bounds.h / 2) + m.e;
   const scale = Math.hypot(m.a, m.b);

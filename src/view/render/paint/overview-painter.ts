@@ -22,7 +22,10 @@ import {
 } from "../../../core/index.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
 import { tracePath } from "../primitives/trace-path.js";
-import { type ResolvedStyle, resolveStyle } from "../theme/resolve-style.js";
+import {
+  createStyleLookup,
+  type ResolvedStyle,
+} from "../theme/resolve-style.js";
 import {
   diagnosticsOf,
   drawConnectionSelection,
@@ -125,12 +128,10 @@ export function paintOverviewConnections(
   setMatrix(ctx, frame.worldToDevice);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  const styleOf = createStyleLookup(frame.theme);
   const groups = batches(
     list,
-    (e) =>
-      e.path
-        ? resolveStyle(frame.theme, { type: e.record.kind, id: e.id })
-        : undefined,
+    (e) => (e.path ? styleOf(e.record.kind, e.id) : undefined),
     (s) => `${s.connectionColor}|${s.connectionWidth}`,
   );
   for (const { style, items } of groups) {
@@ -157,9 +158,10 @@ export function paintOverviewNodes(
 ): void {
   ctx.save();
   setMatrix(ctx, frame.worldToDevice);
+  const styleOf = createStyleLookup(frame.theme);
   const groups = batches(
     list,
-    (e) => resolveStyle(frame.theme, { type: e.record.type, id: e.id }),
+    (e) => styleOf(e.record.type, e.id),
     (s) => `${s.nodeFill}|${s.nodeStroke}|${s.nodeLineWidth}`,
   );
   for (const { style, items } of groups) {

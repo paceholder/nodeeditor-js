@@ -7,6 +7,8 @@
 import type {
   GeometryScene,
   GraphReader,
+  NodeEntry,
+  Rect,
   SceneLayer,
   Viewport,
 } from "../../../core/index.js";
@@ -65,6 +67,8 @@ export function createLayerPainter(
   env: LayerPainterEnv,
 ): (layer: LayerName) => ScenePaintStats | undefined {
   const faulted = new Set<LayerName>();
+  // Node bounds in local space per scene entry, kept for the view's lifetime.
+  const localBounds = new WeakMap<NodeEntry, Rect<"local">>();
   return (layer) => {
     const canvas = env.canvases[layer];
     const ctx = canvas.getContext("2d");
@@ -78,7 +82,7 @@ export function createLayerPainter(
       first ??= { error };
     };
     try {
-      return paintLayer(env, layer, ctx, fault);
+      return paintLayer(env, layer, ctx, fault, localBounds);
     } catch (error) {
       fault(error);
       return undefined;
@@ -93,6 +97,7 @@ function paintLayer(
   layer: LayerName,
   ctx: CanvasRenderingContext2D,
   fault: (error: unknown) => void,
+  localBounds: WeakMap<NodeEntry, Rect<"local">>,
 ): ScenePaintStats | undefined {
   const frame = createPaintFrame(env.backing(), env.viewport(), env.theme());
   switch (layer) {
@@ -112,6 +117,7 @@ function paintLayer(
           state: env.viewState,
           assets: env.assets,
           fault,
+          localBounds,
           ...(env.routeEditors ? { routeEditors: env.routeEditors } : {}),
         },
         frame,

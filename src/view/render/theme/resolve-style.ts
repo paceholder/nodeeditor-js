@@ -21,6 +21,21 @@ function own(
   return Object.hasOwn(table, key) ? table[key] : undefined;
 }
 
+/**
+ * `resolveStyle` with one reused key object, for painting loops: a lookup allocates
+ * nothing per entity when no override applies.
+ */
+export function createStyleLookup(
+  theme: ThemeTokens,
+): (type: string, id: string) => ResolvedStyle {
+  const key = { type: "", id: "" };
+  return (type, id) => {
+    key.type = type;
+    key.id = id;
+    return resolveStyle(theme, key);
+  };
+}
+
 export function resolveStyle(theme: ThemeTokens, key: StyleKey): ResolvedStyle {
   const byType = own(theme.typeOverrides, key.type);
   const byEntity = own(theme.entityOverrides, key.id);

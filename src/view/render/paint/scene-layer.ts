@@ -18,6 +18,7 @@ import {
   type GeometryScene,
   type GraphReader,
   type NodeEntry,
+  type Rect,
   type SceneLayer,
   transformRect,
 } from "../../../core/index.js";
@@ -26,7 +27,7 @@ import type { AssetService } from "../assets/asset-service.js";
 import { type PaintFrame, setMatrix } from "../primitives/frame.js";
 import type { PainterRegistries } from "../registries/painters.js";
 import type { RouteEditorRegistry } from "../registries/route-editor-registry.js";
-import { resolveStyle } from "../theme/resolve-style.js";
+import { createStyleLookup } from "../theme/resolve-style.js";
 import {
   diagnosticsOf,
   drawConnectionSelection,
@@ -75,6 +76,19 @@ export interface SceneLayerDeps {
   readonly routeEditors?: Pick<RouteEditorRegistry, "get">;
   /** A painter threw; omitted: the error is rethrown outside the frame. */
   readonly fault?: (error: unknown) => void;
+  /**
+   * Node body bounds in local space per scene entry (entries are replaced when a node
+   * changes), so an unchanged node costs no rectangle per frame. Omitted: computed.
+   */
+  readonly localBounds?: WeakMap<NodeEntry, Rect<"local">>;
+}
+
+function boundsOf(deps: SceneLayerDeps, e: NodeEntry): Rect<"local"> {
+  const cached = deps.localBounds?.get(e);
+  if (cached) return cached;
+  const bounds = transformRect(e.toLocal, e.bodyBounds);
+  deps.localBounds?.set(e, bounds);
+  return bounds;
 }
 
 export interface ScenePaintStats {
@@ -97,6 +111,7 @@ function paintConnections(
   unit: number,
 ): void {
   const fault = deps.fault ?? rethrowLater;
+  const style = createStyleLookup(frame.theme);
   setMatrix(ctx, frame.worldToDevice);
   for (const e of list) {
     if (!e.path) continue;
@@ -108,7 +123,7 @@ function paintConnections(
         connection: e.record,
         path: e.path,
         route: e.route ?? UNCHECKED_ROUTE,
-        style: resolveStyle(frame.theme, { type: e.record.kind, id: e.id }),
+        style: style(e.record.kind, e.id),
         detail,
         unit,
         selected,
@@ -137,8 +152,9 @@ function paintNodes(
   // Node space has unit scale, so device pixels per local unit is zoom * dpr.
   const assets = deps.assets.drawer(ctx, frame.viewport.zoom * frame.dpr);
   const fault = deps.fault ?? rethrowLater;
+  const style = createStyleLookup(frame.theme);
   for (const e of list) {
-    const bounds = transformRect(e.toLocal, e.bodyBounds);
+    const bounds = boundsOf(deps, e);
     const diagnostics = diagnosticsOf(e.record.status);
     const selected = deps.state.isSelected(e.id);
     const matrix = compose(frame.worldToDevice, e.toWorld);
@@ -148,7 +164,7 @@ function paintNodes(
       deps.painters.nodes.get(e.record.type).paint(ctx, {
         node: e.record,
         bounds,
-        style: resolveStyle(frame.theme, { type: e.record.type, id: e.id }),
+        style: style(e.record.type, e.id),
         detail,
         unit,
         assets,
@@ -183,17 +199,15 @@ function paintPorts(
   unit: number,
 ): void {
   const fault = deps.fault ?? rethrowLater;
+  const styleOf = createStyleLookup(frame.theme);
   ctx.save();
   setMatrix(ctx, frame.worldToDevice);
   for (const e of list) {
-    const ports = deps.reader.portsOf(e.id);
     for (const anchor of e.anchors) {
-      const port = ports.find((p) => p.id === anchor.portId);
-      if (!port) continue;
-      const style = resolveStyle(frame.theme, {
-        type: port.typeKey,
-        id: port.id,
-      });
+      // Direct lookup: no port list per node and no search per anchor.
+      const port = deps.reader.getPort(anchor.portId);
+      if (!port || port.node !== e.id) continue;
+      const style = styleOf(port.typeKey, port.id);
       ctx.fillStyle = style.portFill;
       ctx.strokeStyle = style.portStroke;
       ctx.lineWidth = unit;
