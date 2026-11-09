@@ -51,4 +51,4 @@ Each task starts with a test that fails before the fix. Test titles name the rul
 ## 8. Docs and gates
 
 - [x] 8.1 Update `docs/guide-view.md`, `docs/interaction.md` and `docs/architecture.md` for the changed behaviour; verify `npm run lint`
-- [ ] 8.2 Record the Safari clipboard finding, the accessibility follow-up and other evidence in `notes.md`; run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build` and `openspec validate harden-view-rendering-and-interaction --strict`; record the results in `notes.md`
+- [x] 8.2 Record the Safari clipboard finding, the accessibility follow-up and other evidence in `notes.md`; run lint, typecheck, `npm test`, `npm run test:browser`, `npm run build` and `openspec validate harden-view-rendering-and-interaction --strict`; record the results in `notes.md`
