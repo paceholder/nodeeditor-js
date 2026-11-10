@@ -7,7 +7,7 @@
 ## 2. Project context (no spec delta)
 
 - [ ] 2.1 Add a non-goals paragraph to the `context` in `openspec/config.yaml`: no nested subgraph navigation, capability negotiation, graph execution, marketplace, or mobile-first design in R1; also list as deferred: React content inside nodes, worker offload of the engine, aliases, full screen-reader support, animated wire decorations, other render backends; verify by reading `openspec/config.yaml` and `openspec validate --specs --strict`
-- [ ] 2.2 Record in the same `context`, under the 2026-10-29 trimmed items, that the keyboard connection chooser was deliberately dropped (keyboard coverage stays select, move, delete, undo, plus the keyboard editing shortcuts); verify by reading `openspec/config.yaml` that the keyboard shortcut and shipped controls specs do not contradict it
+- [ ] 2.2 Record in the same `context`, under the 2026-10-29 trimmed items, that the keyboard connection chooser was deliberately dropped (keyboard coverage stays select, move, delete, undo, plus the keyboard editing shortcuts); skip this task if the owner has approved `add-keyboard-navigation` by then, since that change rewrites the same sentence; verify by reading `openspec/config.yaml` that the keyboard shortcut and shipped controls specs do not contradict it
 
 ## 3. Performance method
 
@@ -21,13 +21,14 @@
 
 - [ ] 4.1 Verify the rule that renderer objects stay behind the boundary side-effect freedom and low-detail non-deletion; a test named for the rule that renderer objects stay behind the boundary that zooming through low detail leaves the model revision and snapshot unchanged
 - [ ] 4.2 Add the transient overlay connection hook; verify `*.browser.test.ts` named for the transient overlay connections rule (follows pan and zoom, not pickable) and `entry-points.test.ts` for the new public name
-- [ ] 4.3 Make the canvas ignore a second pointer during a gesture and set touch-action so the page does not scroll under a drag; verify a gesture-state test named for the touch and pen safety rule and a browser test with simulated touch pointers
-- [ ] 4.4 Document the accessibility known limit and remaining barriers with the support matrix, and the Canvas2D-only decision and React-content limits in `docs/guide-view.md` and `docs/architecture.md`; verify by doc check
+- [ ] 4.3 Make the canvas ignore an extra pointer that is not the second touch of a pinch (a pen or mouse during another pointer's gesture, a third touch during a pinch) and set touch-action so the page does not scroll under a drag, leaving the existing touch pinch (a second touch cancels with reason `pinch` and zooms) unchanged; verify a gesture-state test named for the touch and pen safety rule and the touch pinch zoom rule and a browser test with simulated touch and pen pointers
+- [ ] 4.6 Trackpad on a physical device (D11): with `npm run demo`, pinch-zoom, Control-wheel zoom with a mouse, two-finger pan in `wheel: "pan"` mode and pinch at the zoom limits on a physical macOS trackpad in Safari and Chrome (and a Windows precision trackpad if one is available); verify by a dated entry in `notes.md` per device and browser stating whether the zoom step feels proportionate, the pan follows the fingers in both directions and the page never zooms over the canvas, with any tuning need listed as a question for the owner
+- [ ] 4.4 Document the accessibility known limit (keyboard shortcuts, the accessible root and its `label` option, shipped DOM controls) and remaining barriers with the support matrix, and the Canvas2D-only decision and React-content limits in `docs/guide-view.md` and `docs/architecture.md`; verify by doc check
 - [ ] 4.5 Add the two-kinds-one-router case; verify a test named for the decorations without policy rule that two kinds with different painters produce identical routes and independent painted styles
 
 ## 5. Adapters, model, signatures
 
-- [ ] 5.1 Document the announce-changes rule in `docs/guide-using-the-model.md`; verify by doc check and a test named for the revisioned synchronization rule that an unannounced backing-store change leaves the read model unchanged
+- [ ] 5.1 Document the announce-changes rule and the separation of the library's integer revision from a host's revision token in `docs/guide-using-the-model.md`; verify by doc check and a test named for the revisioned synchronization rule that an unannounced backing-store change leaves the read model unchanged
 - [ ] 5.2 Document snapshot, descriptor and subscription-value ownership and lifetime in `docs/guide-core-model.md`; verify a test named for the immutable read snapshots rule that a kept subscription value is unchanged after a later change
 - [ ] 5.3 Test that equal labels with different keys do not match in the default policy; verify a test named for the stable signature description rule
 

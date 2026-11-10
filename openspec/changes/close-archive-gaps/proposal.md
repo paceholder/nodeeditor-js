@@ -12,7 +12,7 @@ Closing them now keeps the specs the single source of truth before more slices l
 
 ## What Changes
 
-Only sentences and scenarios in existing specs, plus a few requirement IDs where no spec
+Only sentences and scenarios in existing specs, plus a few new requirements where no spec
 requirement is a natural home.
 
 - **performance**: the repeatable benchmark suite rule gains the measurement method (warm-up, three repeats, traces,
@@ -24,16 +24,24 @@ requirement is a natural home.
   render and pick are side-effect free and hiding or low detail never deletes data; the rendering profiles rule
   says arbitrary React content is not rasterized into the canvas and limits are published;
   new the transient overlay connections rule for transient overlay connections that are not in the model.
-- **interaction**: new requirement for touch and pen safety; usable shipped controls states the accessibility
-  known limit and requires documenting remaining barriers.
-- **model-adapters**: the revisioned synchronization rule requires external adapters to announce changes.
+- **interaction**: new requirement for touch and pen safety, consistent with the existing
+  touch pinch zoom rule (a second touch pinches; any other extra pointer is ignored);
+  usable shipped controls states the accessibility known limit (keyboard shortcuts, the
+  accessible root with its host-replaceable name, shipped DOM controls) and requires
+  documenting remaining barriers.
+- **model-adapters**: the revisioned synchronization rule requires external adapters to
+  announce changes and separates the library's integer revision from the host's own
+  revision token.
 - **routing**: the decorations without policy rule gains end-point decorations and a per-kind style scenario; the indexed culling and picking rule (in
   performance) says parallel-edge offsets come from an incremental index.
 - **packaging**: new verification layers and extension acceptance checklist.
 - **graph-model / composite-signatures**: the lifetime wording of immutable read snapshots covers descriptors and
   subscription values; the stable signature description rule says label equality never implies a key match.
 - **Tasks only (no spec delta)**: add a non-goals paragraph to `openspec/config.yaml` and
-  record the keyboard connection chooser as deliberately dropped there.
+  record the keyboard connection chooser as deliberately dropped there (unless the owner
+  approves the separately planned `add-keyboard-navigation`, which would widen that scope);
+  verify trackpad pinch, Control-wheel and two-finger pan on a physical device, which the
+  view hardening could only test with synthetic events.
 
 Requirements refined: the repeatable benchmark suite rule, the interaction budgets rule, the query and update budgets rule, the idle and lifecycle rule, the indexed culling and picking rule, the Canvas2D stacked layers rule and the rule that renderer objects stay behind the boundary,
 the rendering profiles rule, the usable shipped controls rule, the revisioned synchronization rule, the decorations without policy rule, the immutable read snapshots rule and the stable signature description rule. New: the transient overlay connections rule, the touch and pen safety rule, the verification layers rule and the extension acceptance checklist rule.
@@ -50,13 +58,14 @@ None.
 ## Out of scope
 
 - Any new feature: no keyboard connection chooser, no screen-reader parity, no multi-touch
-  gestures.
+  gestures beyond the existing two-touch pinch. Keyboard navigation and announcements are
+  proposed in `add-keyboard-navigation`.
 - React content inside nodes, worker offload of the engine, aliases, and animated wire
   decorations (power-flow or glow style): deferred, recorded only as non-goals here.
-- Items owned by `add-react-integration`, `add-snapshot-sync-adapter`,
-  `add-async-connection-policy`, `add-docking`, `add-reconnect-tool` and
-  `add-host-integration-checks`; this change does not touch react-integration, docking,
-  snapshot-mode or async-policy requirements.
+- Items owned by `add-snapshot-sync-adapter`, `add-docking`, `add-reconnect-tool`,
+  `add-host-integration-checks` and `add-keyboard-navigation`, and by the archived React
+  integration and asynchronous connection policy; this change does not touch
+  react-integration, docking, snapshot-mode or async-policy requirements.
 - Source code. Requirements here are stated for later slices; the evidence for the new
   statements is docs and checks (see tasks), and benchmark-method items are checked when the
   suite next runs.
