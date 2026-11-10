@@ -20,7 +20,9 @@ The adapter plans depend on these.
 
 1. Return the inner component ID from the node create call (the wrapper ID is not what reads
    use).
-2. Accept an optional client-supplied connection ID.
+2. Accept an optional client-supplied connection ID, and reject a connection whose port pair
+   is already connected (the host does not do this today). The reasoning, the options and
+   the concerns are in `docs/host-connection-identity.md`.
 3. Add an absolute update call for rotation and mirror. Until then, translate the old and new
    values of an intent into relative steps.
 4. Put a monotonic revision on schematic reads and on the change notification. A push
