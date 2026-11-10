@@ -16,13 +16,34 @@ Observed in the code (not assumptions):
   into a patch with the operation order this change needs. `validateSnapshot` is the shared
   validator. `loadSnapshot` is a reset (`replaceDocument`): it clears history and emits
   `reset`.
-- The view cancels a gesture on a `reset` event and, tool by tool, when an entity the
-  gesture uses is removed (the `entities-removed` input). A `change` event with origin
-  `external` that updates such an entity does not reach tools. `add-async-connection-policy`
-  replaces this with one router rule that this change relies on. Model bindings mark
-  dirty on `change` and `reset`.
-- `Revision` is an opaque token "ordered by the adapter that issued it"; core can compare two
-  revisions only through the adapter that issued them.
+- The tool router cancels a running gesture when a committed change of any origin removes
+  or changes an entity the gesture involves (each tool declares them with `involved`), with
+  the cancel reason `entity-removed` for a removal, `external-change` for a change with
+  origin `external`, and `entity-changed` for a local, undo or redo change; a `reset`
+  cancels every gesture. The view emits `gesture-cancelled` with the reason and the entity
+  IDs. A push needs nothing new from the view. Model bindings mark dirty on `change` and
+  `reset`.
+- `Revision` is a plain non-negative integer (`type Revision = number`): 0 for a fresh model,
+  one more for every committed change or document replacement. The model, the reader,
+  accepted outcomes and events carry the same integer. There is no text form and no
+  constructor. A host's own revision token is a separate value and never has to fit in it.
+- The local adapter rejects a submission whose `baseRevision` is not the current revision
+  with the code `stale-revision`; a submission queued from inside an event handler is
+  checked when it is submitted, not when it runs. `GraphModel.submit` defaults the base
+  revision to the current one.
+- Every refusal is carried in a field named `rejection` (`Result` is
+  `{ ok: true, value } | { ok: false, rejection }`, `Rejected.rejection`, the `failure`
+  event). `reason` is only a plain-text or enumerated cause of a state that is not a
+  refusal (`UnknownOutcome.reason`, `HistoryState.undoReason`, `gesture-cancelled`);
+  `error` is only a value thrown by host code. Operation IDs are built with
+  `operationId(text)` and entity IDs with `nodeId(text)`, `portId(text)` and
+  `connectionId(text)`; each throws a misuse error for an empty text or one with whitespace.
+- `diffSnapshot(from, to, options)` returns `Result<Patch, readonly SnapshotError[]>`: with
+  payload codecs it can fail, and the failure is a list of rejections with paths.
+- Record validation refuses a node coordinate outside plus or minus 1e7, a node size above
+  2e7 and more than 256 route constraints on a connection (`out-of-range` and
+  `limit-exceeded`); snapshot validation applies the same checks, so a pushed snapshot gets
+  them for free.
 - `createNode` is already a command (`type`, `position`, optional `payload` and `title`); its
   planner takes IDs from the ID generator. `PlanContext.fragments` supplies the paste and
   duplicate planners, injected by the facade.
@@ -96,8 +117,11 @@ The cost is one extra copy of the document in memory; the performance task measu
    (every update's new value equals the current value, every add already exists) is applied
    as a no-op, so it is never applied twice. An edit marked `conflicted` is also
    reported once through the `conflict` event (D14).
-3. `diffSnapshot(displayed, target)` yields the single patch; apply it with origin
-   `external`. An empty patch emits nothing. The diff compares the displayed read model with
+3. `diffSnapshot(displayed, target, { codecs })` yields the single patch; apply it with
+   origin `external`. It returns a result: a payload codec that fails is reported as the
+   push's error list and nothing changes, exactly like a validation error. Before the diff,
+   snapshot connections matched to local IDs by D15 are renamed to those local IDs. An
+   empty patch emits nothing. The diff compares the displayed read model with
    the target, in the spec as here, so a pending edit the snapshot already contains yields
    no operation.
 
@@ -111,21 +135,32 @@ survives and a moved node is a single update.
 `loadSnapshot` is unchanged and stays the reset for "open another document".
 
 ### D4. Gestures and external changes
-A push is a change with origin `external`, so the rule for changes to involved entities (`add-async-connection-policy`)
-already covers it: a gesture whose involved entities are untouched continues, one whose
-entity was removed or changed by the push is cancelled, and the view emits
-`gesture-cancelled`. This change adds no tool hook and no event of its own. The drag's
+A push is a change with origin `external`, so the existing rule that a gesture yields to any
+change of the entities it involves already covers it: a gesture whose involved entities are
+untouched continues; one whose entity the push removed is cancelled with reason
+`entity-removed`, one whose entity the push changed with reason `external-change`, and the
+view emits `gesture-cancelled` with the reason and the entity IDs. A rollback after a
+rejection (D2) is also applied with origin `external`, so it cancels a gesture on the rolled
+back entity with `external-change`. A local edit, undo or redo made while a gesture runs
+cancels it with `entity-changed`, as with the local adapter. This change adds no tool hook,
+no cancel reason and no event of its own. The drag's
 preview is a pending-layer overlay computed from start positions, so unrelated updates need
 no special handling. A cancelled gesture submits nothing (the rule that submitted edits cannot be cancelled by the view does not apply, as nothing
-was submitted). The rule is the reason this change depends on `add-async-connection-policy`.
+was submitted). The rule is already in the specs and the code, so this change only verifies
+it against pushes and rollbacks.
 
 ### D5. Unknown outcome
 
-`onSubmit` returns a promise of `accepted | rejected | unknown`. An optional `timeoutMs`
+`onSubmit` returns a promise of a host answer: `{ status: "accepted" }`,
+`{ status: "rejected", rejection }` (a `Rejection` with code, message and entity IDs; the
+adapter fills `entities` from the patch when the host leaves it empty) or
+`{ status: "unknown", reason }` (plain text). `settle(operationId, answer)` takes the same
+shape. The deferred result settles with the library's `Accepted`, `Rejected` (field
+`rejection`) or `UnknownOutcome` (field `reason`). An optional `timeoutMs`
 turns silence into `unknown`; the library has no default (the host owns its transport and
 sets a value, for example 5000). It is one setting for everything that waits on the host:
-the validator of `add-async-connection-policy` and delegated creation use the same
-`timeoutMs` value, with no separate creation timeout. An
+the asynchronous validator (whose verdict cache already takes `timeoutMs`) and delegated
+creation use the same `timeoutMs` value, with no separate creation timeout. An
 unknown entry is never passed to `onSubmit` again (the no blind retry rule: no deduplication declared). The
 adapter publishes `resync-requested` once per unknown entry. The entry stays displayed (the
 user sees their edit) and is rebased by every push; the host settles it with
@@ -140,20 +175,29 @@ applies every edit optimistically at once and never waits for the host. The adap
 the host callback once per submission, in commit order, and does not wait for the answer to
 the previous one before calling again. The host decides when to start each store call (it
 may chain them), because the order in which calls reach a store is its own concern. Each
-edit carries the base revision the adapter had at submission time. If the host rejects an
+edit carries the base revision the adapter had at submission time: the integer revision of
+the displayed read model. The snapshot adapter checks it like the local adapter: a
+submission whose base revision is not the current displayed revision is rejected at once
+with `stale-revision`, the host is not called and nothing is displayed. A submission
+queued from inside an event handler is checked when it is submitted. Undo and redo build
+their submissions at the current revision. If the host rejects an
 earlier edit, later pending edits are rebased and any that no longer apply are marked
 conflicted (D3). Rotate and mirror are handed over as absolute values (D10), so a retried
 or replayed edit is harmless.
 
 ### D7. Revisions
-Two kinds of token exist and are never mixed. The adapter's own `Revision` (carried by
-`Submission.baseRevision` and `Accepted.revision`) is a local counter incremented on every
-displayed change, so those fields stay well-formed; it is ordered by this adapter, as the
-`Revision` contract says. The host's snapshot revision (D12) is a token the host attaches to
-a push; the adapter only compares two of them, with a comparison the host can replace.
+Two kinds of revision exist and are never mixed. The library's `Revision` (carried by
+`Submission.baseRevision`, `Accepted.revision`, change events and the reader) is the plain
+integer every model uses: it counts the changes of the displayed read model, so it
+increases by one for each push that changes something, each optimistic edit, each rollback
+and each document replacement, and an accepted answer, which changes nothing displayed,
+does not advance it. `Accepted.revision` is the displayed revision at the moment the edit
+settles. The host's snapshot revision (D12) is the host's own token, of any type, attached
+to a push; the adapter never stores it in a `Revision` and only compares two of them, with
+a comparison the host can replace.
 The revision continuity rule (gap handling) does not apply to this mode; it belongs to the revisioned-mode change.
-The asynchronous validator cache of `add-async-connection-policy` needs no ordering at all
-(it invalidates by change events), so nothing else in core compares revisions.
+The asynchronous validator cache needs no ordering at all (it invalidates by change
+events), so nothing else in core orders revisions; equality of two integers is enough.
 
 ### D8. Host-owned history
 
@@ -164,7 +208,7 @@ the host's `historyState` provider. With `history: "local"` the adapter reuses
 committed, in commit order, and dropped when the host rejects the edit or the edit is
 marked conflicted, so the stack never holds an edit the host refused. Answers can arrive
 out of commit order; the stack order is the commit order, not the answer order. Undo while
-the newest edit is still pending or unknown is refused with the reason `edit-pending`
+the newest edit is still pending or unknown is refused with the rejection code `edit-pending`
 (undoing an older entry underneath a pending newer one would reorder the user's work); once
 the answer arrives undo is available again. Undo of a confirmed edit submits the inverse
 patch like any other edit.
@@ -179,8 +223,9 @@ new `nodeCreation: "local" | "delegated"` (D13) and a `delegate(intent)` method 
 when it is `"delegated"`. `LocalAdapter` becomes `ModelAdapter` with `nodeCreation: "local"`
 (the name stays as the concrete return type of `createLocalAdapter`). `createGraphModel`
 takes any `ModelAdapter`. The adapter itself is plain core/io code (D1), but the thin
-`createSnapshotModel(options)` returns a `GraphModel` plus `pushSnapshot`, `pendingEdits`
-and `settle`, and a `GraphModel` belongs to the facade, so it lives next to
+`createSnapshotModel(options)` (whose options require `idGenerator`, D15) returns a
+`GraphModel` plus `pushSnapshot`, `pendingEdits`, `settle` and `hostConnectionId`, and a
+`GraphModel` belongs to the facade, so it lives next to
 `createGraphModel` (rank 4, `src/core/snapshot-model.ts`) and imports the adapter from
 `core/io/sync`. Commands, policy and validators stay in the facade, unchanged.
 
@@ -260,7 +305,9 @@ differs is the adapter, through `ModelAdapter.nodeCreation`:
   never appears (the optional `timeoutMs`, D5) the outcome becomes unknown, the placeholder
   is marked unknown and resynchronization is requested. If the named ID is already claimed
   by another operation, or already existed before the answer, the second answer is a
-  rejected settle with the reason `node-id-claimed`, logged, and the placeholder is dropped. A node is never shown before the authority has named it and its ports,
+  rejected settle with the code `node-id-claimed`, logged, and the placeholder is dropped.
+  The host builds the ID it names with `nodeId(text)`; a malformed text is a misuse error
+  thrown by the constructor, not an answer. A node is never shown before the authority has named it and its ports,
   because a node without ports cannot be connected.
 - **Ghost placeholder.** While a creation is pending the pending layer holds a ghost record
   (type, position, operation ID). It is never serialized, never in history and never in the
@@ -275,14 +322,16 @@ differs is the adapter, through `ModelAdapter.nodeCreation`:
   references), and returns a rejection before building any intent; the host receives only a
   fragment that passed, and the size limits are the existing fragment limits. The library
   creates none of them, since the ports they join do not exist yet; the host creates the nodes, then the connections between the
-  ports it has named, or answers "not supported". The connection policy cannot judge those
+  ports it has named, or answers that it does not support it: a rejected answer with the
+  code `unsupported-command` and a message of its own, which the command's `rejection`
+  carries unchanged to the view. The connection policy cannot judge those
   connections, because their ports do not exist in the library yet; under a delegating
   adapter the host owns policy for connections it creates from a fragment, and the guide says
   so. Connections to nodes outside the fragment
   (`exclude` / `preserve` handling) are in the intent only when the host asked for
   `preserve`, with the existing IDs of the outside ports.
 - **Unavailable.** The capability policy can still report creation unavailable with
-  a reason, for hosts that want no creation at all; `can` and `execute` report it before any
+  a rejection, for hosts that want no creation at all; `can` and `execute` report it before any
   delegation.
 
 ### D14. Conflict event and unconfirmed flag
@@ -294,13 +343,55 @@ pending edit or ghost touches it. It is named `unconfirmed` rather than "pending
 "pending" already names a policy outcome, a tool state and a deferred result; here it means
 the host has not confirmed the entity's latest edit. The library ships no visual treatment.
 
-### D15. Connection IDs from the host
+### D15. Connection IDs from the client, with a fallback
 
 The ID generator already allows a host-supplied implementation (a connect command
-asks it for the connection ID). For connections
-the host supplies IDs it will keep; the snapshot then holds the same ID and the diff is
-empty. A delegating adapter never asks the generator for node or port IDs. No
-alias map exists, so a temporary ID is never renamed.
+asks it for the connection ID). For connections the client names the ID and the backend
+keeps it; the snapshot then holds the same ID and the diff is empty, so selection and a
+gesture on the connection survive. A delegating adapter never asks the generator for node
+or port IDs.
+
+**A host that owns the document must supply a globally unique ID generator.** The default
+generator is a per-document counter with a type prefix (`c1`, `c2`, ...). It is unique only
+within one model: two clients editing one host document would both name their first new
+connection `c1`, and the second would collide with the first in the host's store. So
+`createSnapshotModel` has no default generator: `idGenerator` is a required option, and a
+call without one (from untyped code) throws a misuse error. The guide shows a generator
+that prefixes a per-client token (or uses a random UUID) and says that a counter is safe
+only when one client ever writes the document. The local adapter keeps its default counter.
+
+**Fallback when the backend cannot accept client IDs.** Some stores assign their own ID to
+every record they create. Then the pushed snapshot holds the connection under the backend's
+ID, the local ID is missing, and a plain diff would remove the local connection and add a
+new one, losing its selection and cancelling a gesture on it. The adapter option
+`connectionIds: "client" | "match"` (default `"client"`) selects the behavior. With
+`"match"`, before the diff of each push (D3), the adapter pairs connections:
+
+- a candidate local connection is one the read model holds that the incoming snapshot does
+  not, and that this client created through an edit that is pending or was accepted since
+  the previous push;
+- a candidate snapshot connection is one whose ID the read model does not hold;
+- a pair matches when both have the same kind and the same endpoints (`from` and `to`
+  ports; for an undirected connection in either order);
+- when several candidates share kind and endpoints (parallel connections), they are paired
+  in a deterministic order: local connections by the order their edits were committed,
+  snapshot connections in snapshot order. Parallel connections with the same kind and
+  endpoints are interchangeable in what the library shows.
+
+A matched snapshot connection is renamed to the local ID before the diff, so the diff sees
+the connection as unchanged (or updates only its route) and the local ID is kept. The
+adapter remembers the pair in a connection-only alias table: every later push renames that
+backend ID to the local ID, and `hostConnectionId(localId)` returns the backend ID, so the
+host can translate the IDs in decoded intents (a later disconnect names the local ID). A
+pair is forgotten when the connection leaves the read model. Node and port IDs are never
+matched or renamed: the authority names them (D13). An unmatched local connection is
+removed by the diff as usual, and its pending edit is rebased by D3.
+
+Rejected: renaming the local connection to the backend ID (breaks the stable-identity rule:
+an ID never changes while the entity lives); matching by endpoints without kind (two kinds
+between the same ports are different connections); matching every connection, not only
+this client's recent ones (another client's identical connection would steal the local
+ID).
 
 ### D16. Settling: one table
 Answers reach the adapter in two ways: the promise that `onSubmit` returns, and
@@ -309,17 +400,25 @@ first answer for an entry wins. This is the whole behavior; the spec states it a
 
 | Entry state | accepted | rejected | unknown |
 | --- | --- | --- | --- |
-| pending | retired; patch applied to confirmed state | retired; display recomputed (D2); failure event | state becomes unknown; resync requested |
+| pending | retired; patch applied to confirmed state | retired; display recomputed (D2); failure event with the `rejection` | state becomes unknown; resync requested |
 | conflicted | retired; display and confirmed state unchanged (its effect is expected in the next push) | retired; display unchanged; failure event | stays conflicted; logged |
 | unknown | as for pending | as for pending | stays unknown; logged |
 | no such entry (unknown or already settled ID) | logged no-op, `settle` returns false | logged no-op | logged no-op |
 
 Further cases: a second answer for an entry that already has one (promise and `settle()`) is a
 logged no-op. `loadSnapshot` and `replaceDocument` replace the document, so every pending
-entry and placeholder settles as rejected with the reason `document-replaced`, without a
+entry and placeholder settles as rejected with the code `document-replaced`, without a
 rollback (the new document is the truth) and without failure events. `dispose` settles every
-`settled` promise as rejected with `disposed` and publishes nothing. Operations and `settle`
-calls made from inside an event handler are queued like submissions.
+`settled` promise as rejected with the code `disposed` and publishes nothing. Operations and
+`settle` calls made from inside an event handler are queued like submissions.
+
+### D17. New rejection codes
+
+The change adds `edit-pending` (undo refused while the newest edit is unanswered; the
+history state's `undoReason` gives the plain text), `node-id-claimed` and
+`document-replaced` to `RejectionCode`. It reuses `disposed`, `stale-revision`,
+`unsupported-command`, `limit-exceeded` and `out-of-range`. Every refusal travels in a
+`rejection` field; no new field is named `error` or `reason` for a refusal.
 
 ## Risks / Trade-offs
 
@@ -342,11 +441,22 @@ calls made from inside an event handler are queued like submissions.
   policy to its internal connections; the host's own rules decide (documented).
 - A host that expects a reconnect to arrive as remove plus add must handle the single
   `reconnect` intent instead; the guide says so.
+- Under `connectionIds: "match"` the library's connection IDs differ from the backend's, so
+  the host must translate with `hostConnectionId` before calling its store. Two parallel
+  connections of one kind may be paired the other way round than the backend created them;
+  nothing the library shows depends on which, but a host that keeps per-connection data
+  under the backend ID must translate it the same way.
+- Because every local edit, undo and redo now cancels a gesture on the entities it touches,
+  a rollback that lands while the user drags the rolled-back node cancels the drag. That is
+  the intended result: the drag was computed from a position the host refused.
 
 ## Settled decisions
 
 1. **IDs.** Nodes and ports are named by the authority; connections by the client (D13,
-   D15). No alias map.
+   D15), with a host-supplied, globally unique generator. For a backend that cannot keep
+   client IDs, the `"match"` fallback pairs connections by kind and endpoints and keeps the
+   local ID through a connection-only alias table; there is no alias map for nodes or
+   ports.
 2. **Unconfirmed marker.** Core exposes a per-entity `unconfirmed` flag (D14); looks are
    the host's.
 3. **Overlapping edits** (D6) and **conflicts**: edits are applied at once and handed over

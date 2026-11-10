@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Snapshot adapter edit flow
-The library SHALL provide an external adapter for snapshot mode. A submitted edit SHALL show in the displayed read model at once, go to a host callback with its operation ID, base revision and patch, and settle as accepted, rejected or unknown outcome from the host's answer. `submit` SHALL return a deferred result. The callback SHALL be called once per submission, in commit order, without waiting for the answer to an earlier submission; the host decides when to start its own work.
+The library SHALL provide an external adapter for snapshot mode. A submitted edit SHALL show in the displayed read model at once, go to a host callback with its operation ID, base revision and patch, and settle as accepted, rejected or unknown outcome from the host's answer. `submit` SHALL return a deferred result. The callback SHALL be called once per submission, in commit order, without waiting for the answer to an earlier submission; the host decides when to start its own work. The base revision is the library's revision: the non-negative integer that counts the changes of the displayed read model. A submission whose base revision is not the current displayed revision SHALL be rejected at once with the code `stale-revision`, without calling the host and without changing the display; a submission made from inside an event handler SHALL be checked when it is submitted. A host's rejection SHALL be carried in the outcome's `rejection` field.
 
 #### Scenario: Optimistic edit then acceptance
 - **WHEN** a move is submitted and the host callback has not answered
@@ -19,8 +19,12 @@ The library SHALL provide an external adapter for snapshot mode. A submitted edi
 - **WHEN** the host answers that a pending move is rejected
 - **THEN** the displayed state returns to the confirmed position in one change event and a failure event carries the host's rejection
 
+#### Scenario: Stale base revision
+- **WHEN** a caller reads the revision, a push then changes the displayed state, and the caller submits a patch with the revision it read
+- **THEN** the outcome is rejected with code `stale-revision`, the host callback is not called, and the displayed state is unchanged
+
 ### Requirement: Snapshot push is an incremental external change
-Pushing a snapshot SHALL validate it with the shared validator and its size limits, make it the new confirmed state, diff the displayed read model against that snapshot with the still-applicable pending edits applied on top, and apply the result as one committed change with origin `external`. A push made from inside an event handler SHALL be queued and applied after the current dispatch. It SHALL NOT clear history, SHALL NOT emit `reset`, and SHALL NOT add an undo entry. An invalid snapshot SHALL return a structured error and leave all state, including pending edits, unchanged. A push whose diff is empty SHALL emit no change event.
+Pushing a snapshot SHALL validate it with the shared validator and its size limits, make it the new confirmed state, diff the displayed read model against that snapshot with the still-applicable pending edits applied on top, and apply the result as one committed change with origin `external`. A push made from inside an event handler SHALL be queued and applied after the current dispatch. It SHALL NOT clear history, SHALL NOT emit `reset`, and SHALL NOT add an undo entry. An invalid snapshot, or one whose payload codec fails while diffing, SHALL return a structured list of rejections with paths and leave all state, including pending edits, unchanged. A push whose diff is empty SHALL emit no change event.
 
 #### Scenario: Refresh without side effects
 - **WHEN** a node is selected, history has two entries, and the host pushes a snapshot that changes only another node's title
@@ -32,11 +36,15 @@ Pushing a snapshot SHALL validate it with the shared validator and its size limi
 
 #### Scenario: Invalid push
 - **WHEN** the host pushes a snapshot with a connection to a missing port
-- **THEN** the push returns a structured error naming the connection and the read model and pending edits are unchanged
+- **THEN** the push returns a structured rejection naming the connection and the read model and pending edits are unchanged
 
 #### Scenario: Oversized push
 - **WHEN** the host pushes a snapshot larger than the configured size limits
-- **THEN** the push returns a structured error and nothing changes
+- **THEN** the push returns a structured rejection and nothing changes
+
+#### Scenario: Out-of-range push
+- **WHEN** the host pushes a snapshot with a node at x 2e7 or a connection with 300 route constraints
+- **THEN** the push is refused with `out-of-range` or `limit-exceeded` at that entity's path and nothing changes
 
 #### Scenario: Push from inside a handler
 - **WHEN** a change handler pushes a snapshot while another change is being dispatched
@@ -62,7 +70,7 @@ After a push the displayed state SHALL be the new confirmed state plus the pendi
 - **THEN** A disappears from the displayed state and the move is reported as conflicted
 
 ### Requirement: Gestures survive unrelated pushes
-A snapshot push is an external change, so the rule for changes to involved entities applies to it: it SHALL NOT cancel an active gesture unless the push changes or removes an entity the gesture involves, and when it does the gesture SHALL be cancelled with a reason naming the entities and a `gesture-cancelled` event SHALL tell the host. A push SHALL NOT change the viewport or the selection of entities it does not remove.
+A snapshot push is an external change, so the rule for changes to involved entities applies to it: it SHALL NOT cancel an active gesture unless the push changes or removes an entity the gesture involves, and when it does the gesture SHALL be cancelled, submit nothing, and a `gesture-cancelled` event SHALL tell the host the entity IDs and the reason: `entity-removed` when the push removed an involved entity and `external-change` when it changed one. A rollback after the host rejects an edit is an external change too and SHALL cancel a gesture on a rolled-back entity in the same way. A push SHALL NOT change the viewport or the selection of entities it does not remove.
 
 #### Scenario: Unrelated refresh during a drag
 - **WHEN** node A is being dragged and a push changes only node B
@@ -70,14 +78,18 @@ A snapshot push is an external change, so the rule for changes to involved entit
 
 #### Scenario: Dragged node removed
 - **WHEN** node A is being dragged and a push removes A
-- **THEN** the drag is cancelled, nothing is submitted, and a `gesture-cancelled` event states that A was removed
+- **THEN** the drag is cancelled, nothing is submitted, and a `gesture-cancelled` event names A with reason `entity-removed`
+
+#### Scenario: Dragged node changed by a push
+- **WHEN** node A is being dragged and a push changes A's title
+- **THEN** the drag is cancelled with reason `external-change` and nothing is submitted on release
 
 #### Scenario: Viewport and selection survive
 - **WHEN** a push arrives while the user has panned and selected nodes that the push does not remove
 - **THEN** viewport and selection are unchanged
 
 ### Requirement: Unknown outcome and resynchronization
-When the host reports that an edit's outcome is unknown, or an optional configured timeout elapses without an answer, the adapter SHALL mark the edit unknown outcome, keep it visible and listed, NOT resubmit it, and publish an event requesting resynchronization. A later valid push SHALL rebase the unknown edit by the rule that pending edits rebase on a push; the host SHALL then settle it explicitly. The adapter declares no deduplication.
+When the host reports that an edit's outcome is unknown, or an optional configured timeout elapses without an answer, the adapter SHALL mark the edit unknown outcome with a plain-text reason, keep it visible and listed, NOT resubmit it, and publish an event requesting resynchronization. A later valid push SHALL rebase the unknown edit by the rule that pending edits rebase on a push; the host SHALL then settle it explicitly. The adapter declares no deduplication.
 
 #### Scenario: Lost acknowledgment
 - **WHEN** the host callback reports an unknown outcome for a pending move
@@ -88,7 +100,7 @@ When the host reports that an edit's outcome is unknown, or an optional configur
 - **THEN** the edit leaves the pending layer and the displayed state is unchanged
 
 ### Requirement: Host-owned history in snapshot mode
-A snapshot adapter SHALL support `history: "host"`, in which no local undo stack exists. Undo and redo SHALL call host callbacks, be reported pending until settled, and their effect SHALL arrive as an ordinary push. Availability and labels SHALL come from a host provider through the same history state as local history. Under host-owned history the library SHALL record no history entries of its own, and the built-in undo and redo key bindings SHALL still run the undo and redo commands. In `history: "local"` the adapter SHALL keep a local stack of the user's edits in commit order, excluding external pushes; an entry SHALL be added when the edit is committed and dropped when the host rejects the edit or it is marked conflicted, and undo while the newest edit is pending or unknown SHALL be refused with the reason `edit-pending`.
+A snapshot adapter SHALL support `history: "host"`, in which no local undo stack exists. Undo and redo SHALL call host callbacks, be reported pending until settled, and their effect SHALL arrive as an ordinary push. Availability and labels SHALL come from a host provider through the same history state as local history. Under host-owned history the library SHALL record no history entries of its own, and the built-in undo and redo key bindings SHALL still run the undo and redo commands. In `history: "local"` the adapter SHALL keep a local stack of the user's edits in commit order, excluding external pushes; an entry SHALL be added when the edit is committed and dropped when the host rejects the edit or it is marked conflicted, and undo while the newest edit is pending or unknown SHALL be refused with the rejection code `edit-pending`, the history state giving a plain-text undo reason.
 
 #### Scenario: Undo forwarded
 - **WHEN** the user invokes undo under host-owned history
@@ -104,7 +116,7 @@ A snapshot adapter SHALL support `history: "host"`, in which no local undo stack
 
 #### Scenario: Undo while the newest edit is pending
 - **WHEN** under local history the user moves A, then rotates A, and presses undo before the host answered the rotate
-- **THEN** undo is refused with the reason `edit-pending` and nothing changes; after the host answers it undoes the rotate
+- **THEN** undo is refused with the rejection code `edit-pending` and nothing changes; after the host answers it undoes the rotate
 
 #### Scenario: Rejected edit leaves the stack
 - **WHEN** under local history the host rejects the user's last edit
@@ -193,11 +205,11 @@ Creating a node SHALL stay one `createNode` command used by every creation path,
 
 #### Scenario: ID already claimed
 - **WHEN** the host answers a creation with an ID that another operation already claimed
-- **THEN** that creation settles as rejected with the reason `node-id-claimed`, the placeholder is dropped, and the event is logged
+- **THEN** that creation settles as rejected with the rejection code `node-id-claimed`, the placeholder is dropped, and the event is logged
 
 #### Scenario: The host refuses
 - **WHEN** the host answers that the creation is rejected
-- **THEN** the pending result settles as rejected with the host's reason and the read model is unchanged
+- **THEN** the pending result settles as rejected with the host's rejection and the read model is unchanged
 
 ### Requirement: Placeholder for a pending creation
 While a delegated creation is pending, the pending layer SHALL hold a placeholder record with the node type, position and operation ID. A placeholder SHALL NOT be part of the read model, SHALL NOT be serialized, and SHALL NOT enter history. It SHALL be removed when the node arrives or the host refuses, and SHALL be marked unknown, and stay until settled, when the outcome is unknown. The view MAY paint it.
@@ -211,7 +223,7 @@ While a delegated creation is pending, the pending layer SHALL hold a placeholde
 - **THEN** the placeholder is gone
 
 ### Requirement: Paste, duplicate and unavailable creation
-Under an adapter whose nodes are named by the host, paste and duplicate SHALL first validate the fragment as untrusted input, exactly as local paste does, and reject an invalid or oversized one before any intent is built; they SHALL then hand the host one create-fragment intent instead of creating anything: it SHALL carry the fragment's nodes (type, position, title, payload), the placement offset, and the fragment's internal connections expressed with keys local to the fragment, since the ports they join do not exist yet. The library SHALL create none of them and SHALL NOT apply the connection policy to the fragment's connections, which the host owns; the host creates the nodes and then the connections, or answers that the operation is not supported, in which case the command settles as rejected with that reason and nothing is created. The capability policy SHALL be able to report creation as unavailable with a reason, in which case every creation command reports that reason before any delegation and no ID is minted.
+Under an adapter whose nodes are named by the host, paste and duplicate SHALL first validate the fragment as untrusted input, exactly as local paste does, and reject an invalid or oversized one before any intent is built; they SHALL then hand the host one create-fragment intent instead of creating anything: it SHALL carry the fragment's nodes (type, position, title, payload), the placement offset, and the fragment's internal connections expressed with keys local to the fragment, since the ports they join do not exist yet. The library SHALL create none of them and SHALL NOT apply the connection policy to the fragment's connections, which the host owns; the host creates the nodes and then the connections, or answers that the operation is not supported with a rejection of code `unsupported-command` and a message of its own, in which case the command settles as rejected carrying that rejection unchanged and nothing is created. The capability policy SHALL be able to report creation as unavailable with a reason, in which case every creation command reports that reason before any delegation and no ID is minted.
 
 #### Scenario: Duplicate under a delegating adapter
 - **WHEN** two connected nodes are duplicated through an adapter whose nodes are named by the host
@@ -219,15 +231,15 @@ Under an adapter whose nodes are named by the host, paste and duplicate SHALL fi
 
 #### Scenario: Invalid fragment is not delegated
 - **WHEN** a pasted fragment references a port that does not exist, or exceeds the fragment size limits
-- **THEN** the command is rejected with a structured error and the host is not called
+- **THEN** the command is rejected with a structured rejection and the host is not called
 
 #### Scenario: Host cannot paste
 - **WHEN** the host answers that a fragment cannot be created
-- **THEN** the command settles as rejected with the host's reason and nothing is created
+- **THEN** the command settles as rejected with the host's rejection, its message unchanged, and nothing is created
 
 #### Scenario: Creation forbidden
 - **WHEN** the capability policy forbids creation with a reason and a paste is attempted
-- **THEN** the paste reports that reason, nothing is submitted, and no ID is minted
+- **THEN** the paste reports that rejection, nothing is submitted, and no ID is minted
 
 ### Requirement: Client-issued connection IDs
 The ID generator SHALL be able to return IDs supplied by the host for connections. When the host accepts a connect edit and a later pushed snapshot holds a connection with the same ID, the snapshot diff SHALL be empty for that connection, so its selection and any gesture on it SHALL survive.
@@ -236,8 +248,42 @@ The ID generator SHALL be able to return IDs supplied by the host for connection
 - **WHEN** a connection created with a host-supplied ID is selected, the host accepts the edit and pushes a snapshot with that connection
 - **THEN** no operation is produced for it, it stays selected, and a gesture on it continues
 
+### Requirement: Globally unique IDs for a host-owned document
+A model whose document is owned by a host through the snapshot adapter SHALL be created with an ID generator supplied by the host, and the library SHALL NOT fall back to its default generator there. The default generator is a counter per document with a type prefix (`c1`, `c2`, ...), unique only within one model, so two clients writing one host document would issue the same connection ID. Creating the snapshot model without a generator SHALL be a type error and, from untyped code, SHALL throw a misuse error. The local adapter SHALL keep its default generator.
+
+#### Scenario: No generator given
+- **WHEN** untyped code creates a snapshot model without an ID generator
+- **THEN** creation throws a misuse error and no model exists
+
+#### Scenario: Two clients create connections
+- **WHEN** two snapshot models on one host document each use a generator that prefixes a per-client token, and each user draws a first connection
+- **THEN** the two connection IDs differ, and after the host accepts both and pushes one snapshot, each client shows both connections with their own IDs
+
+### Requirement: Matching connections when the backend assigns IDs
+When a host's backend cannot keep the connection IDs the client issued and gives each new connection its own ID, the snapshot adapter SHALL offer an option that matches connections instead of replacing them. With that option, before diffing a push, a connection the read model holds and the snapshot does not, created by an edit of this client that is pending or was accepted since the previous push, SHALL be paired with a snapshot connection whose ID the read model does not hold and that has the same kind and the same endpoints (in either order for an undirected connection). Several equal candidates SHALL be paired in a deterministic order: local connections in commit order, snapshot connections in snapshot order. A paired connection SHALL keep its local ID, so the diff produces no removal and no addition for it and its selection and a gesture on it survive. The adapter SHALL remember each pair, apply it to every later push, and report the backend ID of a local connection to the host, until the connection leaves the read model. Node and port IDs SHALL never be matched, and no ID SHALL ever be renamed while its entity exists. Without the option, a missing local ID is removed by the diff as usual.
+
+#### Scenario: Backend assigns its own connection ID
+- **WHEN** with matching on, the user connects port A to port B, the connection is selected, and the host pushes a snapshot holding one connection of the same kind from A to B under a backend ID
+- **THEN** no change event is published for the connection, it keeps its local ID and stays selected, and the adapter reports the backend ID for that local ID
+
+#### Scenario: Different kind is not matched
+- **WHEN** with matching on, the pushed snapshot holds a connection from A to B of another kind instead
+- **THEN** the local connection is removed and the snapshot connection is added under its backend ID
+
+#### Scenario: Parallel connections pair in order
+- **WHEN** with matching on, the user draws two connections of one kind from A to B and the snapshot holds two such connections under backend IDs
+- **THEN** each local connection is paired with one snapshot connection, in commit order against snapshot order, the same way on every run, and both keep their local IDs
+
+#### Scenario: Another client's connection is not taken
+- **WHEN** with matching on, a pushed snapshot holds a connection from A to B that another client created, and this client has no new connection between those ports
+- **THEN** the connection is added under its backend ID and no local ID is reused for it
+
+#### Scenario: Matching off
+- **WHEN** matching is off and the snapshot holds the user's new connection under a backend ID
+- **THEN** the diff removes the local connection and adds the snapshot connection, and a gesture on the local one is cancelled with reason `entity-removed`
+
 ### Requirement: Revisioned snapshot push
-A snapshot push MAY carry a revision. The adapter SHALL ignore a push whose revision is older than the last applied one, emit no event, and report that it was ignored as stale. A push with an equal or newer revision, or without one, SHALL be applied. The comparison SHALL be replaceable by the host.
+A snapshot push MAY carry a revision token of the host's own, of any type. This token is separate from the library's integer revision, which only the changes a push applies advance. The adapter SHALL ignore a push whose token is older than the last applied one, emit no event, and report that it was ignored as stale. A push with an equal or newer token, or without one, SHALL be applied. The comparison SHALL default to numeric order and SHALL be replaceable by the host.
 
 #### Scenario: Older snapshot is ignored
 - **WHEN** a snapshot with revision 5 is pushed, then one with revision 3
@@ -262,7 +308,7 @@ The view state SHALL tell painters, for each node, port and connection, whether 
 - **THEN** the view state reports A as unconfirmed, other nodes as confirmed, and A as confirmed after the host accepts the edit
 
 ### Requirement: Settling edits
-Every pending edit SHALL be in one of the states pending, conflicted or unknown, and every answer from the host (the promise returned by the callback, or a later `settle` call) SHALL be handled by one table. Accepted: a pending or unknown edit leaves the pending layer and its patch is applied to confirmed state; a conflicted edit leaves the pending layer and nothing is displayed or confirmed (its effect is expected in the next push). Rejected: a pending or unknown edit leaves the pending layer, the displayed state is recomputed from confirmed state plus the remaining pending edits in one external change, and a failure event carries the rejection; a conflicted edit leaves the pending layer with a failure event and no display change. Unknown: a pending edit becomes unknown and resynchronization is requested; any other state is unchanged. An answer for an operation that is unknown or already settled, a second answer for an entry that already has one, and an unknown answer for an already unknown edit SHALL be logged and have no effect, and `settle` SHALL report that nothing was settled. Replacing the document (`loadSnapshot`, `replaceDocument`) SHALL settle every pending edit and placeholder as rejected with the reason `document-replaced`, without rollback and without failure events. Disposing the adapter SHALL settle every deferred result as rejected with the reason `disposed` and publish no events. Answers and settle calls made from inside an event handler SHALL be applied after the current dispatch.
+Every pending edit SHALL be in one of the states pending, conflicted or unknown, and every answer from the host (the promise returned by the callback, or a later `settle` call) SHALL be handled by one table. Accepted: a pending or unknown edit leaves the pending layer and its patch is applied to confirmed state; a conflicted edit leaves the pending layer and nothing is displayed or confirmed (its effect is expected in the next push). Rejected: a pending or unknown edit leaves the pending layer, the displayed state is recomputed from confirmed state plus the remaining pending edits in one external change, and a failure event carries the rejection; a conflicted edit leaves the pending layer with a failure event and no display change. Unknown: a pending edit becomes unknown and resynchronization is requested; any other state is unchanged. An answer for an operation that is unknown or already settled, a second answer for an entry that already has one, and an unknown answer for an already unknown edit SHALL be logged and have no effect, and `settle` SHALL report that nothing was settled. A host answer SHALL be one of accepted, rejected with a rejection (code, message and entity IDs), or unknown with a plain-text reason. Replacing the document (`loadSnapshot`, `replaceDocument`) SHALL settle every pending edit and placeholder as rejected with the rejection code `document-replaced`, without rollback and without failure events. Disposing the adapter SHALL settle every deferred result as rejected with the rejection code `disposed` and publish no events. Answers and settle calls made from inside an event handler SHALL be applied after the current dispatch.
 
 #### Scenario: Duplicate answer
 - **WHEN** the callback's promise resolves accepted and the host then calls `settle` for the same operation
@@ -278,11 +324,11 @@ Every pending edit SHALL be in one of the states pending, conflicted or unknown,
 
 #### Scenario: Document replaced while edits are pending
 - **WHEN** `loadSnapshot` is called while two edits and a placeholder are pending
-- **THEN** all three settle as rejected with `document-replaced`, the displayed state is the loaded document, and no failure event is published
+- **THEN** all three settle as rejected with code `document-replaced`, the displayed state is the loaded document, and no failure event is published
 
 #### Scenario: Dispose with unsettled results
 - **WHEN** the adapter is disposed while a deferred result is unsettled
-- **THEN** that result settles as rejected with `disposed` and no event is published
+- **THEN** that result settles as rejected with code `disposed` and no event is published
 
 ## MODIFIED Requirements
 

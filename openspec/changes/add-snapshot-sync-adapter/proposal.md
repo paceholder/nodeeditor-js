@@ -51,13 +51,25 @@ wrapping an existing store, and a decoder from a submitted patch to named intent
   carry what the model needs; no third adapter interface is added.
 - **Client-issued connection IDs.** The ID generator may return host-supplied IDs for
   connections. When the host accepts the edit and a later snapshot holds the same ID, the
-  diff is empty for that connection, so selection and a gesture on it survive.
-- **Gestures and external changes.** A push is an external change, so the gesture rule of
-  `add-async-connection-policy` applies unchanged: a gesture continues when a push
-  does not touch the entities it involves, and is otherwise cancelled with a reason the host
-  can read from the `gesture-cancelled` event. This change adds no rule of its own.
+  diff is empty for that connection, so selection and a gesture on it survive. A host that
+  owns the document must supply a globally unique generator (the default counter, `c1`,
+  `c2`, ..., collides across clients), so the snapshot model has no default generator.
+  For a backend that cannot keep client IDs, an option matches a snapshot connection to
+  this client's new local connection by kind and endpoints and keeps the local ID.
+- **Gestures and external changes.** A push is an external change, so the existing rule that
+  a gesture yields to any change of the entities it involves applies unchanged: a gesture
+  continues when a push does not touch the entities it involves, and is otherwise
+  cancelled with reason `entity-removed` or `external-change`, which the host reads from
+  the `gesture-cancelled` event. A rollback after a rejection is an external change too.
+  This change adds no rule of its own.
+- **Revisions and refusals.** The adapter uses the library's integer revision for base
+  revisions, accepted outcomes and events, and rejects a submission planned against
+  another revision with `stale-revision`, like the local adapter. The host's own snapshot
+  token is a separate value. Every refusal the adapter reports or receives travels in a
+  `rejection` field.
 - **Unknown outcome.** A submission the host reports as unknown (or that times out) is
-  kept marked unknown, never resubmitted, and the adapter asks the host to resynchronize.
+  kept marked unknown, with a plain-text `reason`, never resubmitted, and the adapter asks
+  the host to resynchronize.
 - **Host-owned and local history.** With `history: "host"` undo and redo are forwarded to host
   callbacks, availability comes from a host provider, and the library records no history
   entries of its own. With local history, entries are pushed at commit and
@@ -79,11 +91,11 @@ wrapping an existing store, and a decoder from a submitted patch to named intent
   connections in the same patch.
 
 Requirements implemented or refined: the local adapter rule, the snapshot synchronization rule, the external authority rule, the identifier generation rule and the revision continuity rule (not
-applicable in snapshot mode, see design), the capabilities and read-only mode rule, the tagged edits rule, the pending layer and edit states rule, the no blind retry rule, the responsiveness during slow host work rule and the host-owned history rule,
+applicable in snapshot mode, see design), the one revision type rule, the rule that the base revision is checked by the local adapter (applied to this adapter too), the rule that queued submissions are checked when submitted, the one field name for refusals rule, the operation ID constructor rule, the rule that records stay inside the supported world range, the rule that route constraints are bounded, the rule that the snapshot diff honours payload codecs, the capabilities and read-only mode rule, the tagged edits rule, the pending layer and edit states rule, the no blind retry rule, the responsiveness during slow host work rule and the host-owned history rule,
 the rule that external changes are not local undo entries, the typed events rule, the reentrancy contract rule, the rule that patches are the core change primitive, the atomic patch application rule, the one history entry per gesture rule, the history availability through the command contract rule, the one graph snapshot shape rule, the shared snapshot validator rule, the snapshot export and load rule and the validate-before-replace rule,
 the one committed edit per gesture rule and the duplicate and paste fragments rule.
-New: the snapshot adapter requirements, submission intent decoding, the store-wrapping recipe, node creation through the adapter, the pending-creation placeholder, paste and duplicate creation, client-issued connection IDs, revisioned snapshot push and conflict reporting,
-the unconfirmed flag per entity rule, the settling edits rule and the snapshot diff against the read model rule. The pending layer and edit states rule and the responsiveness during slow host work rule get modified deltas (below). Gesture cancellation uses the rule that gestures react to changes of the entities they involve from `add-async-connection-policy`.
+New: the snapshot adapter requirements, submission intent decoding, the store-wrapping recipe, node creation through the adapter, the pending-creation placeholder, paste and duplicate creation, client-issued connection IDs, globally unique IDs for a host-owned document, matching connections when the backend assigns IDs, revisioned snapshot push and conflict reporting,
+the unconfirmed flag per entity rule, the settling edits rule and the snapshot diff against the read model rule. The pending layer and edit states rule and the responsiveness during slow host work rule get modified deltas (below). Gesture cancellation uses the existing rules that gestures react to changes of the entities they involve and that gestures yield to any change of their entities.
 
 ## Capabilities
 
@@ -95,8 +107,9 @@ None.
 
 - `model-adapters`: snapshot adapter assembly, incremental and revisioned push, pending
   rebase and conflict reporting, gesture survival (by reference to the rule that gestures react to changes of the entities they involve), unknown outcome, host-owned history,
-  delegated node creation, client-issued connection IDs, unconfirmed flag, wrapping recipe,
-  intent decoding.
+  delegated node creation, client-issued connection IDs with the match fallback and the
+  required generator, base revision check, unconfirmed flag, wrapping recipe, intent
+  decoding.
 - `serialization`: specified diff behavior of a snapshot against the read model.
 
 ## Out of scope
@@ -107,9 +120,10 @@ None.
   the full mode; it is a later change.
 - **Asynchronous connection validation** (the `pending` policy outcome) and its
   use by the connect tool and docking. Policy stays synchronous here.
-- **Temporary-to-authoritative ID mapping.** Not needed: a node is never shown before the
-  authority has named it and its ports, and connection IDs are issued by the
-  client. No alias map is built.
+- **Temporary-to-authoritative ID mapping for nodes and ports.** Not needed: a node is
+  never shown before the authority has named it and its ports. Connection IDs are issued
+  by the client; only the opt-in match fallback keeps a connection-only alias table, and
+  no ID is ever renamed.
 - **Painting the pending state** in the view. Core exposes the unconfirmed flag of every
   entity; the host or a later view change decides how it looks. The library ships
   no spinner.
@@ -117,13 +131,16 @@ None.
   an adapter declares deduplication; this adapter declares none).
 - Collaboration, merging or CRDT logic, React bindings, hover events, docking
   and the reconnect tool.
-- A new gesture rule or tool hook: that is `add-async-connection-policy`.
+- A new gesture rule, cancel reason or tool hook: the existing involved-entity rules cover
+  pushes and rollbacks.
 - A command-level `intent` tag on `Submission`; intents are decoded from the patch.
 
 ## Dependencies
 
-- **Hard dependency on `add-async-connection-policy`** for the gesture rule, the
-  `gesture-cancelled` view event and the per-tool `involved` hook. Tasks 4.1 and 4.2 are
-  verification of that rule against pushes and cannot be written before it exists. Apply and
-  archive in this order: async policy, `add-reconnect-tool`, `add-docking`, this change.
+- The gesture rule, the `gesture-cancelled` view event, the per-tool `involved` hook and the
+  asynchronous validator are in the specs and the code (the asynchronous connection policy
+  is archived, and the view hardening widened cancellation to changes of any origin).
+  Tasks 4.1 and 4.2 verify them against pushes.
+- Planned order, not a code dependency: `add-reconnect-tool`, `add-docking`, then this
+  change.
 - Uses the view lock only through the cancellation reason already defined there.
