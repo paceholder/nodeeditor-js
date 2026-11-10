@@ -26,6 +26,9 @@ connection policy, including its asynchronous verdicts, never from docking code.
 - **Atomic dock command (core/edit).** A `dock` command (moves given as `{ node, position }`, like `moveNodes`) composes the move plan and the
   connect plan into one patch and one history entry; a rejected dock plan
   changes neither position nor connection.
+- **Entry points.** `DockingOptions` is a type of the main `view` entry beside
+  `ToolOptions`; `findDockCandidates`, if exported at all, goes to `view/advanced` with the
+  other tool-writing names.
 - **Undocking and zero-length wires.** Connections created by docking behave like any
   other: dragging the nodes apart keeps them; coincident anchors leave them
   selectable through the command API and the inspector selection path.
@@ -37,6 +40,7 @@ Requirements implemented: the docking candidate preview rule, the opt-in and sup
 Refined: the attachment limits rule (occupied ports are excluded when the limit says so, through the policy),
 the distinct target states rule, the group movement and snapping rule, the one committed edit per gesture rule and the one policy for all input routes rule.
 New requirements: the connect-without-moving mode rule (connect-without-moving mode), the docking under pending validation rule (docking under pending validation).
+Relies on, unchanged: the rule that gestures yield to any change of their entities, the rule that records stay inside the supported world range and the tool contract on the advanced entry rule.
 
 ## Out of Scope
 
@@ -46,16 +50,17 @@ New requirements: the connect-without-moving mode rule (connect-without-moving m
   placement of an already created node. Palette drop is a host concern.
 - Multi-connection docks (one dock creates at most one connection), group docking that
   connects several port pairs at once.
-- The asynchronous validator itself (`add-async-connection-policy`) and endpoint
+- The asynchronous validator itself (already in the specs and the code) and endpoint
   reconnection (`add-reconnect-tool`).
 - Auto-pan changes (the auto-pan rule already applies to node moves).
 
 ## Dependencies
 
-- **Hard dependency on `add-async-connection-policy`.** The move tool declares the entities a
-  docking gesture involves through the `involved` hook and relies on the cancellation rule,
-  the verdict cache, the wait mechanism and the `connection-rejected` and
-  `gesture-cancelled` events that change defines; it also needs the view lock from
-  `add-react-integration`. Apply and archive this change after the async policy. Archive
-  order: async policy, `add-reconnect-tool`, this change, `add-snapshot-sync-adapter`.
+- The `involved` hook, the cancellation rule, the verdict cache, the wait mechanism, the
+  `connection-rejected` and `gesture-cancelled` events and the view lock are in the specs
+  and the code (the asynchronous connection policy and the React integration are archived;
+  the view hardening made every change of an involved entity cancel a gesture, whatever
+  its origin). Nothing has to land first.
+- Planned order, not a code dependency: `add-reconnect-tool`, this change,
+  `add-snapshot-sync-adapter`.
 - `add-reconnect-tool` does not depend on this change, and this change does not use its code.

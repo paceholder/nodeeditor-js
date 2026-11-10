@@ -10,6 +10,17 @@
 - Previews live in the interaction layer and are never serialized;
   `ToolPreview` is a discriminated union in `render/paint/previews/preview-types.ts`.
 - Ghost entries re-route moved connections during a move preview (`ghost-entries.ts`).
+- The tool router cancels a gesture when a committed change of any origin removes or
+  changes an entity listed by the tool's `involved(state)`: reason `entity-removed`,
+  `external-change` (origin `external`) or `entity-changed` (a local edit, undo or redo).
+  The select-move tool lists the pressed node, then the moved and locked nodes.
+- Record validation refuses a node position outside plus or minus 1e7 (`out-of-range`), so
+  a planned move to such a position is rejected like any other invalid patch.
+- Tool-writing names (the tool contract and the built-in tool factories) are exported from
+  `view/advanced`; `ToolOptions` and its option types stay in `view`.
+- Every refusal is carried in a field named `rejection` (plan results, availability,
+  policy outcomes, the `connection-rejected` event); `reason` is only plain text, as in the
+  `unverified` execute result.
 
 ## Goals / Non-Goals
 
@@ -45,7 +56,9 @@ moved set and targets outside it. Multi-port docks are out of scope.
 `{ node, position }` entries as `moveNodes`) plans the
 move with `planMoveNodes` and the connect with the connect planner on the staged result,
 merges the two into one patch labeled "Dock", and returns the first rejection, choice or
-pending outcome. A pending outcome (the candidate's verdict is unknown) is returned as the
+pending outcome. A rejection is the plan result's `rejection`; a snapped position outside the
+supported world range is refused by record validation with `out-of-range`, so the whole
+dock is rejected and the preview falls back to the plain move. A pending outcome (the candidate's verdict is unknown) is returned as the
 existing `unverified` result and commits nothing; the tool decides what to do with it (D6).
 In `snap` mode the offset is the anchor-coincidence delta (clamped by the same size/limit
 rules as a move); in `connect` mode it is the plain drag offset. The preview kinds are
@@ -101,11 +114,20 @@ pixel and the connection is selected. Selection and deletion need no change beca
 selection is by ID.
 
 ### D9. Entities the gesture involves
-While moving, the select-move tool's `involved(state)` lists the moved nodes and, when a
-candidate is chosen, the candidate port and its node; while waiting under `wait` it also
-lists the waiting connection's two ports. The rule that gestures react to changes of the entities they involve of `add-async-connection-policy` cancels
-the gesture when one of them is removed or changed externally; docking adds no rule of its
-own.
+While moving, the select-move tool's `involved(state)` lists what it lists today (the moved
+and locked nodes); the docking candidate is not involved. The candidate is found again on
+every frame, so a change to it, from any origin, changes the preview or drops the candidate
+on the next frame instead of cancelling the move. Since a change of any origin to an
+involved entity now cancels the gesture (`entity-changed` for a local edit, undo or redo),
+listing the candidate would let a host's live update of a nearby node cancel the user's
+drag. While waiting under `wait`, the commit depends on the candidate, so `involved(state)`
+lists the moved nodes, the moving port, the candidate port and the candidate's node. The
+existing router rule cancels the gesture or the wait when one of them is removed or
+changed; docking adds no rule or reason of its own. The gesture's own `dock` commit never
+cancels it.
+
+Rejected: listing the candidate while moving (the original plan, written when only external
+changes cancelled a gesture).
 
 ## Settled Questions
 
@@ -116,7 +138,13 @@ own.
 ## Risks / Trade-offs
 
 - Per-frame policy evaluation for several candidates: the finder evaluates at most the 3
-  nearest and caches by signature within the gesture (the async cache of
-  `add-async-connection-policy` extends this).
-- Snap plus size limits could make the snapped position invalid: the command is rejected as
-  a whole and the preview falls back to the plain move.
+  nearest and caches by signature within the gesture (the model's verdict cache for the
+  asynchronous validator extends this).
+- Snap plus size limits could make the snapped position invalid (beyond the world range,
+  say): the command is rejected as a whole and the preview falls back to the plain move.
+- A host that streams local changes to a dragged node cancels the drag with
+  `entity-changed`; this is the general trade-off of the any-origin cancellation rule.
+  Changes to the candidate do not cancel the drag (D9).
+- Moving nodes translates the pinned routes of their connections in the same patch; the
+  dock patch keeps each route within the 256 route constraints a connection may hold, as
+  it only moves existing pins.

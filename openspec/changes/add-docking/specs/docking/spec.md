@@ -12,7 +12,7 @@ Docking SHALL offer two modes chosen by an option: `snap`, where the dragged nod
 - **THEN** the node ends with the two anchors coincident and one undo reverts both the move and the connection
 
 ### Requirement: Docking under pending validation
-A docking candidate whose policy outcome is pending SHALL be previewed with the pending target state and SHALL NOT capture the node position in `snap` mode. A release on a pending candidate SHALL commit the plain move only if the host option says so (`move-only`, the default) or SHALL wait for the verdict (`wait`). While waiting the node SHALL stay shown at the released position and nothing SHALL be submitted. After an accepted verdict the dock SHALL be planned again, with the node at the anchor-coincident position in `snap` mode or the released position in `connect` mode, and committed as one history entry; if that plan is rejected, nothing SHALL be committed. After a rejected verdict, or a failed or timed-out validation, only the move to the released position SHALL be committed, because the answer concerns the connection alone. A wait under `wait` SHALL end on Escape, a new press, locking the view, and the rules for changes to the entities the gesture involves (the moved nodes, the candidate port and its node). A verdict arriving after the gesture ended SHALL have no effect. Candidate choice during the drag SHALL remain stable while verdicts arrive (hysteresis).
+A docking candidate whose policy outcome is pending SHALL be previewed with the pending target state and SHALL NOT capture the node position in `snap` mode. A release on a pending candidate SHALL commit the plain move only if the host option says so (`move-only`, the default) or SHALL wait for the verdict (`wait`). While waiting the node SHALL stay shown at the released position and nothing SHALL be submitted. After an accepted verdict the dock SHALL be planned again, with the node at the anchor-coincident position in `snap` mode or the released position in `connect` mode, and committed as one history entry; if that plan is rejected, nothing SHALL be committed. After a rejected verdict, or a failed or timed-out validation, only the move to the released position SHALL be committed, because the answer concerns the connection alone. A wait under `wait` SHALL end, committing nothing, on Escape, a new press, locking the view, and any committed change from any origin that removes or changes an entity the waiting gesture involves: the moved nodes, the moving port, the candidate port and the candidate's node. While the node is still being dragged the candidate SHALL NOT be an involved entity: a change to it SHALL update or drop the candidate on the next frame and SHALL NOT cancel the drag. A verdict arriving after the gesture ended SHALL have no effect. Candidate choice during the drag SHALL remain stable while verdicts arrive (hysteresis).
 
 #### Scenario: Release on a pending candidate, move-only
 - **WHEN** the option is `move-only` and the user releases on a candidate whose verdict is unknown
@@ -35,8 +35,12 @@ A docking candidate whose policy outcome is pending SHALL be previewed with the 
 - **THEN** nothing is committed and the node is back at its original position
 
 #### Scenario: Candidate removed while waiting
-- **WHEN** the option is `wait` and an external change removes the candidate's node before the verdict
-- **THEN** the wait is cancelled and nothing is committed
+- **WHEN** the option is `wait` and a change from any origin removes the candidate's node before the verdict
+- **THEN** the wait is cancelled with reason `entity-removed` and nothing is committed
+
+#### Scenario: Candidate changed during the drag
+- **WHEN** a node is being dragged with a candidate captured and a local host edit changes the candidate node's title
+- **THEN** the drag continues, the candidate is evaluated again on the next frame, and releasing commits as usual
 
 #### Scenario: Verdict changes the preview
 - **WHEN** the candidate is pending during the drag and the validator then rejects it
@@ -53,7 +57,7 @@ When docking is enabled, placement and movement SHALL preview compatible nearby 
 
 #### Scenario: Incompatible nearby port
 - **WHEN** the nearest port is incompatible
-- **THEN** a reason is shown and the drag is not captured by it
+- **THEN** the policy's rejection message is shown and the drag is not captured by it
 
 #### Scenario: Hysteresis
 - **WHEN** the pointer jitters at the boundary between two candidates
@@ -91,7 +95,11 @@ On confirmation or release, the position change (snapped in `snap` mode) and the
 
 #### Scenario: Candidate filled during the gesture
 - **WHEN** the candidate port becomes occupied by another edit before release
-- **THEN** the commit is rejected with the exhausted-capacity reason and neither the move nor a connection is committed
+- **THEN** the commit is rejected with a rejection of code `capacity-exhausted` and neither the move nor a connection is committed
+
+#### Scenario: Snapped position outside the world range
+- **WHEN** snapping would place the node beyond the supported world range of plus or minus 1e7
+- **THEN** the dock is rejected with code `out-of-range` as a whole and neither the move nor the connection is committed
 
 ### Requirement: Zero-length connections stay addressable
 Connections with coincident anchors SHALL remain inspectable, selectable through an inspector or command, and undoable even when no path stroke is visible. The view SHALL show a minimal visible mark for a selected zero-length connection so the selection is perceivable.
