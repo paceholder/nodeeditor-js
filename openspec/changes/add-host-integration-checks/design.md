@@ -5,11 +5,19 @@ Existing mechanisms: per-type and per-entity style overrides, `captureRadiusPx` 
 port layout, the `marquee` tool option (`direction`, `contain`, `intersect`; `direction` is the default and
 contains left-to-right, intersects right-to-left), `SelectionModel.on`, `Keymap` bindings with a replaceable keymap
 option, `cornerRadius` in the orthogonal router, `view.clientToWorld`, and the bench suites.
+Since the view hardening: a node painter that draws `state.hovered` must declare
+`repaintOnHover: true` (otherwise a hover change does not repaint the scene); a key binding
+has `repeat` (default true; the default nudge, rotate, mirror and duplicate bindings set it
+false so a held key acts once); shortcuts fall back to the physical key on non-Latin
+layouts; a lost button release, a context menu before the drag threshold and a second touch
+cancel a gesture; the root has the role `application` and a `label` mount option. The
+names needed to write a tool are on `view/advanced`; `KeyBinding`, `Keymap`, `ToolOptions`
+and the painter types are on `view`.
 
 ## Goals / Non-Goals
 
-**Goals:** a verified answer per item; minimal fixes; each fix covered by a test naming its ID;
-known limits written down.
+**Goals:** a verified answer per item; minimal fixes; each fix covered by a test naming its
+rule in words; known limits written down.
 **Non-Goals:** the items listed under Out of Scope in the proposal.
 
 ## Decisions
@@ -18,7 +26,10 @@ known limits written down.
   a regression test; a failing check gets the smallest fix and a note in `notes.md`.
 - D2 Style: prefer existing per-entity overrides and a host style function over new model
   fields. A runtime change repaints only the scene layer. New API only if overrides
-  cannot express dash/width/colour per connection.
+  cannot express dash/width/colour per connection. The painter-wrapper pattern copies
+  `repaintOnHover` from the painter it wraps (or sets it when the wrapper itself draws
+  hover), and the guide shows it; a wrapper that drops the flag would see `state.hovered`
+  only when something else repaints the scene.
 - D3 Echo filtering: selection events gain `origin: "user" | "api" | "model"`. Every
   selection call takes an optional `origin` argument that defaults to `"api"`, because a call
   made directly on the selection model or the view is by definition a program calling; the
@@ -40,6 +51,8 @@ known limits written down.
 - D4 Shortcut scope is per focused root, extended by an optional host predicate.
   Add unbinding and rebinding of any chord or command, and bare-key bindings, only if the
   `keymap` option cannot express them today. A text field's keys never reach graph commands.
+  A host binding states `repeat` like the defaults; a host that rebinds nudge keeps one step
+  per held key only if it sets `repeat: false`, and the guide says so.
 - D6 Performance: record numbers for 50, 200 and 500 node fixtures, plus a 2000-node stress
   fixture, with the existing harness from the React Flow comparison rule; no new budgets unless the result is far outside
   the existing ones. The sizes are planning values to confirm against real documents.
@@ -65,16 +78,22 @@ known limits written down.
   wire-end grip bypass. A host that wants free placement turns the grid step off. The docking
   modifier stays configurable (`DockingOptions.suppress`).
 - D7 WebView, pen and touch: browser tests cover synthetic pointer events with
-  `pointerType` pen and touch in Chrome; real WebView runs are manual and recorded.
+  `pointerType` pen and touch in Chrome, including the existing cancellations (`pinch` for a
+  second touch, `button-released`, `context-menu`); real WebView runs are manual and
+  recorded. Trackpad pinch and pan values are checked on a physical device in
+  `close-archive-gaps`, not here.
+- D14 External drop range: a drop position converted by `clientToWorld` is a world point;
+  `createNode` refuses a position outside plus or minus 1e7 with `out-of-range` like any
+  other edit, so the example needs no clamp of its own and reports the refusal.
 
 ## Risks / Trade-offs
 
-- New IDs may turn out unnecessary; they are dropped in that case (see proposal).
+- New requirements may turn out unnecessary; they are dropped in that case (see proposal).
 - Synthetic pointer tests do not prove WebView behavior; recorded as a limit.
 
 ## Settled Questions
 
-- Origin field: `origin: "user" | "api"`.
+- Origin field: `origin: "user" | "api" | "model"` (D3).
 - The benchmark reuses the harness from the React Flow comparison rule; no separate comparison setup.
 
 ## Open Questions

@@ -11,7 +11,10 @@ first, then fixes only what fails, and records known limits.
 
 - Style from the host: verify per-connection stroke colour, width and dash from the record
   payload or a host function, switchable at runtime without rebuilding the model; selected and
-  hovered node styling through `NodePaintInput.state` with a documented painter-wrapper pattern;
+  hovered node styling through `NodePaintInput.state` with a documented painter-wrapper pattern
+  (a painter that draws `state.hovered` declares `repaintOnHover: true`, and a wrapper keeps
+  the flag of the painter it wraps, because hover changes repaint the scene only for such
+  painters);
   invisible port glyphs with a large capture target; runtime light/dark theme switch (the theme tokens and overrides rule,
   the rule that glyph, target, label and anchor are separate and the independent extension contracts rule). Fix gaps; add the per-connection style at runtime rule.
 - Port targets and normals: verify corner and interior placements, explicit per-port normal
@@ -39,9 +42,12 @@ first, then fixes only what fails, and records known limits.
   carried on the view's `selection` event and by the React selection hook, and unknown IDs
   ignored; delete as one history entry including attached connections; focus-scoped,
   unbindable and rebindable shortcuts, host bare keys, text fields never trigger commands;
-  pointer capture and pen/touch drags; 50 to 500 node benchmark, plus a 2000
+  pointer capture and pen/touch drags (with the existing lost-release, context-menu and
+  touch-pinch cancellation); 50 to 500 node benchmark, plus a 2000
   node stress case, on the harness from the React Flow comparison rule; rounded bends and port offset on the
-  orthogonal router; accessibility limits recorded.
+  orthogonal router; accessibility limits recorded (the root already has the role
+  `application`, a role description and a `label` mount option; keyboard navigation is
+  proposed separately in `add-keyboard-navigation`).
 
 ## Capabilities
 
@@ -64,7 +70,7 @@ None.
 - `performance`: typical host sizes and a stress size.
 
 Requirements implemented or refined: the theme tokens and overrides rule, the per-connection style at runtime rule, the rule that glyph, target, label and anchor are separate, the image-symbol port normals and capture radius rule, the image-symbol node preset rule and the screen-space tolerances rule,
-the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the group movement and snapping rule, the resize handle rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the examples rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
+the hover repaint on request rule, the initial fit and zoom limits rule, the fit on first content rule, the level of detail rule, the label hiding by zoom rule, the selection rule, the group movement and snapping rule, the resize handle rule, the input scoping rule, the one committed edit per gesture rule, the selection change origin rule, the shortcut unbinding and focus scope rule, the one step per held key rule, the shortcuts on non-Latin layouts rule, the asset service with host resolver rule, the host-supplied symbol images rule, the built-in route modes rule, the examples rule, the external drop example rule, the React Flow comparison rule and the typical host sizes rule.
 
 ## Impact
 
@@ -73,7 +79,7 @@ the initial fit and zoom limits rule, the fit on first content rule, the level o
   tests; docs (`docs/guide-view.md`, `docs/interaction.md`, `docs/architecture.md` known limits).
 - Added requirements other than image-symbol port normals, host-supplied symbol images, selection change origin and shortcut unbinding (fit on first content and label hiding by zoom among them) are provisional until the
   checks confirm a gap; unneeded ones are dropped from the delta before archive. Task 5.2
-  enforces that every requirement left in the delta has a test naming its ID.
+  enforces that every requirement left in the delta has a test naming its rule in words.
 - Touches the React selection hook introduced by `add-react-integration` (it gains the
   origin), so apply this change after that one is archived.
 
@@ -83,7 +89,10 @@ the initial fit and zoom limits rule, the fit on first content rule, the level o
   policy, reconnect tool, gesture-intent decoding, fit/zoom controls (separate changes).
 - Components inside nodes, backend protocols, domain connection rules, host theme tokens.
 - Full accessibility (screen-reader parity, keyboard connection); only the existing reduced
-  scope is recorded as a known limit.
+  scope is recorded as a known limit. Keyboard navigation and announcements are the
+  separate planned change `add-keyboard-navigation`, which needs the owner's approval to
+  widen that scope.
+- Trackpad tuning on a physical device (see `close-archive-gaps`).
 - Packaging, git install, Node baseline and the tag (see `add-consumable-package`), registry
   publication and release automation.
 - Safari/Firefox engine runs and real device WebView testing beyond what is available locally;

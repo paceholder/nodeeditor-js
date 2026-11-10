@@ -21,7 +21,7 @@ Selection change events SHALL state whether the change came from user input or f
 
 ### Requirement: Shortcut unbinding and focus scope
 A host SHALL be able to remove or replace the default binding of any chord or command, and to
-add bare-key bindings such as `R` for rotate and `F` for mirror. Shortcuts SHALL act only while
+add bare-key bindings such as `R` for rotate and `F` for mirror. A host binding SHALL be able to state whether an auto-repeated key press runs its command, as the default bindings do. Shortcuts SHALL act only while
 the editor root has focus, or while a host-supplied predicate returns true. A key typed in a
 text field SHALL never run a graph command.
 
@@ -32,6 +32,10 @@ text field SHALL never run a graph command.
 #### Scenario: Host adds bare keys
 - **WHEN** the host binds `R` to rotate and `F` to mirror and the editor has focus with a node selected
 - **THEN** each key runs its command once, and the same keys do nothing when focus is in another panel
+
+#### Scenario: Rebound nudge key held down
+- **WHEN** the host binds nudging to other keys with auto-repeat turned off and the user holds one of them
+- **THEN** the selection moves by one step and the history gains one entry
 
 #### Scenario: Host predicate
 - **WHEN** the host supplies a predicate that returns true while its own canvas panel is active

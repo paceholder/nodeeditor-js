@@ -5,7 +5,7 @@ A host SHALL be able to give each connection a stroke colour, width and dash pat
 connection's payload or a host function, so the colour can depend on the connection kind, and
 change them at runtime without rebuilding the model. Switching between solid and dashed lines
 and between dark and light themes SHALL need no remount. Selected and hovered node styling SHALL be available to a host node painter through the
-paint input state.
+paint input state. A node painter that draws the hovered state SHALL declare that it repaints on hover, because a hover change repaints the scene only for such painters; a painter that wraps another SHALL keep that declaration of the painter it wraps.
 
 #### Scenario: Colour by kind
 - **WHEN** two connections of different kinds are painted with a host style function
@@ -18,6 +18,10 @@ paint input state.
 #### Scenario: Dash setting changed at runtime
 - **WHEN** the host switches all connections from solid to dashed
 - **THEN** the scene layer repaints dashed with no model change and no history entry
+
+#### Scenario: Hover through a painter wrapper
+- **WHEN** a host wraps a node painter that declares it repaints on hover and the pointer enters a node it paints
+- **THEN** the scene repaints and the wrapper sees the node as hovered; with a wrapper that declares nothing, the hover change does not repaint the scene
 
 #### Scenario: Theme switch
 - **WHEN** the host calls `setTheme` with a dark token set

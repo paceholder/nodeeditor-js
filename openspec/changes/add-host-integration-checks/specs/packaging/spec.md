@@ -12,3 +12,7 @@ starts outside the view, using pointer events only and no HTML5 drag and drop.
 #### Scenario: Palette drop
 - **WHEN** a pointer drag from a palette item ends over the canvas
 - **THEN** one node is created at the converted position as one history entry, and a release outside the canvas creates none
+
+#### Scenario: Drop beyond the world range
+- **WHEN** the converted drop position lies outside the supported world range of plus or minus 1e7
+- **THEN** no node is created and the example reports the refusal with code `out-of-range`
