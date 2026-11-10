@@ -10,17 +10,11 @@ export {
 } from "./affine.js";
 export { bezierPath, straightPath } from "./connection-paths.js";
 export type { GeometryRegistry } from "./geometry-registry.js";
+export { createGeometryRegistry } from "./geometry-registry.js";
 export {
-  createGeometryRegistry,
-  placeholderGeometry,
-} from "./geometry-registry.js";
-export {
-  checkDpr,
   checkWorldPoint,
   clampZoom,
-  isInWorldRange,
   MAX_DPR,
-  MAX_WORLD_COORD,
   MAX_ZOOM,
   MIN_DPR,
   MIN_ZOOM,
@@ -41,7 +35,6 @@ export type {
 } from "./path-geometry.js";
 export {
   endTangents,
-  isFinitePath,
   nearestPoint,
   pathBounds,
   pathDistance,
@@ -55,8 +48,6 @@ export { createCardGeometry } from "./presets/card-geometry.js";
 export type { ImageSymbolOptions } from "./presets/image-symbol-geometry.js";
 export { createImageSymbolGeometry } from "./presets/image-symbol-geometry.js";
 export {
-  inflateRect,
-  intersectRects,
   rectCenter,
   rectContainsPoint,
   rectContainsRect,
@@ -68,7 +59,6 @@ export {
 export type { Shape } from "./shapes.js";
 export {
   ellipseShape,
-  isValidShape,
   polygonShape,
   rectShape,
   roundRectShape,
@@ -77,13 +67,12 @@ export {
   shapeDistance,
 } from "./shapes.js";
 export type { Point, Rect, Space } from "./spaces.js";
-export { isFinitePoint, isFiniteRect, point, rect } from "./spaces.js";
+export { point, rect } from "./spaces.js";
 export type { Viewport } from "./viewport-transform.js";
 export {
   createViewport,
   DEFAULT_VIEWPORT,
   deviceMatrix,
-  deviceToViewport,
   viewportMatrix,
   viewportToDevice,
   viewportToWorld,

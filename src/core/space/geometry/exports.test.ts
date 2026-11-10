@@ -7,7 +7,6 @@ describe("geometry exports", () => {
     const scene: core.GeometryScene = core.createGeometryScene(model);
     expect(scene.pick({ x: 0, y: 0 }, { zoom: 1 })).toEqual([]);
     expect(core.createAabbTree<string>().size).toBe(0);
-    expect(core.MAX_WORLD_COORD).toBe(1e7);
     expect(
       core.nodeTransform({
         position: { x: 1, y: 2 },

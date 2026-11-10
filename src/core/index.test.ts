@@ -50,7 +50,6 @@ describe("core entry", () => {
     const model = core.createGraphModel({ registry, connectionPolicy: policy });
     const command: core.Command = { kind: "undo" };
     expect(model.can(command).available).toBe(false);
-    expect(core.defaultLimit("input")).toBe(1);
     expect(typeof core.resolveCapability).toBe("function");
     expect(core.findUnknownTypes(model.reader, registry)).toEqual([]);
   });

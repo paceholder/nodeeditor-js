@@ -8,24 +8,17 @@ export {
 } from "./base/ids/id-generator.js";
 export type {
   ConnectionId,
-  GroupId,
   IdKind,
-  MemberKey,
   NodeId,
   OperationId,
   PortId,
-  ValueId,
 } from "./base/ids/ids.js";
 export {
   connectionId,
-  groupId,
-  ID_KINDS,
   isWellFormedId,
-  memberKey,
   nodeId,
   operationId,
   portId,
-  valueId,
 } from "./base/ids/ids.js";
 export type { Rejection, RejectionCode, Result } from "./base/result.js";
 export { err, MisuseError, ok, reject, rejectionOf } from "./base/result.js";
@@ -46,32 +39,20 @@ export type {
   PortRecord,
   RouteConstraint,
 } from "./data/model/records.js";
-export {
-  normalizeRoute,
-  translateConstraints,
-} from "./data/model/route-constraints.js";
+export { translateConstraints } from "./data/model/route-constraints.js";
 export type { GraphState } from "./data/model/state.js";
 export type { StoreOptions } from "./data/model/store.js";
 export {
-  checkConnectionEndpoints,
-  checkPortOwnership,
-  type RecordLookup,
   validateConnectionRecord,
   validateNodeRecord,
   validatePortRecord,
 } from "./data/model/validate-records.js";
 export type { QuarterTurns, Size, Vec2 } from "./data/model/values.js";
-export {
-  isFiniteSize,
-  isFiniteVec2,
-  isQuarterTurns,
-} from "./data/model/values.js";
 export type {
   NodeTypeDefinition,
   PortSpec,
   SizeLimits,
 } from "./data/node-types/definition.js";
-export { defaultLimit } from "./data/node-types/definition.js";
 export type { UnknownTypeDiagnostic } from "./data/node-types/diagnostics.js";
 export { findUnknownTypes } from "./data/node-types/diagnostics.js";
 export type { NodeTypeRegistry } from "./data/node-types/registry.js";
