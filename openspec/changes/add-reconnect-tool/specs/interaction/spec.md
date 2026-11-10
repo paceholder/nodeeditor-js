@@ -13,7 +13,7 @@ A selected connection SHALL show a grip at each endpoint with a capture radius s
 
 #### Scenario: Reconnect to an invalid port
 - **WHEN** the user releases on an incompatible port
-- **THEN** nothing is committed, the original connection is kept, and before release the port showed the incompatible state with its reason
+- **THEN** nothing is committed, the original connection is kept, before release the port showed the incompatible state with the rejection's message, and the `connection-rejected` event carries the rejection
 
 #### Scenario: Parallel connections
 - **WHEN** two parallel connections join the same port pair and the user reconnects one of them
@@ -24,7 +24,7 @@ A selected connection SHALL show a grip at each endpoint with a capture radius s
 - **THEN** no reconnect starts and the press is handled as a click on the connection
 
 ### Requirement: Reconnect release and cancellation
-Releasing on empty space SHALL cancel the reconnect and keep the connection (the default), or delete the connection when the host option `onEmptyDrop` is `delete`; a delete SHALL be one history entry and subject to the delete capability. Escape, pointercancel, lost capture, window blur, a hidden or unmounted view and locking the view SHALL cancel it, and so SHALL the rules for changes to the entities this gesture involves: the connection, its fixed end port and the hovered target port. A cancelled gesture SHALL discard the provisional path and submit nothing. A `reconnect` command rejected at commit SHALL leave the original connection unchanged and emit the rejection as a `connection-rejected` event. A policy choice outcome for the target SHALL commit nothing and show the choice-required cue. A tool or host that forbids detaching SHALL prevent the grip from starting a gesture. The tool SHALL be off unless the host sets the option `reconnect` to an object; an empty object enables it with defaults, a partial object SHALL keep the defaults of the fields it omits, and `reconnect: false` turns it off. While off, no grips are drawn and a press on a connection end behaves as a press on the connection.
+Releasing on empty space SHALL cancel the reconnect and keep the connection (the default), or delete the connection when the host option `onEmptyDrop` is `delete`; a delete SHALL be one history entry and subject to the delete capability. Escape, pointercancel, lost capture, window blur, a hidden or unmounted view, locking the view, a pointer move that arrives without the button that started the gesture, a context menu before the drag threshold and a second touch SHALL cancel it, and so SHALL any committed change, from any origin (local edit, undo, redo or external), that removes or changes an entity this gesture involves: the connection, its fixed end port and that port's node, and while a verdict is awaited also the target port and its node. The `gesture-cancelled` event SHALL name the reason (`entity-removed`, `external-change` or `entity-changed` for a change). The gesture's own commit SHALL NOT cancel it. A cancelled gesture SHALL discard the provisional path and submit nothing. A `reconnect` command rejected at commit SHALL leave the original connection unchanged and emit the rejection as a `connection-rejected` event. A policy choice outcome for the target SHALL commit nothing and show the choice-required cue. A tool or host that forbids detaching SHALL prevent the grip from starting a gesture. The tool SHALL be off unless the host sets the option `reconnect` to an object; an empty object enables it with defaults, a partial object SHALL keep the defaults of the fields it omits, and `reconnect: false` turns it off. While off, no grips are drawn and a press on a connection end behaves as a press on the connection.
 
 #### Scenario: Drop on empty space cancels
 - **WHEN** the option is `cancel` and the user releases on empty space
@@ -40,11 +40,19 @@ Releasing on empty space SHALL cancel the reconnect and keep the connection (the
 
 #### Scenario: Fixed end removed
 - **WHEN** an external change removes the node holding the fixed end during the gesture
-- **THEN** the gesture is cancelled and nothing is submitted
+- **THEN** the gesture is cancelled with reason `entity-removed` and nothing is submitted
+
+#### Scenario: Undo during a reconnect
+- **WHEN** the user drags an endpoint and an undo, run by the host while the drag lasts, changes the connection
+- **THEN** the gesture is cancelled with reason `entity-changed`, nothing is submitted on release, and the connection keeps what the undo gave it
+
+#### Scenario: Lost release
+- **WHEN** the user drags an endpoint and a mouse move arrives that reports no button held
+- **THEN** the gesture is cancelled and the connection keeps its original endpoints
 
 #### Scenario: Target filled before release
 - **WHEN** another edit fills the chosen target's last free slot after the preview showed it compatible
-- **THEN** the commit is rejected with the exhausted-capacity reason and the original connection is unchanged
+- **THEN** the commit is rejected with a rejection of code `capacity-exhausted` and the original connection is unchanged
 
 #### Scenario: Off by default
 - **WHEN** the host sets no `reconnect` option and selects a connection

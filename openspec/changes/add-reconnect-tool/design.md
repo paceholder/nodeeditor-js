@@ -18,7 +18,17 @@
   `ToolContext.evaluateConnection(from, to)` (`tool-context.ts`), which always plans
   `connect` and caches by `from>to` pair, and `connect-candidates.ts`, which calls it
   directly.
-- Capability checks decide whether a command is available (`can`).
+- Capability checks decide whether a command is available (`can`); an unavailable answer
+  carries its refusal in `rejection`, like every other refusal.
+- The tool contract (`Tool`, `Transition`, `ToolContext`, `ToolInput`, `ToolEffect`,
+  `toolSlot`) and the built-in tool factories are exported from `view/advanced`; `view`
+  keeps `ToolOptions`, `DEFAULT_TOOL_OPTIONS`, `ToolSlot`, `defaultToolSlots` and
+  `CancelReason`.
+- The tool router cancels a gesture when a committed change of any origin removes or
+  changes an entity its tool lists in `involved(state)`: reason `entity-removed`,
+  `external-change` or `entity-changed`. It also cancels on `button-released` (a move
+  without the gesture's button), `context-menu` (before the drag threshold) and `pinch` (a
+  second touch).
 
 ## Goals / Non-Goals
 
@@ -40,8 +50,8 @@ takes the evaluation function as a parameter (the connect tool passes
 proposal carries `replacing`, and caches its evaluation under a key that includes the
 connection, the end and the target port. A key of `from>to` alone would be wrong: the same
 port pair evaluates differently depending on which connection is being replaced (occupancy,
-duplicates). Both caches are cleared with the model revision and when the verdict cache
-notifies.
+duplicates). Both caches are cleared when the model's integer revision changes and when the
+verdict cache notifies.
 
 ### D2. Grip geometry
 Endpoint grips come from the scene's connection route (first and last vertex) and are
@@ -87,8 +97,8 @@ A pending evaluation maps to the `pending` state as in the connect tool. A relea
 pending target enters the same wait as the connect tool: the preview stays at the
 release point, an accepted verdict submits one `reconnect` (re-planned and revalidated at
 commit), a rejected one commits nothing and emits `connection-rejected`. The wait state and
-the `request-verdict` and `validate-wait` effects come from `add-async-connection-policy`,
-which this change requires.
+the `request-verdict` and `validate-wait` effects already exist in the tool contract (they
+came with the asynchronous connection policy) and the connect tool uses them.
 
 ### D7. Options and turning the tool off
 `ToolOptions.reconnect: ReconnectOptions | false`, the same shape as `autoPan`. **The default
@@ -100,10 +110,22 @@ resolver therefore fills nested defaults for `reconnect` (and, in `add-docking`,
 from the `tools` list of the mount options works too and needs no code.
 
 ### D8. Entities the gesture involves
-The tool's `involved(state)` returns the connection ID, the fixed end's port and, while
-dragging, the hovered target port. The rule that cancels the gesture when one of them is
-removed or changed externally is the rule that gestures react to changes of the entities they involve of `add-async-connection-policy`; this tool adds no
-rule of its own.
+The tool's `involved(state)` follows the connect tool: while pressed or dragging it returns
+the connection ID, the fixed end's port and that port's node; while waiting for a verdict
+(D6) it adds the target port and its node, because the commit depends on them. The hovered
+target port is not involved while dragging: it is evaluated again on every move, so a change
+to it changes the cue, not the gesture. The router cancels the gesture when a committed
+change of any origin removes or changes one of the involved entities, with reason
+`entity-removed`, `external-change` (origin `external`) or `entity-changed` (a local edit,
+undo or redo), and the view emits `gesture-cancelled`; this tool adds no rule of its own.
+An undo pressed during the drag that touches the connection therefore cancels it. The
+gesture's own `reconnect` commit never cancels it, because the router ends the gesture
+before the commit runs.
+
+### D9. Entry points
+`ReconnectOptions` is exported from `view` next to `ToolOptions`. `reconnectTool` is
+exported from `view/advanced` with the other built-in tool factories, and the
+entry-points test lists it there and not in `view`.
 
 ## Risks / Trade-offs
 
@@ -116,4 +138,9 @@ rule of its own.
   normalizes by policy; the tool displays the dragged end by the pressed end of the stored
   record and does not assume orientation.
 - Existing route pins on a reconnected wire: not reset on reconnect. This is settled for
-  now (hosts do not use manual pins yet) and recorded in the proposal as out of scope.
+  now (hosts do not use manual pins yet) and recorded in the proposal as out of scope. The
+  kept pins stay within the record limits (at most 256 route constraints, coordinates within
+  plus or minus 1e7), since reconnecting changes only an endpoint.
+- A host that streams local changes to the dragged connection (a live status in its
+  payload, say) cancels the reconnect with `entity-changed`; this is the general trade-off
+  of the any-origin cancellation rule, not specific to this tool.
