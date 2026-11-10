@@ -87,7 +87,6 @@ export type {
   ViewSelection,
 } from "./interact/selection/view-selection.js";
 export type { AutoPanOptions } from "./interact/tools/auto-pan.js";
-export { DEFAULT_AUTO_PAN } from "./interact/tools/auto-pan.js";
 export { defaultToolSlots } from "./interact/tools/default-tools.js";
 export type { ToolOptions } from "./interact/tools/thresholds.js";
 export { DEFAULT_TOOL_OPTIONS } from "./interact/tools/thresholds.js";

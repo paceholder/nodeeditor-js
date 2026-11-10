@@ -3,44 +3,20 @@
 // Mounting and customizing an editor needs only `@paceholder/nodeeditor-js/view`.
 // Importing this module has no side effects.
 
-export { choiceOptions } from "./interact/choice/choice-request.js";
 export type {
   ChoiceState,
   ConnectionChoice,
   ConnectionChoiceHost,
 } from "./interact/choice/connection-choice.js";
 export { createConnectionChoice } from "./interact/choice/connection-choice.js";
-export {
-  CLIPBOARD_COMMAND_IDS,
-  registerClipboardCommands,
-} from "./interact/clipboard/clipboard-commands.js";
-export type {
-  ClipboardEvents,
-  ClipboardEventsDeps,
-} from "./interact/clipboard/clipboard-events.js";
-export { attachClipboardEvents } from "./interact/clipboard/clipboard-events.js";
 export { createClipboardService } from "./interact/clipboard/clipboard-service.js";
 export type {
   ClipboardService,
   ClipboardServiceDeps,
 } from "./interact/clipboard/clipboard-types.js";
-export type { PlacementState } from "./interact/clipboard/placement.js";
-export {
-  copiedPlacement,
-  DEFAULT_PASTE_STEP,
-  duplicatePlacement,
-  INITIAL_PLACEMENT,
-  pastePlacement,
-} from "./interact/clipboard/placement.js";
-export { systemClipboardOf } from "./interact/clipboard/view-clipboard.js";
 export { registerBuiltinCommands } from "./interact/commands/builtin-commands.js";
 export { createCommandRegistry } from "./interact/commands/command-registry.js";
-export { isEditable } from "./interact/commands/editable-model.js";
-export { createKeymap, detectPlatform } from "./interact/commands/keymap.js";
-export {
-  registerTransformCommands,
-  TRANSFORM_COMMAND_IDS,
-} from "./interact/commands/transform-commands.js";
+export { createKeymap } from "./interact/commands/keymap.js";
 export type {
   ViewCommandDeps,
   ViewCommandOutcome,
@@ -55,16 +31,6 @@ export type {
 } from "./interact/context-menu/context-menu-input.js";
 export { attachContextMenuInput } from "./interact/context-menu/context-menu-input.js";
 export type {
-  LongPressAction,
-  LongPressInput,
-  LongPressState,
-  LongPressStep,
-} from "./interact/context-menu/long-press.js";
-export {
-  LONG_PRESS_IDLE,
-  longPressStep,
-} from "./interact/context-menu/long-press.js";
-export type {
   AutoPanDriver,
   AutoPanDriverDeps,
   AutoPanHost,
@@ -76,17 +42,8 @@ export type { EffectHost } from "./interact/input/effect-runner.js";
 export { createEffectRunner } from "./interact/input/effect-runner.js";
 export type { ViewEvents } from "./interact/input/view-events.js";
 export { createViewEvents } from "./interact/input/view-events.js";
-export {
-  applySelectionChange,
-  createSelectionModel,
-} from "./interact/selection/selection-model.js";
-export type { AutoPanArm, ViewSize } from "./interact/tools/auto-pan.js";
-export {
-  armedVelocity,
-  autoPanVelocity,
-  startArm,
-  updateArm,
-} from "./interact/tools/auto-pan.js";
+export { createSelectionModel } from "./interact/selection/selection-model.js";
+export type { ViewSize } from "./interact/tools/auto-pan.js";
 // The tool contract and the built-in tools: for hosts that write or reorder tools. The
 // contract may change before 1.0.
 export { connectTool } from "./interact/tools/connect-tool.js";
@@ -98,25 +55,14 @@ export type {
   ResizeHandlesDeps,
 } from "./interact/tools/resize-handles.js";
 export { createResizeHandles } from "./interact/tools/resize-handles.js";
-export type {
-  ResizeResult,
-  ResizeStart,
-  ResizeStep,
-} from "./interact/tools/resize-math.js";
-export { fixedFor, resizeStep } from "./interact/tools/resize-math.js";
-export type { ResizeState } from "./interact/tools/resize-tool.js";
-export { resizeTargetOf, resizeTool } from "./interact/tools/resize-tool.js";
+export { resizeTool } from "./interact/tools/resize-tool.js";
 export { createRouteEditTool } from "./interact/tools/route-edit-tool.js";
 export { selectMoveTool } from "./interact/tools/select-move-tool.js";
 export { resolveToolOptions } from "./interact/tools/thresholds.js";
-export type {
-  SizeLimitsLookup,
-  ToolContextDeps,
-} from "./interact/tools/tool-context.js";
+export type { ToolContextDeps } from "./interact/tools/tool-context.js";
 export {
   capabilityProbe,
   createToolContext,
-  sizeLimitsOf,
 } from "./interact/tools/tool-context.js";
 export type {
   Gesture,
@@ -146,40 +92,22 @@ export type { LayerStack } from "./platform/dom/layer-stack.js";
 export type { FrameScheduler } from "./platform/frame-scheduler.js";
 export { createFrameScheduler } from "./platform/frame-scheduler.js";
 export { createAssetService } from "./render/assets/asset-service.js";
-export { diagnosticsOf } from "./render/paint/decorations.js";
 export type { InteractionLayer } from "./render/paint/interaction-layer.js";
 export { createInteractionLayer } from "./render/paint/interaction-layer.js";
 export { detailLevel, detailPolicy } from "./render/paint/level-of-detail.js";
 export type {
-  HiddenIds,
-  PreviewHost,
-} from "./render/paint/previews/preview-host.js";
-export {
-  createHiddenIds,
-  createPreviewHost,
-} from "./render/paint/previews/preview-host.js";
-export type {
   LocalCorner,
   ResizeHandle,
 } from "./render/paint/previews/resize-handle.js";
-export {
-  hitsResizeHandle,
-  RESIZE_HANDLE_PX,
-  resizeHandleOf,
-} from "./render/paint/previews/resize-handle.js";
+export { resizeHandleOf } from "./render/paint/previews/resize-handle.js";
 export type { ResizeHandleSource } from "./render/paint/previews/resize-handle-painter.js";
-export {
-  createResizeHandlePainter,
-  RESIZE_HANDLE_ORDER,
-  resizeHandleEntry,
-} from "./render/paint/previews/resize-handle-painter.js";
+export { createResizeHandlePainter } from "./render/paint/previews/resize-handle-painter.js";
 export type {
   SceneLayerDeps,
   ScenePaintStats,
 } from "./render/paint/scene-layer.js";
 export {
   DEFAULT_Z_ORDER,
-  EMPTY_VIEW_STATE,
   paintScene,
 } from "./render/paint/scene-layer.js";
 export type { TextMeasurer } from "./render/presets/text-measure.js";
