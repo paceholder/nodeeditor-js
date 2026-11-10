@@ -6,7 +6,7 @@ the current specs. The archive stays untouched; this file records what was carri
 The specs in `openspec/specs/` and `openspec/config.yaml` are the source of truth. This file is derived input only.
 Archive line numbers (`L48-52`) point into the archive file as it is today. Items marked deliberately dropped cite where the trim is recorded.
 
-How to update: when a change closes a gap, flip its box, name the covering requirement by its title on the line (existing codes may stay where they already appear, but add no new ones), remove it from the Gaps list, and
+How to update: when a change closes a gap, flip its box, name the covering requirement by its title on the line, remove it from the Gaps list, and
 refresh the summary table. When a new gap is found, add a line to its section and to Gaps. Do not rewrite a requirement to fit this file.
 
 Status legend:

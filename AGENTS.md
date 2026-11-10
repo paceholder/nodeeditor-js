@@ -12,14 +12,13 @@ QtNodes comparisons) and `docs/guide-*.md` walk through implemented code; update
 a change alters what they describe. `docs/archive/` holds the original AI-drafted
 baseline and research notes: history only, not authoritative.
 
-Requirement codes (a short letters-and-number notation) came from the original, now
-archived requirements document and are not used for current or future work. New
-requirements get plain-English titles and are written to stand alone: define every term in
+Requirements have plain-English titles and are written to stand alone: define every term in
 the spec itself and never rely on `docs/archive` or another document the reader would have
-to open. Tests name the rule they prove in words. Commits and docs never use codes.
-Existing codes survive only as headings of requirements already in the specs and in test
-titles that already use them, so those can still be matched until a later migration; do not
-mass-rewrite them and do not add new ones. `docs/archive/` and the archived requirements
+to open. Tests name the rule they prove in words. The short letters-and-number requirement
+codes of the archived requirements document are gone from the specs, code, tests, docs and
+history; only `docs/archive/` still has them. Never add one: `scripts/requirement-codes.test.ts`
+fails on a code in any tracked file outside `docs/archive/` or in the built package.
+`docs/archive/` and the archived requirements
 document are history, not a source to follow. Every MUST needs linked evidence (a test
 that names the rule).
 

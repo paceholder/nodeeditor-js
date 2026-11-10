@@ -6,12 +6,10 @@ context: |
   react (provider + hooks, React 19 peer dependency).
 
   Source of truth: openspec/specs. The archived baseline (docs/archive/node-editor-library-design.md)
-  is history, not a source to follow. The XXX-NN requirement codes came from that
-  archived document and are not used for current or future work: new requirements get plain-English
-  titles and stand alone, tests name the rule they prove in words, and commits and docs never use
-  codes. Existing codes remain only as headings of requirements already in the specs and in test
-  titles that already use them, so those can be matched until a later migration; do not mass-rewrite
-  them. docs/spec-coverage.md maps the archive to the specs.
+  is history, not a source to follow. Requirements have plain-English titles and stand alone, and
+  tests name the rule they prove in words. The letters-and-number requirement codes of that archived
+  document are gone everywhere outside docs/archive and must not come back.
+  docs/spec-coverage.md maps the archive to the specs.
 
   Neutrality: library files are application-neutral. No product names, customer names,
   backend specifics, or domain jargon of any particular host application. Example scenarios
@@ -76,7 +74,7 @@ context: |
 
 rules:
   specs:
-    - 'Give each new requirement a plain-English title, e.g. "### Requirement: Stable identities"; never invent an XXX-NN code. Existing codes stay in the titles that already have them.'
+    - 'Give each new requirement a plain-English title, e.g. "### Requirement: Stable identities"; never use a letters-and-number requirement code.'
     - SHOULD-level requirements append "(SHOULD)" to the title and are not R1 release gates.
     - Write each requirement in plain English so it stands alone: define terms in the spec and never cite the archived baseline or any document the reader must open.
   proposal:

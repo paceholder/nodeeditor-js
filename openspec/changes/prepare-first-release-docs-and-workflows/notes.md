@@ -36,6 +36,8 @@ such as a pair of codes in brackets. Cheapest stripping: a post-build step in th
 that removes those parentheticals from `dist/**/*.d.ts` with one regular expression, then
 a hand pass over the remaining ~115 mentions that are part of a sentence. Not done here,
 pending the owner's decision. `removeComments` would also work but deletes all tooltips.
+Later settled differently: the codes were removed from the source, the docs and the whole
+history, so nothing needs stripping after the build.
 
 ## Gates
 

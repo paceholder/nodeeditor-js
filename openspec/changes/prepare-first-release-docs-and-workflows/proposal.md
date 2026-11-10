@@ -41,6 +41,6 @@ None.
 ## Out of Scope
 
 - `src/core` and `src/view` (the abort logic behind the chooser fix is not edited).
-- Stripping requirement codes from shipped declaration comments (owner decision pending).
+- Stripping requirement codes from shipped declaration comments (since settled: the codes were removed from the source and the history).
 - Reducing the public API surface (owner decision pending).
 - Pushing, tagging or publishing.
