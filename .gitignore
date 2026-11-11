@@ -9,3 +9,4 @@ bench/.results/
 demo-perf-dist/
 demo-react-dist/
 .claude/
+*.tgz
