@@ -135,3 +135,39 @@ An external adapter SHALL be able to own history so that no hidden local persist
 #### Scenario: Undo forwarded to host
 - **WHEN** the user invokes undo with a host-owned history
 - **THEN** the undo request is sent to the adapter, shown as pending, and the confirmed result arrives as an authoritative change
+
+### Requirement: Whole-document replacement is checked before it changes anything
+The local adapter's whole-document replacement (used by snapshot load) SHALL check the replacement before changing the store: valid records, IDs unique across kinds, port ownership in both directions, and present connection endpoints. Invalid input SHALL raise a misuse error with document, revision, history and events unchanged. A replacement requested while events are being delivered SHALL raise a misuse error, as its revision cannot be returned synchronously.
+
+#### Scenario: A replacement naming a missing port
+- **WHEN** a replacement lists a node whose ports list names a port that is not in the replacement
+- **THEN** a misuse error is raised, and the revision, the nodes and the undo history are unchanged and no event is published
+
+#### Scenario: Replacement from inside a handler
+- **WHEN** a change handler requests a whole-document replacement
+- **THEN** a misuse error is raised and the document is unchanged
+
+### Requirement: Host verdicts are cleared right after commit
+A host connection validator's answers (verdicts) are cached per proposed connection. The cache entries that a committed edit makes stale SHALL be cleared synchronously right after that commit, before any event is delivered and before any queued edit is applied.
+
+#### Scenario: Verdicts invalidated before the next queued edit
+- **WHEN** two edits are queued from one handler and the first one removes a port that a cached verdict concerns
+- **THEN** the verdict is gone when the second edit is validated
+
+### Requirement: Base revision is checked by the local adapter
+A submission's base revision is the revision of the read model its patch was planned against. The local in-memory adapter SHALL reject a submission whose base revision differs from the current revision with the code `stale-revision`, changing nothing and reporting it like any other rejected edit. Undo and redo SHALL never be refused for a stale base revision. Without a base revision from the caller, the model SHALL use the current one.
+
+#### Scenario: Stale base revision
+- **WHEN** a caller reads the revision, another edit is accepted, and the caller submits a patch with the revision it read
+- **THEN** the outcome is rejected with code `stale-revision` and the document is unchanged
+
+#### Scenario: Current base revision
+- **WHEN** a caller submits a patch with the model's current revision
+- **THEN** the edit is accepted
+
+### Requirement: Queued submissions are checked when submitted
+A submission made from inside an event handler is queued and applied after the current dispatch. Its base revision SHALL be checked when it is submitted, not when it is applied, so several edits queued from one handler are not refused because the earlier ones advanced the revision.
+
+#### Scenario: Two edits queued from one handler
+- **WHEN** a change handler submits two edits, each with the revision current when it was submitted
+- **THEN** both are applied after the dispatch

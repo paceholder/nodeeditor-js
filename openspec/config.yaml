@@ -76,7 +76,7 @@ rules:
   specs:
     - 'Give each new requirement a plain-English title, e.g. "### Requirement: Stable identities"; never use a letters-and-number requirement code.'
     - SHOULD-level requirements append "(SHOULD)" to the title and are not R1 release gates.
-    - Write each requirement in plain English so it stands alone: define terms in the spec and never cite the archived baseline or any document the reader must open.
+    - "Write each requirement in plain English so it stands alone: define terms in the spec and never cite the archived baseline or any document the reader must open."
   proposal:
     - List the requirements (by title) the change implements or refines.
     - State what is out of scope for this change.
