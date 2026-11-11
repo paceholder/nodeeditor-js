@@ -1,36 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { nodeId } from "../../base/ids/ids.js";
-import { diffSnapshot as diffResult } from "./diff.js";
+import { invertPatch } from "../../data/patch/invert.js";
+import type { Patch } from "../../data/patch/types.js";
 import { exportSnapshot } from "./export.js";
-import type { JsonValue } from "./json-value.js";
 import { loadSnapshot } from "./load.js";
-import type { GraphSnapshot, NodeSnapshot } from "./snapshot-types.js";
-import { loadedModel, makeTestModel, sampleSnapshot } from "./test-kit.js";
+import type { GraphSnapshot } from "./snapshot-types.js";
+import {
+  canonical,
+  diffOk as diffSnapshot,
+  loadedModel,
+  makeTestModel,
+  nodesOf,
+  portsOf,
+  randomGraph,
+  rng,
+  target,
+} from "./test-kit.js";
 import { validateSnapshot } from "./validate.js";
 
-function target(mutate: (s: Record<string, unknown>) => void): GraphSnapshot {
-  const raw = sampleSnapshot();
-  mutate(raw);
-  const checked = validateSnapshot(raw);
-  if (!checked.ok) throw new Error(JSON.stringify(checked.rejection));
-  return checked.value;
-}
-
-const portsOf = (n: Record<string, unknown> | undefined): unknown[] =>
-  (n?.ports as unknown[] | undefined) ?? [];
-
-/** The patch of a diff that cannot fail (no codecs). */
-const diffSnapshot = (...args: Parameters<typeof diffResult>) => {
-  const r = diffResult(...args);
-  if (!r.ok) throw new Error(JSON.stringify(r.rejection));
-  return r.value;
-};
-
-const nodesOf = (s: Record<string, unknown>) =>
-  s.nodes as Record<string, unknown>[];
-
-describe("diffSnapshot", () => {
-  it("gives an empty patch for identical state", () => {
+describe("snapshot diff against the read model", () => {
+  it("gives an empty patch for a snapshot exported from the same model", () => {
     const model = loadedModel();
     expect(diffSnapshot(model.reader, exportSnapshot(model)).ops).toEqual([]);
   });
@@ -86,137 +75,6 @@ describe("diffSnapshot", () => {
   });
 });
 
-describe("diff details", () => {
-  it("turns port order and z differences into node field updates", () => {
-    const model = loadedModel();
-    const patch = diffSnapshot(
-      model.reader,
-      target((s) => {
-        const n = nodesOf(s);
-        const ports = [...portsOf(n[0])].reverse();
-        n[0] = { ...n[0], ports, z: 4 };
-      }),
-    );
-    expect(patch.ops).toHaveLength(1);
-    const op = patch.ops[0];
-    expect(
-      op?.op === "update" &&
-        op.entity === "node" &&
-        Object.keys(op.fields).sort(),
-    ).toEqual(["ports", "z"]);
-    expect(model.submit(patch).status).toBe("accepted");
-    expect(model.reader.getNode(nodeId("n1"))?.ports).toEqual(["p2", "p1"]);
-    expect(model.reader.paintOrder().at(-1)?.id).toBe("n1");
-  });
-
-  it("updates a changed endpoint in place, keeping the connection ID", () => {
-    const model = loadedModel();
-    const seq = model.reader.seqOf("c1" as never);
-    const patch = diffSnapshot(
-      model.reader,
-      target((s) => {
-        (s.connections as Record<string, unknown>[])[0] = {
-          id: "c1",
-          from: { node: "n1", port: "p1" },
-          to: { node: "n2", port: "p3" },
-        };
-      }),
-    );
-    expect(patch.ops).toEqual([
-      {
-        op: "update",
-        entity: "connection",
-        id: "c1",
-        fields: {
-          from: {
-            old: { node: "n1", port: "p2" },
-            new: { node: "n1", port: "p1" },
-          },
-        },
-      },
-    ]);
-    expect(model.submit(patch).status).toBe("accepted");
-    expect(model.reader.seqOf("c1" as never)).toBe(seq);
-  });
-
-  it("handles removing the port a connection used, in one atomic patch", () => {
-    const model = loadedModel();
-    const patch = diffSnapshot(
-      model.reader,
-      target((s) => {
-        const n = nodesOf(s);
-        n[0] = { ...n[0], ports: [portsOf(n[0])[0]] };
-        s.connections = [];
-      }),
-    );
-    expect(model.submit(patch).status).toBe("accepted");
-    expect(model.reader.ports().map((p) => p.id)).toEqual(["p1", "p3"]);
-  });
-});
-
-function rng(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** A random graph that passes the default connection policy (undirected, one type). */
-function randomGraph(next: () => number): GraphSnapshot {
-  const int = (n: number) => Math.floor(next() * n);
-  const pool = ["n1", "n2", "n3", "n4", "n5", "n6"].filter(() => next() < 0.7);
-  const nodes: NodeSnapshot[] = pool.map((id) => ({
-    id,
-    type: next() < 0.5 ? "pipe" : "other",
-    position: { x: int(5), y: int(5) },
-    size: { width: 10, height: 10 },
-    ...(next() < 0.5 ? { rotation: (1 + int(3)) as 0 | 1 | 2 | 3 } : {}),
-    ...(next() < 0.3 ? { mirrored: true } : {}),
-    ...(next() < 0.5 ? { z: 1 + int(2) } : {}),
-    ...(next() < 0.4 ? { title: `t${int(3)}` } : {}),
-    ports: Array.from({ length: int(4) }, (_, k) => k)
-      .filter(() => next() < 0.9)
-      .map((k) => ({
-        id: `${id}p${k}`,
-        direction: "undirected" as const,
-        typeKey: "t",
-      }))
-      .sort(() => next() - 0.5),
-    payload: (next() < 0.5 ? { v: int(3), l: [int(2)] } : null) as JsonValue,
-  }));
-  const ends = nodes.flatMap((n) =>
-    n.ports.map((p) => ({ node: n.id, port: p.id })),
-  );
-  const connections: GraphSnapshot["connections"][number][] = [];
-  const pairs = new Set<string>();
-  for (let i = 1; i <= 6 && ends.length > 1; i += 1) {
-    if (next() < 0.4) continue;
-    const from = ends[int(ends.length)];
-    const to = ends[int(ends.length)];
-    if (!from || !to || from.node === to.node) continue;
-    const key = [from.port, to.port].sort().join("|");
-    if (pairs.has(key)) continue;
-    pairs.add(key);
-    connections.push({ id: `c${i}`, from, to });
-  }
-  return {
-    format: "@paceholder/nodeeditor-js/graph",
-    version: 1,
-    nodes,
-    connections,
-  };
-}
-
-/** Compare ignoring `seq`-derived order of equal entities and the cursor. */
-function canonical(s: GraphSnapshot) {
-  const byId = <T extends { id: string }>(xs: readonly T[]) =>
-    [...xs].sort((a, b) => a.id.localeCompare(b.id));
-  return { nodes: byId(s.nodes), connections: byId(s.connections) };
-}
-
 describe("diff property", () => {
   it("applying diff(a, b) exports b, and undo restores a exactly (200 seeded pairs)", () => {
     const next = rng(20261029);
@@ -268,24 +126,122 @@ describe("diff property", () => {
   });
 });
 
-describe("diffSnapshot route", () => {
-  it("emits a route update with old and new values", () => {
-    const model = loadedModel();
-    const route = [{ kind: "segment", orientation: "vertical", at: 7 }];
-    const patch = diffSnapshot(
-      model.reader,
-      target((s) => {
-        const c = s.connections as Record<string, unknown>[];
-        c[0] = { ...c[0], route };
-      }),
-    );
-    expect(patch.ops).toEqual([
+/** Three pipes in a row, the middle one connected to both neighbours. */
+function chain(): Record<string, unknown> {
+  const pipe = (id: string, x: number) => ({
+    id,
+    type: "pipe",
+    position: { x, y: 0 },
+    size: { width: 40, height: 20 },
+    ports: [
+      { id: `${id}a`, direction: "undirected", typeKey: "hydraulic" },
+      { id: `${id}b`, direction: "undirected", typeKey: "hydraulic" },
+    ],
+    payload: null,
+  });
+  return {
+    format: "@paceholder/nodeeditor-js/graph",
+    version: 1,
+    nodes: [pipe("n1", 0), pipe("n2", 100), pipe("n3", 200)],
+    connections: [
       {
-        op: "update",
-        entity: "connection",
         id: "c1",
-        fields: { route: { new: route } },
+        from: { node: "n1", port: "n1b" },
+        to: { node: "n2", port: "n2a" },
       },
+      {
+        id: "c2",
+        from: { node: "n2", port: "n2b" },
+        to: { node: "n3", port: "n3a" },
+      },
+    ],
+  };
+}
+
+function chainWithout(node: string): GraphSnapshot {
+  const raw = chain();
+  raw.nodes = nodesOf(raw).filter((n) => n.id !== node);
+  raw.connections = [];
+  const checked = validateSnapshot(raw);
+  if (!checked.ok) throw new Error(JSON.stringify(checked.rejection));
+  return checked.value;
+}
+
+describe("snapshot diff against the read model, deterministic ordering and inverse patches", () => {
+  it("removes a dropped node's two connections, its ports and the node in one atomic patch", () => {
+    const model = loadedModel(chain());
+    const patch = diffSnapshot(model.reader, chainWithout("n2"));
+    expect(
+      patch.ops.map((o) => `${o.op}:${o.op === "update" ? o.id : o.record.id}`),
+    ).toEqual([
+      "remove:c1",
+      "remove:c2",
+      "remove:n2a",
+      "remove:n2b",
+      "remove:n2",
     ]);
+    expect(model.submit(patch).status).toBe("accepted");
+    expect(model.reader.connections()).toEqual([]);
+    expect(model.reader.ports().map((p) => p.id)).toEqual([
+      "n1a",
+      "n1b",
+      "n3a",
+      "n3b",
+    ]);
+  });
+
+  it("applying the diff reaches the snapshot, and its inverse restores the previous export", () => {
+    const model = loadedModel(chain());
+    const before = exportSnapshot(model, { fragment: true });
+    const raw = chain();
+    nodesOf(raw)[1] = {
+      ...nodesOf(raw)[1],
+      title: "B",
+      position: { x: 9, y: 9 },
+    };
+    raw.nodes = [
+      ...nodesOf(raw).filter((n) => n.id !== "n3"),
+      { ...nodesOf(raw)[2], id: "n4", ports: [] },
+    ];
+    raw.connections = [(raw.connections as unknown[])[0]];
+    const checked = validateSnapshot(raw);
+    if (!checked.ok) throw new Error(JSON.stringify(checked.rejection));
+    const wanted = checked.value;
+    const applied: Patch[] = [];
+    model.on("change", (event) => applied.push(event.patch));
+    const patch = diffSnapshot(model.reader, wanted);
+    expect(model.submit(patch, { history: "skip" }).status).toBe("accepted");
+    expect(canonical(exportSnapshot(model, { fragment: true }))).toEqual(
+      canonical(wanted),
+    );
+    const [done] = applied;
+    if (!done) throw new Error("no change");
+    expect(model.submit(invertPatch(done), { history: "skip" }).status).toBe(
+      "accepted",
+    );
+    expect(exportSnapshot(model, { fragment: true })).toEqual(before);
+  });
+
+  it("gives identical plain-data output across two runs and two equal models", () => {
+    const next = rng(20261111);
+    for (let i = 0; i < 50; i += 1) {
+      const a = validateSnapshot(randomGraph(next));
+      const b = validateSnapshot(randomGraph(next));
+      if (!a.ok || !b.ok) throw new Error("random graph is invalid");
+      const one = makeTestModel();
+      const two = makeTestModel();
+      expect(
+        loadSnapshot(one, a.value).ok && loadSnapshot(two, a.value).ok,
+      ).toBe(true);
+      const first = diffSnapshot(one.reader, b.value);
+      expect(diffSnapshot(one.reader, b.value), `pair ${i}`).toEqual(first);
+      expect(
+        JSON.stringify(diffSnapshot(two.reader, b.value)),
+        `pair ${i}`,
+      ).toBe(JSON.stringify(first));
+      expect(JSON.parse(JSON.stringify(first)), `pair ${i} plain`).toEqual(
+        first,
+      );
+    }
   });
 });
