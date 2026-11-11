@@ -64,7 +64,8 @@ be wired without it).
 **1. add-consumable-package: install from the npm registry.** Done and ready to publish;
 see the reply above. React is a peer dependency. Node 20 or later is supported.
 
-**2. add-snapshot-sync-adapter: your store owns the document.** The editor shows the user's
+**2. add-snapshot-sync-adapter: your store owns the document (implemented on `main`; see
+`docs/guide-host-authority.md` and `docs/host-connection-identity.md`, section 12).** The editor shows the user's
 edit at once, hands it to your callback and waits for your answer. You decide who owns undo
 (`history: "host"` forwards undo and redo to you) and when to push snapshots. When you name
 nodes, creation is delegated: a placeholder marks the drop position until you answer
@@ -74,8 +75,7 @@ default, so set it yourself (e.g. 5000). Edits still waiting for you carry an un
 flag (the library paints nothing). Each snapshot push is diffed, so history, viewport and
 selection and gestures on surviving entities are kept; a push with an older revision is
 ignored. Selection changes report an origin: user, api or model. Your duties are the seven
-items in `docs/host-spike-findings.md`, section 2. Status: planned, next; needs the async
-policy.
+items in `docs/host-spike-findings.md`, section 2. Status: implemented; connections are always named by the client.
 
 **3. add-reconnect-tool: move a wire end.** A selected connection shows a grip at each end;
 dragging a grip to another port moves that end, and the connection keeps its ID. Today the

@@ -22,7 +22,8 @@ The adapter plans depend on these.
    use).
 2. Accept an optional client-supplied connection ID, and reject a connection whose port pair
    is already connected (the host does not do this today). The reasoning, the options and
-   the concerns are in `docs/host-connection-identity.md`.
+   the concerns are in `docs/host-connection-identity.md`; the library answers are in its
+   section 12.
 3. Add an absolute update call for rotation and mirror. Until then, translate the old and new
    values of an intent into relative steps.
 4. Put a monotonic revision on schematic reads and on the change notification. A push

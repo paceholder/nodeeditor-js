@@ -4,8 +4,9 @@ Host report for the library owner. It replaces host duty 2 in `docs/host-spike-f
 ("accept an optional client-supplied connection ID"). The document is written so that someone
 without the earlier conversation can continue the work. Read it top to bottom once.
 
-**Status: decisions 1 and 3 taken by the owner (section 8); 2 and 4 still open.** Statements
-marked **to verify** were not checked in code.
+**Status: decisions 1 and 3 taken by the owner (section 8); 2 and 4 still open.** Library
+requests 1 to 4 of section 10 are implemented on `main`; section 12 lists each answer.
+Statements marked **to verify** were not checked in code.
 
 ## 1. The problem
 
@@ -62,7 +63,7 @@ gesture refer to it. The host also keeps its own record of the connection. Three
 - Undo and redo run in the host over the whole project. A deleted subtree is stored with its
   UUIDs, so redo most likely restores the same ID (**to verify**).
 - The host's validation call checks kind compatibility, same component, and
-  causal-versus-acausal. It reads no state.
+  signal-direction compatibility. It reads no state.
 - A connection joins two ports that carry domain rules. Parallel connections between the same
   two ports have no meaning in this domain.
 
@@ -250,3 +251,49 @@ Numbered so they can be tracked. None blocks the host's backend change (section 
 
 No code was changed in the library or in the host for this proposal. The host's duplicate
 defect is confirmed by reading its create and delete functions; it has no test yet.
+
+## 12. Library answers (implemented on `main`)
+
+Sections 1 to 11 are the host's proposal and stay as written. This section is the library's
+reply to each request and concern.
+
+### Requests of section 10
+
+| # | Answer |
+|---|---|
+| 1 | Done. The snapshot adapter is on `main`: delegated node creation with a placeholder, edit intents, host-owned or local history, `settle`, revisioned pushes that keep selection and gestures, and the `unconfirmed` flag. Entry: `createSnapshotModel`. Walk-through: `docs/guide-host-authority.md`, with a runnable store-wrapping example in `examples/host-authority/`. |
+| 2 | Done by never shipping it. There is no `connectionIds` option, no pairing, no alias table and no `hostConnectionId`: connections are always named by the client. |
+| 3 | Done in `docs/guide-host-authority.md`: a random-UUID generator example (the idGenerator option is required, so a counter cannot be used by accident), what the host must reject, that retrying the same ID with the same ports must be safe, that the library never resubmits, and that `parallel` turns off only the library's duplicate rule. |
+| 4 | Done. A host answer of "already connected" is carried unchanged (the host uses the code `duplicate-connection`); "ID claimed" has the library code `connection-id-claimed`. Either one rolls the local connection back in one change event with one failure event, drops its selection and cancels a gesture on it with `entity-removed`. This also holds when the answer follows an accepted validator verdict. Nothing is resubmitted. |
+| 5 | Not part of this work. The identifiers in `docs/format.md` are `@paceholder/nodeeditor-js/graph` and `/document`. Please say which spelling the host expects. |
+| 6 | Planned, not built: dash per connection kind and fit on first content (change `add-host-integration-checks`). |
+| 7 | Waits on the host running the adapter. Pushing one changed node costs about 8 ms at 500 nodes and about 87 ms at 5000 (measured once, laptop on battery, so indicative); a push is linear in document size. |
+
+### Concerns of section 7
+
+1, 2, 3, 12 (derived IDs): moot, since A was chosen. 4: covered by request 4. 5: still open
+(decision 4). 6: measure after the adapter is wired. 7: `"match"` is gone. 8: the guide
+states that retrying the same ID with the same ports must be safe. 9: host side, see below.
+10: the reconnect tool is not built yet; its plan will say that the validator request for a
+reconnect carries the duplicate rule. 11: the guide names the owner of each rule: the
+library's default policy refuses a duplicate locally unless `parallel` is on, and the host
+repeats the rule as its second line of defence.
+
+### Decisions of section 8
+
+1 and 3 are implemented. 2 (derived IDs) stays closed unless a host asks for it. 4 is yours:
+export the host's compatibility table to the local policy, or keep the local policy minimal
+with the host validator as the only judge. The library recommends the second, because the
+spec only requires the host to be able to refuse.
+
+### Behaviour the host should know
+
+- Accepted edits and new placeholders publish no model event. A painter that shows the
+  unconfirmed flag calls `view.invalidate("scene")` when it hands over or answers an edit.
+- A restored connection after a host undo must come back under its stored UUID (concern 9);
+  the adapter refuses a created node whose ID a pending local edit adds (`node-id-claimed`).
+- Not decided yet, with the library's leaning: answers that arrive out of order for edits
+  that depend on each other (confirm in commit order); `plan` consuming an operation ID
+  (a non-consuming peek); a node pushed after hand-over that carries the ID a pending creation
+  later claims; creation blocked by a capability policy in delegated mode (read-only mode
+  blocks it today).
