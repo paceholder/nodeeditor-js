@@ -124,6 +124,8 @@ export type {
   ResetEvent,
   Unsubscribe,
 } from "./edit/events/types.js";
+export { decodeIntents } from "./edit/intents/decode.js";
+export type { Intent, IntentKind } from "./edit/intents/intent-types.js";
 export type { DefaultPolicyOptions } from "./edit/policy/default-policy.js";
 /**
  * Default connection policy rules, checked in order: both ports exist and differ;

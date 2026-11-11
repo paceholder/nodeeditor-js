@@ -21,15 +21,20 @@ const ENTRIES = {
 } as const;
 type Entry = keyof typeof ENTRIES;
 
-/** Ceilings for every exported name (values and types) and for runtime values alone. */
+/**
+ * Ceilings for every exported name (values and types) and for runtime values alone.
+ * Core rose by three names and one value for the submission intent decoder
+ * (`decodeIntents`, `Intent`, `IntentKind`), which hosts of an external adapter need to map
+ * a submitted patch to store calls.
+ */
 const MAX_NAMES: Record<Entry, number> = {
-  core: 287,
+  core: 290,
   view: 134,
   advanced: 95,
   react: 26,
 };
 const MAX_VALUES: Record<Entry, number> = {
-  core: 107,
+  core: 108,
   view: 19,
   advanced: 47,
   react: 16,

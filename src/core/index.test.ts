@@ -129,4 +129,21 @@ describe("resize and mirror API on the core entry", () => {
     expect(resolved.min).toEqual({ width: 1, height: 1 });
     expect([typeof hook, axis]).toEqual(["function", "vertical"]);
   });
+
+  it("exposes the submission intent decoder", () => {
+    const model = core.createGraphModel();
+    const intents: readonly core.Intent[] = core.decodeIntents(
+      {
+        operationId: core.operationId("op1"),
+        baseRevision: model.revision(),
+        patch: { ops: [] },
+        label: "Edit",
+        history: "record",
+        origin: "local",
+      },
+      model.reader,
+    );
+    const kind: core.IntentKind = "move";
+    expect([intents, kind]).toEqual([[], "move"]);
+  });
 });
