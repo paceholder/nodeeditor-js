@@ -52,6 +52,8 @@ export function createEventHub(options: EventHubOptions = {}): EventHub {
     failure: [],
     history: [],
     reset: [],
+    "resync-requested": [],
+    conflict: [],
   };
   let queue: (() => void)[] = [];
   /** Events emitted by the deferred job now running; they jump the waiting jobs. */

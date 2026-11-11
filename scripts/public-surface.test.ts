@@ -26,15 +26,32 @@ type Entry = keyof typeof ENTRIES;
  * Core rose by three names and one value for the submission intent decoder
  * (`decodeIntents`, `Intent`, `IntentKind`), which hosts of an external adapter need to map
  * a submitted patch to store calls.
+ * Core rose by twelve names and one value for the snapshot model, the first external
+ * adapter a host can use (`createSnapshotModel`, `SnapshotModel`, `SnapshotModelOptions`,
+ * `SnapshotHistoryOptions`, `HostAnswer`, `HostHistoryRequest`, `PendingEdit`,
+ * `PendingEditState`, `PushOutcome`, `PushResult`, `QueuedPush`, `SyncLogEntry`), and by one
+ * name each for the `resync-requested` and `conflict` events it publishes
+ * (`ResyncRequestedEvent`, `ConflictEvent`).
+ * Core rose by three names for delegated node creation, which a host that names nodes
+ * must type: the intent its `onDelegate` callback receives (`DelegatedIntent`; its
+ * members are reached by narrowing on `kind`), the option union that turns it on
+ * (`SnapshotCreationOptions`) and the placeholder `placeholders()` lists
+ * (`CreationPlaceholder`).
+ * Core rose by one name for the unconfirmed flag (`UnconfirmedIds`, what the snapshot
+ * model's `unconfirmed()` returns): a host that paints or reports unconfirmed entities
+ * outside a mounted view reads it directly; the view reads it for its painters.
+ * Core rose by two names that the built declarations of `SnapshotModelOptions` refer to
+ * (`GraphModelSettings`, `SnapshotAdapterBaseOptions`); without them a consumer's own
+ * declaration build can fail with TS2742.
  */
 const MAX_NAMES: Record<Entry, number> = {
-  core: 290,
+  core: 310,
   view: 134,
   advanced: 95,
   react: 26,
 };
 const MAX_VALUES: Record<Entry, number> = {
-  core: 108,
+  core: 109,
   view: 19,
   advanced: 47,
   react: 16,

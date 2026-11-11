@@ -14,7 +14,7 @@
 
 import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
 import type { NodeId, OperationId } from "../../base/ids/ids.js";
-import type { Rejection } from "../../base/result.js";
+import type { Rejection, RejectionCode } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type {
@@ -89,6 +89,12 @@ export interface HistoryState {
   /** Why undo is unavailable. Present only when `canUndo` is false. */
   readonly undoReason?: string;
   readonly redoReason?: string;
+  /**
+   * The rejection code a refused undo carries, when it is not `history-unavailable` (for
+   * example `edit-pending` while the newest edit waits for an external authority).
+   */
+  readonly undoCode?: RejectionCode;
+  readonly redoCode?: RejectionCode;
 }
 
 /** What a commit listener hears: an applied patch, or a whole-document replacement. */

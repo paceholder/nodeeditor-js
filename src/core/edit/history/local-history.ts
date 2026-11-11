@@ -33,6 +33,11 @@ export interface LocalHistory {
   completeRedo(): void;
   /** Drop every entry of one stack after its top entry was rejected; `reason` says why. */
   drop(direction: "undo" | "redo", reason: string): void;
+  /**
+   * Take one entry out of whichever stack holds it, leaving the others (an external
+   * authority refused the edit it records). False when no stack holds it.
+   */
+  remove(entry: HistoryEntry): boolean;
   state(): HistoryState;
   clear(): void;
 }
@@ -85,6 +90,12 @@ export function createLocalHistory(
         redoStack = [];
         redoDropped = reason;
       }
+    },
+    remove(entry) {
+      const before = undoStack.length + redoStack.length;
+      undoStack = undoStack.filter((e) => e !== entry);
+      redoStack = redoStack.filter((e) => e !== entry);
+      return undoStack.length + redoStack.length < before;
     },
     state() {
       const undo = undoStack[undoStack.length - 1];

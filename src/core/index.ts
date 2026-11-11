@@ -117,14 +117,17 @@ export type {
 } from "./edit/commands/types.js";
 export type {
   ChangeEvent,
+  ConflictEvent,
   FailureEvent,
   HistoryEvent,
   ModelEventMap,
   ModelEventType,
   ResetEvent,
+  ResyncRequestedEvent,
   Unsubscribe,
 } from "./edit/events/types.js";
 export { decodeIntents } from "./edit/intents/decode.js";
+export type { DelegatedIntent } from "./edit/intents/delegated-types.js";
 export type { Intent, IntentKind } from "./edit/intents/intent-types.js";
 export type { DefaultPolicyOptions } from "./edit/policy/default-policy.js";
 /**
@@ -162,11 +165,32 @@ export type {
   GraphModel,
   GraphModelCore,
   GraphModelOptions,
+  GraphModelSettings,
   SubmitOptions,
 } from "./graph-model.js";
 export { createGraphModel } from "./graph-model.js";
 export * from "./io/fragment/index.js";
 export * from "./io/snapshot/index.js";
+export type {
+  CreationPlaceholder,
+  HostAnswer,
+  HostHistoryRequest,
+  PendingEdit,
+  PendingEditState,
+  PushOutcome,
+  PushResult,
+  QueuedPush,
+  SnapshotAdapterBaseOptions,
+  SnapshotCreationOptions,
+  SnapshotHistoryOptions,
+  SyncLogEntry,
+  UnconfirmedIds,
+} from "./io/sync/sync-types.js";
+export type {
+  SnapshotModel,
+  SnapshotModelOptions,
+} from "./snapshot-model.js";
+export { createSnapshotModel } from "./snapshot-model.js";
 export * from "./space/geometry/index.js";
 export * from "./space/routing/index.js";
 export * from "./space/scene/index.js";

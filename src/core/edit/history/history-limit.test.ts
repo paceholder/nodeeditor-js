@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MisuseError } from "../../base/result.js";
 import { mkNode } from "../../data/model/test-helpers.js";
 import { createGraphModel } from "../../graph-model.js";
+import { createLocalHistory } from "./local-history.js";
 
 const add = (model: ReturnType<typeof createGraphModel>, id: string) =>
   model.submit({ ops: [{ op: "add", entity: "node", record: mkNode(id) }] });
@@ -29,5 +30,29 @@ describe("local history size limit", () => {
     for (const historyLimit of [0, -1, 1.5, Number.NaN]) {
       expect(() => createGraphModel({ historyLimit })).toThrow(MisuseError);
     }
+  });
+});
+
+describe("an entry an external authority refused leaves the stack alone", () => {
+  it("remove takes out only that entry, from whichever stack holds it", () => {
+    const history = createLocalHistory();
+    const entry = (label: string) => ({
+      label,
+      patch: { ops: [] },
+      inverse: { ops: [] },
+    });
+    const a = entry("A");
+    const b = entry("B");
+    const c = entry("C");
+    history.record(a);
+    history.record(b);
+    history.record(c);
+    expect(history.remove(b)).toBe(true);
+    expect(history.peekUndo()).toBe(c);
+    history.completeUndo();
+    expect(history.peekUndo()).toBe(a);
+    expect(history.remove(c)).toBe(true);
+    expect(history.state()).toMatchObject({ canUndo: true, canRedo: false });
+    expect(history.remove(c)).toBe(false);
   });
 });

@@ -22,6 +22,15 @@ export type RejectionCode =
   | "dangling-reference"
   | "history-unavailable"
   | "disposed"
+  // External authority
+  /** Undo refused while the newest edit still waits for the host's answer. */
+  | "edit-pending"
+  /** The host named a created node with an ID another operation already claimed. */
+  | "node-id-claimed"
+  /** The host refused a connection whose ID another entity already uses. */
+  | "connection-id-claimed"
+  /** The whole document was replaced while the edit waited for the host. */
+  | "document-replaced"
   // Node types and commands
   | "unknown-type"
   | "duplicate-type"

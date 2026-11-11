@@ -96,12 +96,13 @@ export function createCommandApi(
     const state = host.historyState();
     const open = direction === "undo" ? state.canUndo : state.canRedo;
     const why = direction === "undo" ? state.undoReason : state.redoReason;
+    const code = direction === "undo" ? state.undoCode : state.redoCode;
     return open
       ? { available: true }
       : {
           available: false,
           rejection: rejectionOf(
-            "history-unavailable",
+            code ?? "history-unavailable",
             why ?? `Nothing to ${direction}`,
           ),
         };
