@@ -32,7 +32,10 @@ export interface ClipboardOptions {
 
 /** What a paste or duplicate created, and which external references it left out. */
 export interface PasteReport {
-  /** `pending` when an external authority has not decided yet. */
+  /**
+   * `pending` when an external authority has not decided yet. If it later refuses, a
+   * second `paste` event reports that refusal, unchanged, in its `rejection` field.
+   */
   readonly status: "accepted" | "pending";
   readonly created: ChangedIds;
   readonly excluded: readonly ExcludedReference[];

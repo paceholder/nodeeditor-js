@@ -40,6 +40,11 @@ export interface NodePaintInput {
   readonly state: {
     readonly selected: boolean;
     readonly hovered: boolean;
+    /**
+     * An edit of the node still awaits an external authority's answer. The built-in
+     * painters ignore it; the look is the host's.
+     */
+    readonly unconfirmed: boolean;
     readonly diagnostics: readonly DiagnosticBadge[];
   };
 }
@@ -63,6 +68,8 @@ export interface PortGlyphInput {
   readonly style: ResolvedStyle;
   readonly detail: DetailPolicy;
   readonly unit: number;
+  /** An edit of the port still awaits an external authority's answer. */
+  readonly unconfirmed: boolean;
 }
 
 /** Context transform: world space. No `save`/`restore` around the call (see above). */
@@ -79,6 +86,8 @@ export interface ConnectionPaintInput {
   readonly detail: DetailPolicy;
   readonly unit: number;
   readonly selected: boolean;
+  /** An edit of the connection still awaits an external authority's answer. */
+  readonly unconfirmed: boolean;
 }
 
 /** Context transform: world space. */

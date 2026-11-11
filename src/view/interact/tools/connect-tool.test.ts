@@ -12,6 +12,10 @@ import {
 } from "../../../core/index.js";
 import { graphOps } from "../../../core/space/scene/scene-fixtures.js";
 import {
+  createSnapshotToolHarness,
+  recordOf,
+} from "../../test-support/snapshot-tool-harness.js";
+import {
   cornerNode,
   createToolHarness,
 } from "../../test-support/tool-harness.js";
@@ -151,6 +155,79 @@ describe("connect tool", () => {
     h.model.execute({ kind: "deleteEntities", nodes: [nodeId("c")] });
     expect(h.router.activeTool).toBe("connect");
     expect(h.cancellations).toEqual([]);
+  });
+});
+
+describe("connect tool: changes to involved entities from a host-owned document", () => {
+  /** Port centers as in `pair`: a.R = (40, 10), b.L = (200, 10). */
+  const hosted = () =>
+    createSnapshotToolHarness({
+      nodes: [
+        cornerNode("a", 0, 0),
+        cornerNode("b", 200, 0),
+        cornerNode("c", 200, 90),
+      ],
+    });
+
+  it("a push removing the source node cancels with entity-removed and submits nothing", () => {
+    const h = hosted();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.push((s) => {
+      s.nodes = s.nodes.filter((n) => n.id !== "a");
+    });
+    expect(h.cancellations).toEqual([
+      { reason: "entity-removed", ids: ["a", "aR"] },
+    ]);
+    h.up({ x: 200, y: 10 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a push changing the source node cancels with external-change", () => {
+    const h = hosted();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.push((s) => {
+      recordOf(s.nodes, "a").title = "Renamed";
+    });
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 200, y: 10 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a rollback after the host rejects an edit of the source node cancels with external-change", async () => {
+    const h = hosted();
+    h.model.execute({
+      kind: "moveNodes",
+      moves: [{ node: nodeId("a"), position: { x: 20, y: 50 } }],
+    });
+    h.down({ x: 40, y: 50 });
+    h.move({ x: 120, y: 30 });
+    expect(h.router.activeTool).toBe("connect");
+    await h.answer(0, "rejected");
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 200, y: 10 });
+    expect(h.host.calls).toHaveLength(1);
+  });
+
+  it("an unrelated push does not cancel; the release submits one connect", () => {
+    const h = hosted();
+    h.down({ x: 40, y: 10 });
+    h.move({ x: 120, y: 10 });
+    h.push((s) => {
+      recordOf(s.nodes, "c").title = "Renamed";
+    });
+    h.up({ x: 200, y: 10 });
+    expect(h.cancellations).toEqual([]);
+    expect(h.log.commits).toEqual([
+      expect.objectContaining({ kind: "connect" }),
+    ]);
+    expect(h.host.calls).toHaveLength(1);
+    expect(h.model.reader.connections()).toHaveLength(1);
   });
 });
 

@@ -5,6 +5,10 @@ import {
   nodeId,
 } from "../../../core/index.js";
 import {
+  createSnapshotToolHarness,
+  recordOf,
+} from "../../test-support/snapshot-tool-harness.js";
+import {
   cornerNode,
   cornerOf,
   createToolHarness,
@@ -15,8 +19,7 @@ import { resizeTool } from "./resize-tool.js";
 
 const N = (id: string): NodeId => nodeId(id);
 
-/** Two 40 x 20 nodes of fixture type `t`; `resizable` opts the type in. */
-function fixture(resizable = true, extra: HarnessOptions = {}) {
+function resizableType(resizable = true) {
   const registry = createNodeTypeRegistry();
   registry.register({
     type: "t",
@@ -25,6 +28,12 @@ function fixture(resizable = true, extra: HarnessOptions = {}) {
     ...(resizable ? { capabilities: { resize: true } } : {}),
     sizeLimits: { min: { width: 10, height: 10 } },
   });
+  return registry;
+}
+
+/** Two 40 x 20 nodes of fixture type `t`; `resizable` opts the type in. */
+function fixture(resizable = true, extra: HarnessOptions = {}) {
+  const registry = resizableType(resizable);
   return createToolHarness({
     nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
     modelOptions: { registry },
@@ -32,8 +41,10 @@ function fixture(resizable = true, extra: HarnessOptions = {}) {
   });
 }
 
-const sizeOf = (h: ReturnType<typeof fixture>, id: string) =>
-  h.model.reader.getNode(N(id))?.size;
+const sizeOf = (
+  h: { model: ReturnType<typeof fixture>["model"] },
+  id: string,
+) => h.model.reader.getNode(N(id))?.size;
 
 describe("resize tool", () => {
   it("idle, pressed, dragging, idle: one commit over 100 moves", () => {
@@ -162,5 +173,73 @@ describe("resize tool", () => {
     expect(sizeOf(h, "a")).toEqual({ width: 60, height: 30 });
     // The top-left corner stayed at (0, 0).
     expect(h.model.reader.getNode(N("a"))?.position).toEqual({ x: 30, y: 15 });
+  });
+});
+
+describe("resize tool: changes to involved entities from a host-owned document", () => {
+  /** Node a selected, its bottom-right handle at (38, 18). */
+  const hosted = () => {
+    const h = createSnapshotToolHarness({
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+      modelOptions: { registry: resizableType() },
+    });
+    h.selection.replace([nodeKey(N("a"))]);
+    return h;
+  };
+
+  it("a push removing the resized node cancels with entity-removed and submits nothing", () => {
+    const h = hosted();
+    h.down({ x: 38, y: 18 });
+    h.move({ x: 60, y: 30 });
+    h.push((s) => {
+      s.nodes = s.nodes.filter((n) => n.id !== "a");
+    });
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
+    h.up({ x: 60, y: 30 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a push changing the resized node cancels with external-change", () => {
+    const h = hosted();
+    h.down({ x: 38, y: 18 });
+    h.move({ x: 60, y: 30 });
+    h.push((s) => {
+      recordOf(s.nodes, "a").title = "Renamed";
+    });
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 60, y: 30 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a rollback after the host rejects an edit of the resized node cancels with external-change", async () => {
+    const h = hosted();
+    h.model.execute({
+      kind: "moveNodes",
+      moves: [{ node: N("a"), position: { x: 20, y: 50 } }],
+    });
+    h.down({ x: 38, y: 58 });
+    h.move({ x: 60, y: 70 });
+    expect(h.router.activeTool).toBe("resize");
+    await h.answer(0, "rejected");
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 60, y: 70 });
+    expect(h.host.calls).toHaveLength(1);
+  });
+
+  it("an unrelated push does not cancel; the release submits one resize", () => {
+    const h = hosted();
+    h.down({ x: 38, y: 18 });
+    h.move({ x: 78, y: 38 });
+    h.push((s) => {
+      recordOf(s.nodes, "b").title = "Renamed";
+    });
+    h.up({ x: 78, y: 38 });
+    expect(h.cancellations).toEqual([]);
+    expect(h.host.calls).toHaveLength(1);
+    expect(sizeOf(h, "a")).toEqual({ width: 80, height: 40 });
   });
 });

@@ -7,6 +7,10 @@ import {
 } from "../../../core/index.js";
 import { createRouteEditorRegistry } from "../../render/registries/route-editor-registry.js";
 import {
+  createSnapshotToolHarness,
+  recordOf,
+} from "../../test-support/snapshot-tool-harness.js";
+import {
   cornerNode,
   createToolHarness,
   type ToolHarness,
@@ -64,6 +68,73 @@ describe("route-edit tool: entities a drag involves", () => {
     expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: [id] }]);
     expect(h.log.previews.at(-1)).toBeNull();
     expect(h.log.commits).toEqual([]);
+  });
+});
+
+describe("route-edit tool: changes to involved entities from a host-owned document", () => {
+  /** The wire of `setup`, selected, on a host-owned document. */
+  const hosted = () => {
+    const routeEditors = createRouteEditorRegistry();
+    routeEditors.register("default", createOrthogonalSegmentEditor());
+    const h = createSnapshotToolHarness({
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 80)],
+      connections: [["c1", "a", "aR", "b", "bL"]],
+      routes: createRouteRegistry({ default: createOrthogonalRouter() }),
+      routeEditors,
+    });
+    const id = h.model.reader.connections()[0]?.id as ConnectionId;
+    h.selection.replace([connectionKey(id)]);
+    return { h, id };
+  };
+
+  it("a push removing the wire cancels with entity-removed and submits nothing", () => {
+    const { h, id } = hosted();
+    h.down({ x: 120, y: 50 });
+    h.move({ x: 140, y: 50 });
+    h.push((s) => {
+      s.connections = [];
+    });
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: [id] }]);
+    h.up({ x: 140, y: 50 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a push changing the wire's route cancels with external-change", () => {
+    const { h, id } = hosted();
+    h.down({ x: 120, y: 50 });
+    h.move({ x: 140, y: 50 });
+    h.push((s) => {
+      recordOf(s.connections, "c1").route = [V(100)];
+    });
+    expect(h.cancellations).toEqual([{ reason: "external-change", ids: [id] }]);
+    h.up({ x: 140, y: 50 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a rollback after the host rejects an edit of the wire cancels with external-change", async () => {
+    const { h, id } = hosted();
+    h.model.execute({ kind: "setRoute", connection: id, route: [V(130)] });
+    h.down({ x: 130, y: 50 });
+    h.move({ x: 150, y: 50 });
+    expect(h.router.activeTool).toBe("route-edit");
+    await h.answer(0, "rejected");
+    expect(routeOf(h, id)).toBeUndefined();
+    expect(h.cancellations).toEqual([{ reason: "external-change", ids: [id] }]);
+    h.up({ x: 150, y: 50 });
+    expect(h.host.calls).toHaveLength(1);
+  });
+
+  it("an unrelated push does not cancel; the release submits one setRoute", () => {
+    const { h, id } = hosted();
+    h.down({ x: 120, y: 50 });
+    h.move({ x: 160, y: 55 });
+    h.push((s) => {
+      recordOf(s.nodes, "b").title = "Renamed";
+    });
+    h.up({ x: 160, y: 55 });
+    expect(h.cancellations).toEqual([]);
+    expect(h.host.calls).toHaveLength(1);
+    expect(routeOf(h, id)).toEqual([V(160)]);
   });
 });
 

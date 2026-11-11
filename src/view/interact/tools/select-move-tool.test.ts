@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { type NodeId, nodeId } from "../../../core/index.js";
 import {
+  createSnapshotToolHarness,
+  recordOf,
+} from "../../test-support/snapshot-tool-harness.js";
+import {
   cornerNode,
   cornerOf,
   createToolHarness,
@@ -19,7 +23,7 @@ const three = () =>
     ],
   });
 
-function pos(h: ReturnType<typeof three>, id: string) {
+function pos(h: Parameters<typeof cornerOf>[0], id: string) {
   return cornerOf(h, id);
 }
 
@@ -226,5 +230,69 @@ describe("select/move tool: move", () => {
     h.up({ x: 160, y: 60 });
     expect(h.log.commits).toEqual([]);
     expect(h.selection.size).toBe(1);
+  });
+});
+
+describe("select/move tool: changes to involved entities from a host-owned document", () => {
+  const hosted = () =>
+    createSnapshotToolHarness({
+      nodes: [cornerNode("a", 0, 0), cornerNode("b", 200, 0)],
+    });
+
+  it("a push removing the dragged node cancels with entity-removed and submits nothing", () => {
+    const h = hosted();
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 80, y: 10 });
+    h.push((s) => {
+      s.nodes = s.nodes.filter((n) => n.id !== "a");
+    });
+    expect(h.cancellations).toEqual([{ reason: "entity-removed", ids: ["a"] }]);
+    h.up({ x: 80, y: 10 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a push changing the dragged node cancels with external-change", () => {
+    const h = hosted();
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 80, y: 10 });
+    h.push((s) => {
+      recordOf(s.nodes, "a").title = "Renamed";
+    });
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 80, y: 10 });
+    expect(h.host.calls).toEqual([]);
+  });
+
+  it("a rollback after the host rejects an edit of the dragged node cancels with external-change", async () => {
+    const h = hosted();
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 20, y: 50 });
+    h.up({ x: 20, y: 50 });
+    expect(pos(h, "a")).toEqual({ x: 0, y: 40 });
+    h.down({ x: 20, y: 50 });
+    h.move({ x: 80, y: 50 });
+    await h.answer(0, "rejected");
+    expect(pos(h, "a")).toEqual({ x: 0, y: 0 });
+    expect(h.cancellations).toEqual([
+      { reason: "external-change", ids: ["a"] },
+    ]);
+    h.up({ x: 80, y: 50 });
+    expect(h.host.calls).toHaveLength(1);
+  });
+
+  it("an unrelated push does not cancel; the release submits one move", () => {
+    const h = hosted();
+    h.down({ x: 20, y: 10 });
+    h.move({ x: 80, y: 10 });
+    h.push((s) => {
+      recordOf(s.nodes, "b").title = "Renamed";
+    });
+    expect(h.router.activeTool).toBe("select-move");
+    h.up({ x: 80, y: 10 });
+    expect(h.cancellations).toEqual([]);
+    expect(h.host.calls).toHaveLength(1);
+    expect(pos(h, "a")).toEqual({ x: 60, y: 0 });
   });
 });

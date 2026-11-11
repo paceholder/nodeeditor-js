@@ -14,6 +14,7 @@
 
 import {
   type ConnectionEntry,
+  type CreationPlaceholder,
   compose,
   type GeometryScene,
   type GraphReader,
@@ -58,6 +59,16 @@ export interface ViewState {
    * interaction layer, D6). Omitted means nothing is hidden.
    */
   isHidden?(id: string): boolean;
+  /**
+   * Whether an edit of the entity still awaits an external authority's answer. Painters
+   * receive it as `unconfirmed`; the library draws nothing for it. Omitted: none is.
+   */
+  isUnconfirmed?(id: string): boolean;
+  /**
+   * Nodes a delegated creation will add once the host has named them. Not in the scene;
+   * interaction painters receive them and the library draws nothing. Omitted: none.
+   */
+  placeholders?(): readonly CreationPlaceholder[];
 }
 
 export const EMPTY_VIEW_STATE: ViewState = deepFreeze({
@@ -117,6 +128,7 @@ function paintConnections(
   for (const e of list) {
     if (!e.path) continue;
     const selected = deps.state.isSelected(e.id);
+    const unconfirmed = deps.state.isUnconfirmed?.(e.id) === true;
     ctx.save();
     try {
       if (selected) drawConnectionSelection(ctx, e.path, frame.theme, unit);
@@ -128,6 +140,7 @@ function paintConnections(
         detail,
         unit,
         selected,
+        unconfirmed,
       });
     } catch (error) {
       fault(error);
@@ -169,7 +182,12 @@ function paintNodes(
         detail,
         unit,
         assets,
-        state: { selected, hovered: deps.state.isHovered(e.id), diagnostics },
+        state: {
+          selected,
+          hovered: deps.state.isHovered(e.id),
+          unconfirmed: deps.state.isUnconfirmed?.(e.id) === true,
+          diagnostics,
+        },
       });
     } catch (error) {
       fault(error);
@@ -220,6 +238,7 @@ function paintPorts(
           style,
           detail,
           unit,
+          unconfirmed: deps.state.isUnconfirmed?.(port.id) === true,
         });
       } catch (error) {
         fault(error);

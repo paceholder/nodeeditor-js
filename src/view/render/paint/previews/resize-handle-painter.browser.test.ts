@@ -7,6 +7,7 @@ import {
 } from "../../../../core/index.js";
 import { createPaintFrame, setMatrix } from "../../primitives/frame.js";
 import { DEFAULT_THEME } from "../../theme/tokens.js";
+import { EMPTY_VIEW_STATE } from "../scene-layer.js";
 import type { ToolPreview } from "./preview-types.js";
 import { createResizeHandlePainter } from "./resize-handle-painter.js";
 
@@ -55,7 +56,7 @@ function setup() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, 300, 200);
     setMatrix(ctx, frame.worldToDevice);
-    painter.paint(ctx, frame);
+    painter.paint(ctx, frame, EMPTY_VIEW_STATE);
     return ctx.getImageData(x, y, 1, 1).data[3] ?? 0;
   };
   return {

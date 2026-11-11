@@ -5,20 +5,49 @@
  * executes the same command; IDs are deterministic for an unchanged cursor, so both see
  * the same patch. An accepted result selects the new nodes and connections at once; a
  * pending one (external authority) selects them when it settles accepted. A delegated one
- * (the host names the nodes) reports nothing created, since the host creates it.
+ * (the host names the nodes) reports nothing created, since the host creates it. A
+ * pending paste or duplicate that the authority later refuses hands that refusal,
+ * unchanged, to `refused`; nothing was created.
  */
 import {
   type ChangedIds,
   type Command,
   type ExcludedReference,
+  type ExecuteResult,
   err,
   ok,
+  type Rejection,
   rejectionOf,
 } from "../../../core/index.js";
 import type { EditableModel } from "../commands/editable-model.js";
 import type { PasteOutcome } from "./clipboard-types.js";
 
 const NOTHING: ChangedIds = { nodes: [], ports: [], connections: [] };
+
+/** What a commit reports besides its outcome. */
+export interface CommitReports {
+  /** Select what an accepted paste or duplicate created. */
+  readonly select: (created: ChangedIds) => void;
+  /** A pending paste or duplicate was refused by the authority later. */
+  readonly refused: (rejection: Rejection) => void;
+}
+
+/**
+ * Report the later outcome of a deferred result. Without `created` (a delegated
+ * creation) an acceptance selects nothing, so the user's selection stays.
+ */
+function whenSettled(
+  result: Extract<ExecuteResult, { readonly settled: unknown }>,
+  reports: CommitReports,
+  created?: ChangedIds,
+): void {
+  void result.settled.then((settled) => {
+    if (settled.status === "accepted") {
+      if (created) reports.select(created);
+    } else if (settled.status === "rejected")
+      reports.refused(settled.rejection);
+  });
+}
 
 /**
  * The host creates the fragment and names what it creates, so nothing is known or
@@ -28,6 +57,7 @@ function delegated(
   model: EditableModel,
   command: Command,
   excluded: readonly ExcludedReference[],
+  reports: CommitReports,
 ): PasteOutcome {
   const result = model.execute(command);
   switch (result.status) {
@@ -35,6 +65,7 @@ function delegated(
       return ok({ status: "accepted", created: NOTHING, excluded });
     case "queued":
     case "pending":
+      whenSettled(result, reports);
       return ok({ status: "pending", created: NOTHING, excluded });
     case "rejected":
       return err(result.rejection);
@@ -48,7 +79,7 @@ function delegated(
 export function executeAndSelect(
   model: EditableModel,
   command: Command,
-  select: (created: ChangedIds) => void,
+  reports: CommitReports,
 ): PasteOutcome {
   const plan = model.plan(command);
   switch (plan.kind) {
@@ -61,7 +92,7 @@ export function executeAndSelect(
     case "history":
       return err(rejectionOf("unsupported-command", "Not a paste"));
     case "delegated":
-      return delegated(model, command, plan.excluded ?? []);
+      return delegated(model, command, plan.excluded ?? [], reports);
     case "ready":
       break;
   }
@@ -70,13 +101,11 @@ export function executeAndSelect(
   const result = model.execute(command);
   switch (result.status) {
     case "accepted":
-      select(created);
+      reports.select(created);
       return ok({ status: "accepted", created, excluded });
     case "queued":
     case "pending":
-      void result.settled.then((settled) => {
-        if (settled.status === "accepted") select(created);
-      });
+      whenSettled(result, reports, created);
       return ok({ status: "pending", created, excluded });
     case "rejected":
       return err(result.rejection);

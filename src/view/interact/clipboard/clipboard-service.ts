@@ -112,12 +112,17 @@ export function createClipboardService(
   function commit(command: Command): PasteOutcome {
     if (isLocked()) return err(VIEW_LOCKED);
     if (!model) return err(NO_MODEL);
-    return executeAndSelect(model, command, (created) =>
-      selection.replace([
-        ...created.nodes.map(nodeKey),
-        ...created.connections.map(connectionKey),
-      ]),
-    );
+    return executeAndSelect(model, command, {
+      select: (created) =>
+        selection.replace([
+          ...created.nodes.map(nodeKey),
+          ...created.connections.map(connectionKey),
+        ]),
+      // The paste was reported pending; its final refusal is a second report.
+      refused: (rejection) => {
+        if (!disposed) emit("paste", err(rejection));
+      },
+    });
   }
 
   function pasteText(text: string, at?: Placement): PasteOutcome {

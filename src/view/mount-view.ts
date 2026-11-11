@@ -31,6 +31,7 @@ import {
   type LayerName,
 } from "./platform/frame-scheduler.js";
 import { bindModel, type ModelBinding } from "./platform/model-binding.js";
+import { mergePendingState, pendingStateOf } from "./platform/pending-state.js";
 import { createStatsRecorder } from "./platform/render-stats.js";
 import { rethrowLater } from "./platform/rethrow-later.js";
 import { clientRectOf, type ViewRect } from "./platform/view-rect.js";
@@ -132,10 +133,12 @@ export function mountView(
   ];
 
   let hovered: string | undefined;
+  // What an external authority has not confirmed, when the model reports it.
   const viewState: ViewState = {
     isSelected: (id) => selection.isSelected(id) || baseState.isSelected(id),
     isHovered: (id) => id === hovered || baseState.isHovered(id),
     isHidden: (id) => hidden.isHidden(id) || baseState.isHidden?.(id) === true,
+    ...mergePendingState(pendingStateOf(options.model), baseState),
   };
 
   const paintLayer = createLayerPainter({

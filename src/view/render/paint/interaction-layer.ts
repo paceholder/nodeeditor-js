@@ -6,15 +6,22 @@
 import { rethrowLater } from "../../platform/rethrow-later.js";
 import type { PaintFrame } from "../primitives/frame.js";
 import { setMatrix } from "../primitives/frame.js";
+import { EMPTY_VIEW_STATE, type ViewState } from "./scene-layer.js";
 
 export interface InteractionPainter {
   /** Lower paints first. Equal orders keep insertion order. Default 0. */
   readonly order?: number;
   /**
    * Context starts in world space (`frame.worldToDevice`); call
-   * `ctx.setTransform` with `frame.viewportToDevice` to draw in CSS pixels.
+   * `ctx.setTransform` with `frame.viewportToDevice` to draw in CSS pixels. `state` is
+   * the view state the scene painters read, including the placeholders of pending
+   * creations, which the library itself does not draw.
    */
-  paint(ctx: CanvasRenderingContext2D, frame: PaintFrame): void;
+  paint(
+    ctx: CanvasRenderingContext2D,
+    frame: PaintFrame,
+    state: ViewState,
+  ): void;
 }
 
 export interface InteractionLayer {
@@ -27,6 +34,7 @@ export interface InteractionLayer {
     ctx: CanvasRenderingContext2D,
     frame: PaintFrame,
     fault?: (error: unknown) => void,
+    state?: ViewState,
   ): void;
   readonly size: number;
 }
@@ -51,12 +59,12 @@ export function createInteractionLayer(
       };
     },
     invalidate: requestRepaint,
-    paint(ctx, frame, fault = rethrowLater) {
+    paint(ctx, frame, fault = rethrowLater, state = EMPTY_VIEW_STATE) {
       for (const painter of [...painters]) {
         ctx.save();
         try {
           setMatrix(ctx, frame.worldToDevice);
-          painter.paint(ctx, frame);
+          painter.paint(ctx, frame, state);
         } catch (error) {
           fault(error);
         } finally {

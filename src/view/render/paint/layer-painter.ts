@@ -124,7 +124,7 @@ function paintLayer(
       );
     }
     case "interaction":
-      env.interaction.paint(ctx, frame, fault);
+      env.interaction.paint(ctx, frame, fault, env.viewState);
       return undefined;
   }
 }
