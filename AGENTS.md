@@ -85,9 +85,9 @@ layer or a lower one, never from above:
 | --------------------- | --------------------------------------------------------------- |
 | core/base (0)         | `src/core/base/`: result, ids                                   |
 | core/data (1)         | `src/core/data/`: model, node-types, patch                      |
-| core/edit (2)         | `src/core/edit/`: policy, capabilities, commands, history, adapter, events |
-| core/space, core/io (3) | `src/core/space/`: geometry, spatial-index, scene; `src/core/io/`: snapshot (siblings, never import each other) |
-| core/facade (4)       | `src/core/graph-model.ts`, `src/core/index.ts`                  |
+| core/edit (2)         | `src/core/edit/`: policy, capabilities, commands, history, adapter, events, intents |
+| core/space, core/io (3) | `src/core/space/`: geometry, spatial-index, scene; `src/core/io/`: snapshot, fragment, `sync/` (the snapshot adapter) (siblings, never import each other) |
+| core/facade (4)       | `src/core/graph-model.ts`, `src/core/snapshot-model.ts`, `src/core/index.ts` |
 | view/platform (5)     | `src/view/platform/`: dom, frame scheduler, viewport, model binding, render stats |
 | view/render (6)       | `src/view/render/`: primitives, theme, assets, registries, presets, paint |
 | view/interact (7)     | `src/view/interact/`: selection, tools, input, commands, overlay |

@@ -683,11 +683,13 @@ Without `baseRevision` the current revision is used, so the check never gets in 
 An edit submitted from inside an event handler is checked when it is submitted, not
 when the queued edit runs, so several edits from one handler do not refuse each other.
 `operationId(text)` accepts the same IDs as `nodeId` (non-empty, no whitespace) and
-throws `MisuseError` otherwise. This is the same patch format a future
-external adapter will send to and receive from a server.
+throws `MisuseError` otherwise. This is the same patch format the snapshot adapter hands
+to a host that owns the document ([guide-host-authority.md](guide-host-authority.md)).
 
 ## Where next
 
 - [architecture.md](architecture.md): the pending layer, adapters, and the view.
+- [guide-host-authority.md](guide-host-authority.md): when your own store owns the
+  document: the snapshot model, answering edits, pushing snapshots, delegated creation.
 - [guide-core-model.md](guide-core-model.md): the store, records, and IDs underneath.
 - `src/core/uc-19-headless.test.ts`: a compact end-to-end example.

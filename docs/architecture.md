@@ -87,8 +87,9 @@ The concepts a host actually uses are few:
 9. Tools (`defaultToolSlots()` and the tool contract): how input becomes edits.
 10. Selection (`view.selection`): view-local, never in the document.
 
-Status: only the local adapter exists today. `createGraphModel()` wires it in; the
-external, server-authoritative adapter is **(planned: Slice D)**, see section 5.
+Status: `createGraphModel()` wires in the local adapter; `createSnapshotModel()` wires in
+the external adapter in snapshot mode, for a host that owns the document. Revisioned
+synchronization is **(planned: Slice D)**, see section 5.
 
 ## 3. What the model stores
 
@@ -186,14 +187,25 @@ flowchart LR
 
 - **Local adapter**: the included in-memory document. Accepts synchronously and keeps
   the undo stack. This is what you get with zero configuration.
-- **External adapter** **(planned: Slice D)**: the host application is the authority,
-  for example a backend server. Edits show immediately in the **pending layer**
-  (optimistic); a rejection rolls them back. Two modes:
-  - *Snapshot mode*: the host pushes full snapshots (for example after every refetch),
-    and the library diffs them against the read model, so selection, gestures and
-    pending edits survive.
-  - *Revisioned mode*: the host sends `changes@revision` and acknowledges operation IDs.
-    A gap in revisions triggers resynchronization.
+- **External adapter**: the host application is the authority, for example a backend
+  server. Edits show immediately in the **pending layer** (optimistic); a rejection rolls
+  them back. Two modes:
+  - *Snapshot mode* (implemented: `createSnapshotModel`, `src/core/io/sync/`): the host
+    pushes full snapshots (for example after every refetch), and the library diffs them
+    against the read model, so selection, gestures and pending edits survive. The
+    adapter stores the confirmed state (the last push plus the edits the host accepted
+    since) apart from the displayed read model, which is the confirmed state plus the
+    pending edits that still apply; a push rebases them, and one that no longer applies
+    is marked conflicted. Each submission goes to the host's `onSubmit` in commit order
+    without waiting for earlier answers, and settles as accepted, rejected or unknown
+    (never resubmitted). History can be local or the host's. Node creation can be
+    delegated to the host, which names the node and its ports; connections are always
+    named by the client, with a generator the host supplies.
+    `decodeIntents` turns a submission into named intents (move, connect, reconnect, ...)
+    for the host's store calls. The walkthrough is
+    [guide-host-authority.md](guide-host-authority.md).
+  - *Revisioned mode* **(planned: Slice D)**: the host sends `changes@revision` and acknowledges
+    operation IDs. A gap in revisions triggers resynchronization.
 - **Collaboration** is server-authoritative. The library contains no merge or CRDT logic:
   other users' edits arrive as external changes, never enter the local user's undo,
   and pending local edits are re-applied on top of them. Presence (remote cursors and
@@ -220,7 +232,7 @@ For each node type, two independent registrations:
 - **Painter** (view): an object with `paint(ctx, input)` that draws into a Canvas2D context
   already transformed to the node's local space. The input carries the node record, its
   body bounds, the resolved style, the level-of-detail policy, an asset drawer, and the
-  visual state (selected, hovered, diagnostics). Port glyph painters (keyed by port type
+  visual state (selected, hovered, unconfirmed, diagnostics). Port glyph painters (keyed by port type
   key) and connection painters (keyed by connection kind) are separate registries, as is
   the background slot. An unregistered key falls back to a placeholder, a dot, a plain path.
 
@@ -431,6 +443,8 @@ src/core/                                                            (@paceholde
               commands/          command planners                    implemented
               adapter/ events/   adapter contract, local adapter,    implemented
               history/           change events, undo/redo
+              intents/           submission intent decoder,          implemented
+                                 delegated creation intents
   space/      geometry/          transforms, shapes, node geometry,  implemented
                                  paths (line, cubic, polyline)
               routing/           routers, route registry,            implemented
@@ -442,7 +456,11 @@ src/core/                                                            (@paceholde
               fragment/          clipboard fragments: extract,       implemented
                                  envelope text, paste/duplicate
                                  planners
+              sync/              snapshot adapter: pending layer,    implemented
+                                 push and rebase, settling, history,
+                                 delegated creation
   graph-model.ts                 createGraphModel facade             implemented
+  snapshot-model.ts              createSnapshotModel facade          implemented
   index.ts                       public entry
 src/view/                                                     (@paceholder/nodeeditor-js/view)
   platform/   dom/               layer stack, container metrics      implemented
@@ -491,8 +509,8 @@ flowchart BT
     base["base/<br/>result, ids"] --> data["data/<br/>model, node-types, patch"]
     data --> edit["edit/<br/>policy, capabilities, commands,<br/>history, adapter, events"]
     edit --> space["space/<br/>geometry, routing,<br/>spatial-index, scene"]
-    edit --> io["io/<br/>snapshot, fragment"]
-    space & io --> facade["graph-model.ts, index.ts"]
+    edit --> io["io/<br/>snapshot, fragment, sync"]
+    space & io --> facade["graph-model.ts, snapshot-model.ts,<br/>index.ts"]
   end
   subgraph view["src/view"]
     platform["platform/<br/>dom, frame scheduler, viewport,<br/>model binding, render stats"] --> render["render/<br/>primitives, theme, assets,<br/>registries, presets, paint"]

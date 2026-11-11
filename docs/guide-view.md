@@ -48,7 +48,7 @@ All options are optional:
 | `theme`           | A theme patch applied over `DEFAULT_THEME` (section 6). |
 | `assets`          | `{ resolve, budgetBytes?, maxSvgChars? }`: the host's asset resolver and cache budget (section 5). |
 | `zOrder`          | Paint order of `"connection"`, `"node"`, `"port"`, bottom to top. Default: connections, nodes, ports. |
-| `viewState`       | `{ isSelected(id), isHovered(id) }` merged with the view's own selection and hover. Default: nothing extra. |
+| `viewState`       | `{ isSelected(id), isHovered(id), isUnconfirmed?(id), placeholders?() }` merged with the view's own selection and hover, and with what a snapshot model reports as unconfirmed. Default: nothing extra. |
 | `input`           | Tools, keymap and platform, or `false` for none (see [interaction.md](interaction.md)). Default: the built-in tools and keymap. |
 | `routes`          | A `RouteRegistry`: how each connection kind's path is shaped (Bezier unless you register another router; see "Routes"). |
 | `routeEditors`    | A `RouteEditorRegistry`: the editors that let a user drag a wire's segments (see "Route editors"). |
@@ -500,10 +500,10 @@ The input object (`NodePaintInput`) carries:
 | `detail`   | `DetailPolicy`: whether to draw the title and secondary labels (section 7). |
 | `unit`     | Local units per CSS pixel when line widths are screen-space, else 1. Multiply pixel-sized strokes by it. |
 | `assets`   | `AssetDrawer`; `assets.drawAsset(ref, rect)` returns `"drawn"`, `"pending"` or `"failed"`. |
-| `state`    | `{ selected, hovered, diagnostics }` from the view state and the node's `status`. `hovered` is current whenever the scene paints; set `repaintOnHover: true` on the painter if it draws hover, so a hover change repaints the scene (otherwise it does not, since no built-in painter draws hover). |
+| `state`    | `{ selected, hovered, unconfirmed, diagnostics }` from the view state and the node's `status`. `hovered` is current whenever the scene paints; set `repaintOnHover: true` on the painter if it draws hover, so a hover change repaints the scene (otherwise it does not, since no built-in painter draws hover). `unconfirmed` is true while an edit of the node awaits an external authority's answer (a snapshot model's `unconfirmed()`); no built-in painter draws it. |
 
 Port glyph painters run in *world* space and receive `port`, `position`, an outward unit
-`normal`, `style`, `detail` and `unit`. Unlike node and connection painters they are **not**
+`normal`, `style`, `detail`, `unit` and `unconfirmed`. Unlike node and connection painters they are **not**
 wrapped in their own `save`/`restore`: a canvas `save`/`restore` pair copies and restores
 the whole drawing state (transform, clip, colors, line style, font, shadow, ...), and with
 tens of thousands of ports on screen that copy was a measurable part of the frame. The
@@ -512,8 +512,8 @@ scene layer sets `fillStyle` (the port fill), `strokeStyle` (the port stroke) an
 may change those three freely; if it changes anything else (the transform, a clip, line
 dash, global alpha, a shadow), it must restore that itself before returning, or wrap its
 own body in `ctx.save()`/`ctx.restore()`. Connection painters also run in world space and
-receive the `connection`, its `path` (`PathGeometry`), `style`, `detail`, `unit` and
-`selected`. Selection outlines and error/warning badges are drawn by the scene layer *after*
+receive the `connection`, its `path` (`PathGeometry`), `style`, `detail`, `unit`,
+`selected` and `unconfirmed`. Selection outlines and error/warning badges are drawn by the scene layer *after*
 your painter, so no painter or detail level can hide them.
 
 A painter that throws does not break the view. The canvas state saved before the call is
@@ -824,7 +824,13 @@ see how often it engages.
 
 **Interaction painters** draw transient things (a connection preview, a marquee, candidate
 highlights). They are ordered and run in world space; change `ctx.setTransform` to
-`frame.viewportToDevice` to draw in CSS pixels.
+`frame.viewportToDevice` to draw in CSS pixels. The third argument of `paint` is the view
+state the scene painters read; its `placeholders()` lists the pending creations of a
+snapshot model whose host names nodes (type, requested position, state), which the library
+does not draw. A new placeholder, or an accepted edit that clears an `unconfirmed` flag,
+changes nothing in the read model, so the view does not repaint for it by itself: a host
+that draws them calls `view.invalidate("scene")` or `view.interaction.invalidate()` when it
+hands over or answers an edit.
 
 ```ts
 const remove = view.interaction.add({
@@ -1133,8 +1139,11 @@ const outcome = await view.clipboard.pasteFromSystem();
 if (!outcome.ok && outcome.rejection.code === "clipboard-unavailable") showImportDialog();
 
 // Every paste and duplicate, from any route: what was created and what was left out.
+// A paste an external authority has not decided yet reports `status: "pending"`; if the
+// authority refuses it later, a second event carries its rejection unchanged.
 view.clipboard.on("paste", (o) => {
   if (o.ok && o.value.excluded.length > 0) notify(o.value.excluded);
+  if (!o.ok) notify(o.rejection.message);
 });
 view.clipboard.on("clipboard-error", (e) => console.warn(e.message));
 ```

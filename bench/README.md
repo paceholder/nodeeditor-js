@@ -9,7 +9,7 @@ points only (`@paceholder/nodeeditor-js`, `@paceholder/nodeeditor-js/view`, `@pa
 
 | Command | What it does |
 | --- | --- |
-| `npm run bench` | Builds, then runs the headless benches (Node) on F-LARGE: validate, load, export, diff, scene and index build, culling query, picking, one-node patch. |
+| `npm run bench` | Builds, then runs the headless benches (Node) on F-LARGE: validate, load, export, diff, scene and index build, culling query, picking, one-node patch; and a one-node snapshot push into 500 and 5000 node snapshot models. |
 | `npm run bench:browser` | Builds, then runs the browser workloads and the idle probe in the installed Google Chrome (headless, both device pixel ratios). Quick by default; `BENCH_QUICK=0` runs full length. |
 | `npm run bench:size` | Bundles `core`, `view`, `advanced` (`@paceholder/nodeeditor-js/view/advanced`) and `react` like a consumer would and prints gzip sizes against the budgets (`advanced` and `react` have none). `view` bundles only the core code it uses, since it does not re-export core. `node scripts/bundle-size.mjs --enforce` exits non-zero on overrun. |
 | `npm run bench:baseline` | The full run: all of the above at full duration, then writes `bench/baseline/<date>-<browser>.json` and `SUMMARY.md`. |
