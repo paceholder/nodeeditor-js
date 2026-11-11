@@ -1,6 +1,6 @@
 {
   "name": "@paceholder/nodeeditor-js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "General-purpose node editor library for JavaScript/TypeScript with React integration",
   "keywords": [
     "node-editor",
