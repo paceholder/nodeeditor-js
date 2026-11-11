@@ -119,8 +119,7 @@ The cost is one extra copy of the document in memory; the performance task measu
    reported once through the `conflict` event (D14).
 3. `diffSnapshot(displayed, target, { codecs })` yields the single patch; apply it with
    origin `external`. It returns a result: a payload codec that fails is reported as the
-   push's error list and nothing changes, exactly like a validation error. Before the diff,
-   snapshot connections matched to local IDs by D15 are renamed to those local IDs. An
+   push's error list and nothing changes, exactly like a validation error. An
    empty patch emits nothing. The diff compares the displayed read model with
    the target, in the spec as here, so a pending edit the snapshot already contains yields
    no operation.
@@ -224,7 +223,7 @@ when it is `"delegated"`. `LocalAdapter` becomes `ModelAdapter` with `nodeCreati
 (the name stays as the concrete return type of `createLocalAdapter`). `createGraphModel`
 takes any `ModelAdapter`. The adapter itself is plain core/io code (D1), but the thin
 `createSnapshotModel(options)` (whose options require `idGenerator`, D15) returns a
-`GraphModel` plus `pushSnapshot`, `pendingEdits`, `settle` and `hostConnectionId`, and a
+`GraphModel` plus `pushSnapshot`, `pendingEdits` and `settle`, and a
 `GraphModel` belongs to the facade, so it lives next to
 `createGraphModel` (rank 4, `src/core/snapshot-model.ts`) and imports the adapter from
 `core/io/sync`. Commands, policy and validators stay in the facade, unchanged.
@@ -343,7 +342,7 @@ pending edit or ghost touches it. It is named `unconfirmed` rather than "pending
 "pending" already names a policy outcome, a tool state and a deferred result; here it means
 the host has not confirmed the entity's latest edit. The library ships no visual treatment.
 
-### D15. Connection IDs from the client, with a fallback
+### D15. Connection IDs from the client
 
 The ID generator already allows a host-supplied implementation (a connect command
 asks it for the connection ID). For connections the client names the ID and the backend
@@ -360,38 +359,39 @@ call without one (from untyped code) throws a misuse error. The guide shows a ge
 that prefixes a per-client token (or uses a random UUID) and says that a counter is safe
 only when one client ever writes the document. The local adapter keeps its default counter.
 
-**Fallback when the backend cannot accept client IDs.** Some stores assign their own ID to
-every record they create. Then the pushed snapshot holds the connection under the backend's
-ID, the local ID is missing, and a plain diff would remove the local connection and add a
-new one, losing its selection and cancelling a gesture on it. The adapter option
-`connectionIds: "client" | "match"` (default `"client"`) selects the behavior. With
-`"match"`, before the diff of each push (D3), the adapter pairs connections:
+**Always client-named, no matching fallback.** A store that assigns its own ID to every
+record it creates is not supported: pairing a local connection with a snapshot connection by
+kind and endpoints is a guess that fails when two identical connections exist, and a public
+option that invites unreliable integrations is costly to remove later. So there is no
+`connectionIds` option, no pairing before the diff, no alias table and no
+`hostConnectionId`. `connectionIds` has one behavior: the client names the connection.
 
-- a candidate local connection is one the read model holds that the incoming snapshot does
-  not, and that this client created through an edit that is pending or was accepted since
-  the previous push;
-- a candidate snapshot connection is one whose ID the read model does not hold;
-- a pair matches when both have the same kind and the same endpoints (`from` and `to`
-  ports; for an undirected connection in either order);
-- when several candidates share kind and endpoints (parallel connections), they are paired
-  in a deterministic order: local connections by the order their edits were committed,
-  snapshot connections in snapshot order. Parallel connections with the same kind and
-  endpoints are interchangeable in what the library shows.
+**What the host must do.** Keep the client's ID as the connection's own ID, and reject two
+conflicts, each as a host answer that becomes a library rejection (D17) and rolls the local
+connection back (D2):
 
-A matched snapshot connection is renamed to the local ID before the diff, so the diff sees
-the connection as unchanged (or updates only its route) and the local ID is kept. The
-adapter remembers the pair in a connection-only alias table: every later push renames that
-backend ID to the local ID, and `hostConnectionId(localId)` returns the backend ID, so the
-host can translate the IDs in decoded intents (a later disconnect names the local ID). A
-pair is forgotten when the connection leaves the read model. Node and port IDs are never
-matched or renamed: the authority names them (D13). An unmatched local connection is
-removed by the diff as usual, and its pending edit is rebased by D3.
+- *already connected*: a connection between the same two ports already exists (in either
+  order for an undirected kind, ordered for a directed kind). The code is the existing
+  `duplicate-connection`. The library's default policy already refuses this locally unless
+  `parallel` is on, so the host's rule is the second line of defence for other clients and
+  other creation paths; both use the same definition and `parallel` turns the library's
+  rule off.
+- *ID claimed*: the ID is already used by another entity. The code is
+  `connection-id-claimed`.
 
-Rejected: renaming the local connection to the backend ID (breaks the stable-identity rule:
-an ID never changes while the entity lives); matching by endpoints without kind (two kinds
-between the same ports are different connections); matching every connection, not only
-this client's recent ones (another client's identical connection would steal the local
-ID).
+A retry of the same ID with the same ports must be safe on the host (the same connection,
+not a second one). The library never resubmits (D5), so this matters only for a host's own
+transport retries. A host rejection that arrives after an accepted validator verdict
+(another client connected the pair first, or a port changed) takes the same path as any
+rejection: the display is recomputed without the connection in one event, a failure event
+carries the host's `rejection`, a selection on the connection is dropped with it, and a
+gesture on it is cancelled with `entity-removed`.
+
+Rejected: matching connections by kind and endpoints with an alias table (heuristic,
+known failure case); renaming the local connection to the backend ID (breaks the
+stable-identity rule); derived IDs computed from the endpoint pair (reconnect would change
+identity, and a host with one UUID namespace would need an ID map at every boundary). A host
+that cannot keep client IDs needs another answer, which is not designed here.
 
 ### D16. Settling: one table
 Answers reach the adapter in two ways: the promise that `onSubmit` returns, and
@@ -415,7 +415,7 @@ rollback (the new document is the truth) and without failure events. `dispose` s
 ### D17. New rejection codes
 
 The change adds `edit-pending` (undo refused while the newest edit is unanswered; the
-history state's `undoReason` gives the plain text), `node-id-claimed` and
+history state's `undoReason` gives the plain text), `node-id-claimed`, `connection-id-claimed` and
 `document-replaced` to `RejectionCode`. It reuses `disposed`, `stale-revision`,
 `unsupported-command`, `limit-exceeded` and `out-of-range`. Every refusal travels in a
 `rejection` field; no new field is named `error` or `reason` for a refusal.
@@ -441,11 +441,6 @@ history state's `undoReason` gives the plain text), `node-id-claimed` and
   policy to its internal connections; the host's own rules decide (documented).
 - A host that expects a reconnect to arrive as remove plus add must handle the single
   `reconnect` intent instead; the guide says so.
-- Under `connectionIds: "match"` the library's connection IDs differ from the backend's, so
-  the host must translate with `hostConnectionId` before calling its store. Two parallel
-  connections of one kind may be paired the other way round than the backend created them;
-  nothing the library shows depends on which, but a host that keeps per-connection data
-  under the backend ID must translate it the same way.
 - Because every local edit, undo and redo now cancels a gesture on the entities it touches,
   a rollback that lands while the user drags the rolled-back node cancels the drag. That is
   the intended result: the drag was computed from a position the host refused.
@@ -453,10 +448,8 @@ history state's `undoReason` gives the plain text), `node-id-claimed` and
 ## Settled decisions
 
 1. **IDs.** Nodes and ports are named by the authority; connections by the client (D13,
-   D15), with a host-supplied, globally unique generator. For a backend that cannot keep
-   client IDs, the `"match"` fallback pairs connections by kind and endpoints and keeps the
-   local ID through a connection-only alias table; there is no alias map for nodes or
-   ports.
+   D15), with a host-supplied, globally unique generator, always: there is no matching
+   fallback and no alias map for any entity.
 2. **Unconfirmed marker.** Core exposes a per-entity `unconfirmed` flag (D14); looks are
    the host's.
 3. **Overlapping edits** (D6) and **conflicts**: edits are applied at once and handed over

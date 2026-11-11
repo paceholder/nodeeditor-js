@@ -54,8 +54,9 @@ wrapping an existing store, and a decoder from a submitted patch to named intent
   diff is empty for that connection, so selection and a gesture on it survive. A host that
   owns the document must supply a globally unique generator (the default counter, `c1`,
   `c2`, ..., collides across clients), so the snapshot model has no default generator.
-  For a backend that cannot keep client IDs, an option matches a snapshot connection to
-  this client's new local connection by kind and endpoints and keeps the local ID.
+  A backend that cannot keep client IDs is not supported; the host rejects a connection
+  between ports that are already connected and an ID already in use, and the library turns
+  those answers into rejections and rolls the local connection back.
 - **Gestures and external changes.** A push is an external change, so the existing rule that
   a gesture yields to any change of the entities it involves applies unchanged: a gesture
   continues when a push does not touch the entities it involves, and is otherwise
@@ -94,7 +95,7 @@ Requirements implemented or refined: the local adapter rule, the snapshot synchr
 applicable in snapshot mode, see design), the one revision type rule, the rule that the base revision is checked by the local adapter (applied to this adapter too), the rule that queued submissions are checked when submitted, the one field name for refusals rule, the operation ID constructor rule, the rule that records stay inside the supported world range, the rule that route constraints are bounded, the rule that the snapshot diff honours payload codecs, the capabilities and read-only mode rule, the tagged edits rule, the pending layer and edit states rule, the no blind retry rule, the responsiveness during slow host work rule and the host-owned history rule,
 the rule that external changes are not local undo entries, the typed events rule, the reentrancy contract rule, the rule that patches are the core change primitive, the atomic patch application rule, the one history entry per gesture rule, the history availability through the command contract rule, the one graph snapshot shape rule, the shared snapshot validator rule, the snapshot export and load rule and the validate-before-replace rule,
 the one committed edit per gesture rule and the duplicate and paste fragments rule.
-New: the snapshot adapter requirements, submission intent decoding, the store-wrapping recipe, node creation through the adapter, the pending-creation placeholder, paste and duplicate creation, client-issued connection IDs, globally unique IDs for a host-owned document, matching connections when the backend assigns IDs, revisioned snapshot push and conflict reporting,
+New: the snapshot adapter requirements, submission intent decoding, the store-wrapping recipe, node creation through the adapter, the pending-creation placeholder, paste and duplicate creation, client-issued connection IDs, globally unique IDs for a host-owned document, conflicts on client-named connections, revisioned snapshot push and conflict reporting,
 the unconfirmed flag per entity rule, the settling edits rule and the snapshot diff against the read model rule. The pending layer and edit states rule and the responsiveness during slow host work rule get modified deltas (below). Gesture cancellation uses the existing rules that gestures react to changes of the entities they involve and that gestures yield to any change of their entities.
 
 ## Capabilities
@@ -107,7 +108,7 @@ None.
 
 - `model-adapters`: snapshot adapter assembly, incremental and revisioned push, pending
   rebase and conflict reporting, gesture survival (by reference to the rule that gestures react to changes of the entities they involve), unknown outcome, host-owned history,
-  delegated node creation, client-issued connection IDs with the match fallback and the
+  delegated node creation, client-issued connection IDs with their two conflict rejections and the
   required generator, base revision check, unconfirmed flag, wrapping recipe, intent
   decoding.
 - `serialization`: specified diff behavior of a snapshot against the read model.
@@ -122,8 +123,8 @@ None.
   use by the connect tool and docking. Policy stays synchronous here.
 - **Temporary-to-authoritative ID mapping for nodes and ports.** Not needed: a node is
   never shown before the authority has named it and its ports. Connection IDs are issued
-  by the client; only the opt-in match fallback keeps a connection-only alias table, and
-  no ID is ever renamed.
+  by the client; no
+  alias table exists and no ID is ever renamed.
 - **Painting the pending state** in the view. Core exposes the unconfirmed flag of every
   entity; the host or a later view change decides how it looks. The library ships
   no spinner.

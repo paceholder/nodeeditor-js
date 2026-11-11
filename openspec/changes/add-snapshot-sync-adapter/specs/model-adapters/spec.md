@@ -259,28 +259,20 @@ A model whose document is owned by a host through the snapshot adapter SHALL be 
 - **WHEN** two snapshot models on one host document each use a generator that prefixes a per-client token, and each user draws a first connection
 - **THEN** the two connection IDs differ, and after the host accepts both and pushes one snapshot, each client shows both connections with their own IDs
 
-### Requirement: Matching connections when the backend assigns IDs
-When a host's backend cannot keep the connection IDs the client issued and gives each new connection its own ID, the snapshot adapter SHALL offer an option that matches connections instead of replacing them. With that option, before diffing a push, a connection the read model holds and the snapshot does not, created by an edit of this client that is pending or was accepted since the previous push, SHALL be paired with a snapshot connection whose ID the read model does not hold and that has the same kind and the same endpoints (in either order for an undirected connection). Several equal candidates SHALL be paired in a deterministic order: local connections in commit order, snapshot connections in snapshot order. A paired connection SHALL keep its local ID, so the diff produces no removal and no addition for it and its selection and a gesture on it survive. The adapter SHALL remember each pair, apply it to every later push, and report the backend ID of a local connection to the host, until the connection leaves the read model. Node and port IDs SHALL never be matched, and no ID SHALL ever be renamed while its entity exists. Without the option, a missing local ID is removed by the diff as usual.
+### Requirement: Conflicts on client-named connections
+The snapshot adapter SHALL always keep the ID the client issued for a connection and SHALL NOT pair or rename connections by kind and endpoints. When the host answers a connect edit with a rejection because the two ports are already connected, the rejection SHALL be carried unchanged (the host is expected to use the code `duplicate-connection`), and when it answers that the ID is already used by another entity, the rejection SHALL have the code `connection-id-claimed`. Either rejection, including one that follows an accepted validator verdict, SHALL roll the local connection back like any rejected edit: the display is recomputed without it in one event, a failure event carries the host's `rejection`, its selection is dropped, and a gesture on it is cancelled with reason `entity-removed`, as for any removed entity. The library SHALL NOT resubmit the edit.
 
-#### Scenario: Backend assigns its own connection ID
-- **WHEN** with matching on, the user connects port A to port B, the connection is selected, and the host pushes a snapshot holding one connection of the same kind from A to B under a backend ID
-- **THEN** no change event is published for the connection, it keeps its local ID and stays selected, and the adapter reports the backend ID for that local ID
+#### Scenario: Pair already connected
+- **WHEN** the validator accepts a connection from A to B and the host then rejects the edit because A and B are already connected
+- **THEN** the connection leaves the display, one failure event carries the host's rejection, and nothing is resubmitted
 
-#### Scenario: Different kind is not matched
-- **WHEN** with matching on, the pushed snapshot holds a connection from A to B of another kind instead
-- **THEN** the local connection is removed and the snapshot connection is added under its backend ID
+#### Scenario: ID claimed
+- **WHEN** the host answers a connect edit with the ID already used by another entity
+- **THEN** the edit settles rejected with the code `connection-id-claimed` and the local connection is rolled back
 
-#### Scenario: Parallel connections pair in order
-- **WHEN** with matching on, the user draws two connections of one kind from A to B and the snapshot holds two such connections under backend IDs
-- **THEN** each local connection is paired with one snapshot connection, in commit order against snapshot order, the same way on every run, and both keep their local IDs
-
-#### Scenario: Another client's connection is not taken
-- **WHEN** with matching on, a pushed snapshot holds a connection from A to B that another client created, and this client has no new connection between those ports
-- **THEN** the connection is added under its backend ID and no local ID is reused for it
-
-#### Scenario: Matching off
-- **WHEN** matching is off and the snapshot holds the user's new connection under a backend ID
-- **THEN** the diff removes the local connection and adds the snapshot connection, and a gesture on the local one is cancelled with reason `entity-removed`
+#### Scenario: Backend ID in the refresh is a different connection
+- **WHEN** the pushed snapshot holds the user's new connection under another ID and not under the local ID
+- **THEN** the diff removes the local connection and adds the snapshot one, and a gesture on the local one is cancelled with reason `entity-removed`
 
 ### Requirement: Revisioned snapshot push
 A snapshot push MAY carry a revision token of the host's own, of any type. This token is separate from the library's integer revision, which only the changes a push applies advance. The adapter SHALL ignore a push whose token is older than the last applied one, emit no event, and report that it was ignored as stale. A push with an equal or newer token, or without one, SHALL be applied. The comparison SHALL default to numeric order and SHALL be replaceable by the host.
