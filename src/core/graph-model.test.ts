@@ -3,7 +3,8 @@ import { connectionId } from "./base/ids/ids.js";
 import { MisuseError } from "./base/result.js";
 import { moveOp, planNode } from "./data/model/model-fixtures.js";
 import { mkConn } from "./data/model/test-helpers.js";
-import { createGraphModel } from "./graph-model.js";
+import { createLocalAdapter } from "./edit/adapter/local-adapter.js";
+import { buildGraphModel, createGraphModel } from "./graph-model.js";
 
 function accepted(result: { status: string }): void {
   expect(result.status).toBe("accepted");
@@ -173,5 +174,37 @@ describe("one history entry per gesture", () => {
     model.undo();
     expect(model.reader.getNode(a.node)?.position).toEqual({ x: 0, y: 0 });
     expect(model.historyState().canUndo).toBe(false);
+  });
+});
+
+describe("local adapter: the default path is still the local adapter", () => {
+  it("createGraphModel commits synchronously, names nodes with the default counter and keeps local history", () => {
+    const model = createGraphModel();
+    model.registry.register({
+      type: "box",
+      label: "Box",
+      defaultSize: { width: 10, height: 10 },
+    });
+    const created = model.createNode("box", { x: 0, y: 0 });
+    expect(created.status).toBe("accepted");
+    expect(model.reader.nodes().map((n) => n.id)).toEqual(["n1"]);
+    expect(model.historyState()).toMatchObject({
+      canUndo: true,
+      undoLabel: "Create Box",
+    });
+    accepted(model.undo());
+    expect(model.reader.nodes()).toEqual([]);
+  });
+
+  it("a model built on an explicit local adapter behaves the same", () => {
+    const adapter = createLocalAdapter();
+    expect([adapter.authority, adapter.history]).toEqual(["local", "local"]);
+    const model = buildGraphModel(adapter);
+    expect(model.reader).toBe(adapter.reader);
+    accepted(model.submit(planNode(model).patch));
+    expect(model.revision()).toBe(adapter.revision());
+    model.dispose();
+    expect(() => adapter.revision()).not.toThrow();
+    expect(() => adapter.on("change", () => {})).toThrow(MisuseError);
   });
 });

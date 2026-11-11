@@ -6,16 +6,26 @@
  * has no `ok`: callers must check `status`, so a pending edit can never be mistaken for an
  * accepted one. The local adapter answers synchronously; external adapters (later) answer
  * with `pending` and settle through `settled`.
+ *
+ * `ModelAdapter` is also everything the graph model needs from its adapter: the read
+ * model, events, validators, IDs and the reset path, so a model can be built on any
+ * adapter without a second adapter interface.
  */
 
+import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
 import type { OperationId } from "../../base/ids/ids.js";
 import type { Rejection } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
+import type { GraphReader } from "../../data/model/reader.js";
 import type {
+  AppliedPatch,
   ChangedIds,
   ChangeOrigin,
   Patch,
 } from "../../data/patch/types.js";
+import type { PatchValidator } from "../../data/patch/validator.js";
+import type { EventHub } from "../events/event-hub.js";
+import type { DocumentReplacement } from "./replace-document.js";
 
 export interface Submission {
   readonly operationId: OperationId;
@@ -75,9 +85,51 @@ export interface HistoryState {
   readonly redoReason?: string;
 }
 
+/** What a commit listener hears: an applied patch, or a whole-document replacement. */
+export type CommitNotice =
+  | {
+      readonly kind: "change";
+      readonly patch: AppliedPatch["patch"];
+      readonly origin: Submission["origin"];
+    }
+  | { readonly kind: "reset" };
+
 export interface ModelAdapter {
   readonly authority: "local" | "external";
   readonly history: "local" | "host";
+  /** The displayed read model; always synchronous. */
+  readonly reader: GraphReader;
+  readonly idGenerator: IdGenerator;
+  on: EventHub["on"];
+  /** Register a validator; returns a function that removes it. */
+  addValidator(validator: PatchValidator): () => void;
+  /** The registered validators in registration order, as commits run them. */
+  validators(): readonly PatchValidator[];
+  /**
+   * Listen to every commit synchronously, right after the read model changed and before
+   * any event is delivered or queued edit applied. For caches that must never be stale; a
+   * listener must not submit. Returns a function that removes it.
+   */
+  onCommit(listener: (notice: CommitNotice) => void): () => void;
+  /** Current ID cursor; only ever moves forward. */
+  idCursor(): IdCursor;
+  /**
+   * The cursor planners should allocate from: the committed cursor, advanced past every
+   * submission still queued, so commands issued from one handler do not collide.
+   */
+  planningCursor(): IdCursor;
+  revision(): Revision;
+  mintOperationId(): OperationId;
+  /**
+   * Replace the whole document atomically, set the ID cursor, clear local history and
+   * emit one `reset` event. The replacement is checked first; bad input
+   * throws `MisuseError` with nothing changed, as does a call from inside an event
+   * handler (its revision could not be returned). `loadSnapshot` is the public entry
+   * point, which validates untrusted input into results first.
+   */
+  replaceDocument(replacement: DocumentReplacement): Revision;
+  /** Publish a `failure` event for an edit refused before it reached `submit`. */
+  reportRejection(operationId: OperationId, rejection: Rejection): void;
   submit(submission: Submission): SubmitResult;
   undo(): SubmitResult;
   redo(): SubmitResult;

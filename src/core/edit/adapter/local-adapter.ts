@@ -18,26 +18,19 @@ import {
 import { type OperationId, operationId } from "../../base/ids/ids.js";
 import { MisuseError, type Rejection, rejectionOf } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
-import {
-  createGraphReader,
-  type GraphReader,
-} from "../../data/model/reader.js";
+import { createGraphReader } from "../../data/model/reader.js";
 import { createGraphStore, type StoreOptions } from "../../data/model/store.js";
 import { applyPatch } from "../../data/patch/apply.js";
 import { invertPatch } from "../../data/patch/invert.js";
 import type { AppliedPatch } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
-import type { EventHub } from "../events/event-hub.js";
 import { createEventHub } from "../events/event-hub.js";
 import { createLocalHistory } from "../history/local-history.js";
 import { advanceCursor } from "./cursor.js";
-import {
-  checkReplacement,
-  type DocumentReplacement,
-  replaceStoreContents,
-} from "./replace-document.js";
+import { checkReplacement, replaceStoreContents } from "./replace-document.js";
 import type {
   Accepted,
+  CommitNotice,
   HistoryState,
   ModelAdapter,
   Rejected,
@@ -53,49 +46,16 @@ export interface LocalAdapterOptions extends StoreOptions {
   readonly onHandlerError?: (error: unknown) => void;
 }
 
+/**
+ * The local adapter: a `ModelAdapter` that names nodes itself. The name stays as the
+ * concrete return type of `createLocalAdapter`.
+ */
 export interface LocalAdapter extends ModelAdapter {
-  readonly reader: GraphReader;
-  readonly idGenerator: IdGenerator;
-  on: EventHub["on"];
-  /** Register a validator; returns a function that removes it. */
-  addValidator(validator: PatchValidator): () => void;
-  /**
-   * Listen to every commit synchronously, right after the store changed and before any
-   * event is delivered or queued edit applied. For caches that must never be stale; a
-   * listener must not submit. Returns a function that removes it.
-   */
-  onCommit(listener: (notice: CommitNotice) => void): () => void;
-  /** The registered validators in registration order, as commits run them. */
-  validators(): readonly PatchValidator[];
-  /** Current ID cursor; only ever moves forward. */
-  idCursor(): IdCursor;
-  /**
-   * The cursor planners should allocate from: the committed cursor, advanced past every
-   * submission still queued, so commands issued from one handler do not collide.
-   */
-  planningCursor(): IdCursor;
-  revision(): Revision;
-  mintOperationId(): OperationId;
-  /**
-   * Replace the whole document atomically, set the ID cursor, clear local history and
-   * emit one `reset` event. The replacement is checked first; bad input
-   * throws `MisuseError` with nothing changed, as does a call from inside an event
-   * handler (its revision could not be returned). `loadSnapshot` is the public entry
-   * point, which validates untrusted input into results first.
-   */
-  replaceDocument(replacement: DocumentReplacement): Revision;
-  /** Publish a `failure` event for an edit refused before it reached `submit`. */
-  reportRejection(operationId: OperationId, rejection: Rejection): void;
+  readonly authority: "local";
+  readonly history: "local";
 }
 
-/** What a commit listener hears: an applied patch, or a whole-document replacement. */
-export type CommitNotice =
-  | {
-      readonly kind: "change";
-      readonly patch: AppliedPatch["patch"];
-      readonly origin: Submission["origin"];
-    }
-  | { readonly kind: "reset" };
+export type { CommitNotice };
 
 /** What to do with the history once an applied submission has been committed. */
 type AfterCommit = (applied: AppliedPatch) => boolean;

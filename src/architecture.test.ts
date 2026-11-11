@@ -22,7 +22,10 @@ const LAYERS: readonly { layer: string; rank: number; path: string }[] = [
   { layer: "core/edit", rank: 2, path: "src/core/edit/" },
   { layer: "core/space", rank: 3, path: "src/core/space/" },
   { layer: "core/io", rank: 3, path: "src/core/io/" },
+  // Snapshot synchronization adapter: io code, since it diffs snapshots.
+  { layer: "core/io", rank: 3, path: "src/core/io/sync/" },
   { layer: "core/facade", rank: 4, path: "src/core/graph-model.ts" },
+  { layer: "core/facade", rank: 4, path: "src/core/snapshot-model.ts" },
   { layer: "core/facade", rank: 4, path: "src/core/index.ts" },
   { layer: "view/platform", rank: 5, path: "src/view/platform/" },
   { layer: "view/render", rank: 6, path: "src/view/render/" },
@@ -136,6 +139,16 @@ function layerOf(file: string): (typeof LAYERS)[number] | undefined {
   return best;
 }
 
+/** Why an import from `from` to `to` breaks the layer order, or undefined if it does not. */
+function layerProblem(from: string, to: string): string | undefined {
+  const a = layerOf(from);
+  const b = layerOf(to);
+  if (!a || !b || a.layer === b.layer) return undefined;
+  if (b.rank > a.rank) return `${a.layer} imports higher ${b.layer}`;
+  if (b.rank === a.rank) return `siblings ${a.layer} and ${b.layer}`;
+  return undefined;
+}
+
 const ALL_FILES = listFiles("src");
 const KNOWN = new Set(ALL_FILES);
 const LIBRARY = ALL_FILES.filter((f) => !isTest(f) && !isSupport(f));
@@ -204,15 +217,31 @@ describe("import directions", () => {
   it("imports only from the same or a lower layer, never from a sibling", () => {
     const broken: string[] = [];
     for (const e of EDGES) {
-      const a = layerOf(e.from);
-      const b = layerOf(e.to);
-      if (!a || !b || a.layer === b.layer) continue;
-      if (b.rank > a.rank)
-        broken.push(`${describeEdge(e)}: ${a.layer} imports higher ${b.layer}`);
-      else if (b.rank === a.rank)
-        broken.push(`${describeEdge(e)}: siblings ${a.layer} and ${b.layer}`);
+      const problem = layerProblem(e.from, e.to);
+      if (problem) broken.push(`${describeEdge(e)}: ${problem}`);
     }
     expect(broken).toEqual([]);
+  });
+
+  it("places the snapshot synchronization folder in core/io and the snapshot model in the facade, and still refuses a wrong-way import", () => {
+    const sync = "src/core/io/sync/snapshot-adapter.ts";
+    const facade = "src/core/snapshot-model.ts";
+    expect(layerOf(sync)?.layer).toBe("core/io");
+    expect(layerOf(facade)?.layer).toBe("core/facade");
+    expect(layerProblem(facade, sync)).toBeUndefined();
+    expect(layerProblem(sync, "src/core/io/snapshot/diff.ts")).toBeUndefined();
+    expect(
+      layerProblem(sync, "src/core/edit/adapter/types.ts"),
+    ).toBeUndefined();
+    expect(layerProblem(sync, facade)).toBe(
+      "core/io imports higher core/facade",
+    );
+    expect(layerProblem(sync, "src/core/space/scene/index.ts")).toBe(
+      "siblings core/io and core/space",
+    );
+    expect(layerProblem("src/core/edit/intents/decode.ts", sync)).toBe(
+      "core/edit imports higher core/io",
+    );
   });
 
   it("reaches core from view and react only through src/core/index.ts", () => {

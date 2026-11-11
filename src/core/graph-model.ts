@@ -2,9 +2,10 @@
  * The model facade.
  *
  * `createGraphModel()` bundles a local adapter, the read model, events and history behind
- * one object. Every edit goes through `submit(patch)`; undo and redo use the same
- * pipeline. Expected failures come back as `Rejected` results. Only programmer misuse
- * (a disposed model, a value that is not a patch) throws `MisuseError`.
+ * one object; `buildGraphModel` does the same over any `ModelAdapter`. Every edit goes
+ * through `submit(patch)`; undo and redo use the same pipeline. Expected failures come
+ * back as `Rejected` results. Only programmer misuse (a disposed model, a value that is
+ * not a patch) throws `MisuseError`.
  */
 
 import type { IdCursor, IdGenerator } from "./base/ids/id-generator.js";
@@ -20,11 +21,14 @@ import type { Patch } from "./data/patch/types.js";
 import type { PatchValidator } from "./data/patch/validator.js";
 import {
   createLocalAdapter,
-  type LocalAdapter,
   type LocalAdapterOptions,
 } from "./edit/adapter/local-adapter.js";
 import type { DocumentReplacement } from "./edit/adapter/replace-document.js";
-import type { HistoryState, SubmitResult } from "./edit/adapter/types.js";
+import type {
+  HistoryState,
+  ModelAdapter,
+  SubmitResult,
+} from "./edit/adapter/types.js";
 import type { CapabilityPolicy } from "./edit/capabilities/types.js";
 import { createCapabilityValidator } from "./edit/capabilities/validator.js";
 import { type CommandApi, createCommandApi } from "./edit/commands/api.js";
@@ -58,7 +62,8 @@ import type {
   SnapshotLimits,
 } from "./io/snapshot/snapshot-errors.js";
 
-export interface GraphModelOptions extends LocalAdapterOptions {
+/** Model options that do not configure the adapter. */
+export interface GraphModelSettings {
   /** Node types known to this model. Defaults to an empty registry. */
   readonly registry?: NodeTypeRegistry;
   /** Replaces the default connection policy. */
@@ -81,6 +86,10 @@ export interface GraphModelOptions extends LocalAdapterOptions {
   /** Size limits for pasted fragments. Defaults to `DEFAULT_SNAPSHOT_LIMITS`. */
   readonly fragmentLimits?: Partial<SnapshotLimits>;
 }
+
+export interface GraphModelOptions
+  extends LocalAdapterOptions,
+    GraphModelSettings {}
 
 export interface SubmitOptions {
   /** Human-readable description for the history entry. Defaults to "Edit". */
@@ -156,7 +165,17 @@ export interface GraphModel
 }
 
 export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
-  const adapter: LocalAdapter = createLocalAdapter(options);
+  return buildGraphModel(createLocalAdapter(options), options);
+}
+
+/**
+ * The model facade over any adapter. The model owns the adapter from here on: its
+ * validators are registered on it and `dispose` disposes it.
+ */
+export function buildGraphModel(
+  adapter: ModelAdapter,
+  options: GraphModelSettings = {},
+): GraphModel {
   const registry = options.registry ?? createNodeTypeRegistry();
   const basePolicy =
     options.connectionPolicy ?? createDefaultConnectionPolicy();
@@ -262,7 +281,7 @@ export function createGraphModel(options: GraphModelOptions = {}): GraphModel {
   };
 }
 
-function buildCore(adapter: LocalAdapter): GraphModelCore {
+function buildCore(adapter: ModelAdapter): GraphModelCore {
   return {
     reader: adapter.reader,
     idGenerator: adapter.idGenerator,
