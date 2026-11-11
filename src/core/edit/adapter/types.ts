@@ -13,7 +13,7 @@
  */
 
 import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
-import type { OperationId } from "../../base/ids/ids.js";
+import type { NodeId, OperationId } from "../../base/ids/ids.js";
 import type { Rejection } from "../../base/result.js";
 import type { Revision } from "../../base/revision.js";
 import type { GraphReader } from "../../data/model/reader.js";
@@ -25,6 +25,7 @@ import type {
 } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
 import type { EventHub } from "../events/event-hub.js";
+import type { DelegatedIntent } from "../intents/delegated-types.js";
 import type { DocumentReplacement } from "./replace-document.js";
 
 export interface Submission {
@@ -48,6 +49,11 @@ export interface Accepted {
   readonly operationId: OperationId;
   readonly revision: Revision;
   readonly changed: ChangedIds;
+  /**
+   * The node a creation made: present only on the outcome of a node creation, local
+   * (the ID the generator issued) or delegated (the ID the host named).
+   */
+  readonly nodeId?: NodeId;
 }
 
 export interface Rejected {
@@ -97,6 +103,11 @@ export type CommitNotice =
 export interface ModelAdapter {
   readonly authority: "local" | "external";
   readonly history: "local" | "host";
+  /**
+   * Who names new nodes and their ports: `local` plans them with IDs from the ID
+   * generator; `delegated` hands a creation intent to the host through `delegate`.
+   */
+  readonly nodeCreation: "local" | "delegated";
   /** The displayed read model; always synchronous. */
   readonly reader: GraphReader;
   readonly idGenerator: IdGenerator;
@@ -131,6 +142,11 @@ export interface ModelAdapter {
   /** Publish a `failure` event for an edit refused before it reached `submit`. */
   reportRejection(operationId: OperationId, rejection: Rejection): void;
   submit(submission: Submission): SubmitResult;
+  /**
+   * Hand a creation to the host. Only an adapter whose `nodeCreation` is `delegated`
+   * accepts it; any other throws `MisuseError`.
+   */
+  delegate(intent: DelegatedIntent): SubmitResult;
   undo(): SubmitResult;
   redo(): SubmitResult;
   historyState(): HistoryState;

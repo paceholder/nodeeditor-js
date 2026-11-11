@@ -138,6 +138,8 @@ describe("paste and duplicate need fragment planners", () => {
         historyState: () => adapter.historyState(),
         mintOperationId: () => adapter.mintOperationId(),
         reportRejection: (id, r) => adapter.reportRejection(id, r),
+        nodeCreation: adapter.nodeCreation,
+        delegate: (intent) => adapter.delegate(intent),
       },
       {
         registry: createNodeTypeRegistry(),

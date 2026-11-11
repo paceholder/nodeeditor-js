@@ -6,7 +6,12 @@
  */
 
 import type { IdGenerator } from "../../base/ids/id-generator.js";
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  NodeId,
+  OperationId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type { Rejection, RejectionCode } from "../../base/result.js";
 import type { MirrorAxis, ResizeFixed } from "../../data/model/node-frame.js";
 import type { GraphReader } from "../../data/model/reader.js";
@@ -21,6 +26,7 @@ import type { PortSpec } from "../../data/node-types/definition.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { SubmitResult } from "../adapter/types.js";
+import type { DelegatedIntent } from "../intents/delegated-types.js";
 import type { ConnectionPlan, ConnectionPolicy } from "../policy/types.js";
 import type { VerdictProposal } from "../policy/verdict-types.js";
 import type { IdAllocator } from "./id-allocator.js";
@@ -211,6 +217,17 @@ export type PlanResult =
       readonly reason: string;
       readonly missing: readonly VerdictProposal[];
     }
+  /**
+   * The adapter names nodes on the host: a creation is handed over as an intent instead
+   * of a patch, and nothing is created locally. `excluded` lists the references a
+   * delegated paste or duplicate left out of the intent.
+   */
+  | {
+      readonly kind: "delegated";
+      readonly intent: DelegatedIntent;
+      readonly label: string;
+      readonly excluded?: readonly ExcludedReference[];
+    }
   /** Undo and redo are carried out by the history, not by a patch of their own. */
   | {
       readonly kind: "history";
@@ -245,6 +262,12 @@ export interface PlanContext {
   sizeLimits(node: NodeRecord): ResolvedSizeLimits;
   /** Paste and duplicate planners, injected by the facade (they live in `core/io`). */
   readonly fragments?: FragmentPlanners;
+  /**
+   * Present when the adapter's nodes are named by the host (`nodeCreation: "delegated"`):
+   * creation planners then mint no node or port ID and return a `delegated` plan whose
+   * intent carries an operation ID from here.
+   */
+  readonly delegation?: { operationId(): OperationId };
 }
 
 export type PlannerFor<K extends CommandKind> = (

@@ -29,6 +29,7 @@ import type {
   ModelAdapter,
   SubmitResult,
 } from "./edit/adapter/types.js";
+import { readOnlyRejection } from "./edit/capabilities/resolve.js";
 import type { CapabilityPolicy } from "./edit/capabilities/types.js";
 import { createCapabilityValidator } from "./edit/capabilities/validator.js";
 import { type CommandApi, createCommandApi } from "./edit/commands/api.js";
@@ -219,11 +220,15 @@ export function buildGraphModel(
       mintOperationId: () => adapter.mintOperationId(),
       reportRejection: (id, rejection) =>
         adapter.reportRejection(id, rejection),
+      nodeCreation: adapter.nodeCreation,
+      delegate: (intent) => adapter.delegate(intent),
     },
     {
       registry,
       policy,
       validators: () => adapter.validators(),
+      creationRefusal: () =>
+        options.readOnly === true ? readOnlyRejection() : undefined,
       ...(options.sizeLimits ? { sizeLimits: options.sizeLimits } : {}),
       fragments: createFragmentPlanners({
         ...(options.payloadCodecs ? { codecs: options.payloadCodecs } : {}),

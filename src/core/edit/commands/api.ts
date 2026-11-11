@@ -4,16 +4,21 @@
  * `plan` writes nothing: IDs come from the pure generator and the advanced cursor rides
  * on the patch. `execute` plans and, when ready, submits through the normal pipeline, so
  * commit-time validators apply again. `can` is a plan without a submit.
+ *
+ * When the adapter's nodes are named by the host, creation commands plan a `delegated`
+ * outcome instead of a patch and `execute` hands its intent to the adapter. A creation
+ * refusal (read-only mode) is reported before any delegation.
  */
 
 import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
-import type { OperationId } from "../../base/ids/ids.js";
+import type { NodeId, OperationId } from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { Patch } from "../../data/patch/types.js";
 import type { PatchValidator } from "../../data/patch/validator.js";
 import type { HistoryState, Rejected, SubmitResult } from "../adapter/types.js";
+import type { DelegatedIntent } from "../intents/delegated-types.js";
 import type { ConnectionPolicy } from "../policy/types.js";
 import { proposalsAwaitingVerdict } from "../policy/validator.js";
 import { dryRun, stagedAfter } from "./dry-run.js";
@@ -40,6 +45,10 @@ export interface CommandHost {
   mintOperationId(): OperationId;
   /** Publish a `failure` event for a command refused during planning. */
   reportRejection(operationId: OperationId, rejection: Rejection): void;
+  /** Who names new nodes; `delegated` plans creations as intents for `delegate`. */
+  readonly nodeCreation: "local" | "delegated";
+  /** Hand a creation intent to the host (only called when `nodeCreation` is `delegated`). */
+  delegate(intent: DelegatedIntent): SubmitResult;
 }
 
 export interface CommandEnvironment {
@@ -54,6 +63,23 @@ export interface CommandEnvironment {
   readonly sizeLimits?: SizeLimitPolicy;
   /** Paste and duplicate planners; without them those commands are unsupported. */
   readonly fragments?: FragmentPlanners;
+  /**
+   * Why no node may be created at all (read-only mode), or undefined. A delegated
+   * creation has no patch for the validators to refuse, so it asks here first.
+   */
+  creationRefusal?(): Rejection | undefined;
+}
+
+/** A local creation's outcome, with the ID of the node it created. */
+function withNodeId(result: SubmitResult, nodeId: NodeId): SubmitResult {
+  if (result.status === "accepted") return { ...result, nodeId };
+  if (result.status === "rejected") return result;
+  return {
+    ...result,
+    settled: result.settled.then((outcome) =>
+      outcome.status === "accepted" ? { ...outcome, nodeId } : outcome,
+    ),
+  };
 }
 
 export interface CommandApi {
@@ -90,7 +116,14 @@ export function createCommandApi(
       sizeLimits: (node) =>
         resolveSizeLimits(node, env.registry, env.sizeLimits),
       ...(env.fragments ? { fragments: env.fragments } : {}),
+      ...(host.nodeCreation === "delegated"
+        ? { delegation: { operationId: () => host.mintOperationId() } }
+        : {}),
     });
+    if (planned.kind === "delegated") {
+      const refused = env.creationRefusal?.();
+      return refused ? { kind: "rejected", rejection: refused } : planned;
+    }
     if (planned.kind === "history") {
       const state = history(planned.direction);
       return state.available
@@ -120,8 +153,15 @@ export function createCommandApi(
     execute(command) {
       const planned = plan(command);
       switch (planned.kind) {
-        case "ready":
-          return host.submit(planned.patch, { label: planned.label });
+        case "ready": {
+          const result = host.submit(planned.patch, { label: planned.label });
+          const created = planned.effects.created.nodes[0];
+          return command.kind === "createNode" && created
+            ? withNodeId(result, created)
+            : result;
+        }
+        case "delegated":
+          return host.delegate(planned.intent);
         case "history":
           return planned.direction === "undo" ? host.undo() : host.redo();
         case "rejected": {

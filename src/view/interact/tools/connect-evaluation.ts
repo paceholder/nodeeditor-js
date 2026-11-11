@@ -46,7 +46,9 @@ export function evaluationOf(
         code: undefined,
         alternatives: plan.alternatives,
       };
+    // Neither is the plan of a connection.
     case "history":
+    case "delegated":
       return { ...pending(undefined), state: "incompatible" };
   }
 }

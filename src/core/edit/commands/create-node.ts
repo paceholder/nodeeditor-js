@@ -1,4 +1,11 @@
-/** createNode planner. */
+/**
+ * createNode planner.
+ *
+ * With a local adapter it builds the node and its ports with IDs from the generator, as
+ * one patch. When the host names nodes (`ctx.delegation`), it checks the type the same
+ * way and returns a `delegated` plan holding a create-node intent: no ID is minted, no
+ * factory runs (the host builds the node and its ports) and nothing is created locally.
+ */
 
 import type { NodeId, PortId } from "../../base/ids/ids.js";
 import { err, ok, type Result, rejectionOf } from "../../base/result.js";
@@ -86,6 +93,20 @@ export const planCreateNode: PlannerFor<"createNode"> = (command, ctx) => {
       `Node type ${command.type} cannot be created`,
       [command.type],
     );
+  }
+  if (ctx.delegation) {
+    return {
+      kind: "delegated",
+      label: `Create ${def.label}`,
+      intent: {
+        kind: "create-node",
+        operationId: ctx.delegation.operationId(),
+        type: def.type,
+        position: command.position,
+        ...(command.payload === undefined ? {} : { payload: command.payload }),
+        ...(command.title === undefined ? {} : { title: command.title }),
+      },
+    };
   }
   const made = runFactories(def, command);
   if (!made.ok) return rejectedWith(made.rejection);

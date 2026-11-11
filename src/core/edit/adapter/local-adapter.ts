@@ -53,6 +53,7 @@ export interface LocalAdapterOptions extends StoreOptions {
 export interface LocalAdapter extends ModelAdapter {
   readonly authority: "local";
   readonly history: "local";
+  readonly nodeCreation: "local";
 }
 
 export type { CommitNotice };
@@ -229,6 +230,7 @@ export function createLocalAdapter(
   return {
     authority: "local",
     history: "local",
+    nodeCreation: "local",
     reader,
     idGenerator: generator,
     on: (type, handler) => {
@@ -324,6 +326,12 @@ export function createLocalAdapter(
           if (queuedSubmits === 0) reserved = undefined;
         }
       });
+    },
+    delegate() {
+      live();
+      throw new MisuseError(
+        "The local adapter names nodes itself; it has nothing to delegate",
+      );
     },
     undo: () => stepOrQueue("undo"),
     redo: () => stepOrQueue("redo"),

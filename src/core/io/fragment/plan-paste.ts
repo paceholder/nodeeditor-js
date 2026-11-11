@@ -6,7 +6,9 @@
  * places the fragment, and builds one add-only patch. The command layer then dry-runs it
  * through the capability and connection-policy validators like any other command, so a
  * refusal there rejects the whole paste and changes nothing. Duplicate extracts a fragment
- * from the current graph and runs the very same steps, so the two cannot diverge.
+ * from the current graph and runs the very same steps, so the two cannot diverge. When the
+ * host names nodes, the same validation runs and then one create-fragment intent is built
+ * instead of a patch (`plan-delegated.ts`).
  */
 import { rejectionOf } from "../../base/result.js";
 import type { PatchOp } from "../../data/patch/types.js";
@@ -27,6 +29,7 @@ import type {
 import type { GraphSnapshot } from "../snapshot/snapshot-types.js";
 import { extractFragment } from "./extract.js";
 import { readFragment } from "./fragment-text.js";
+import { planDelegatedFragment } from "./plan-delegated.js";
 import { planExternal } from "./plan-external.js";
 import { allocateIds, placementDelta, remapRecords } from "./remap.js";
 
@@ -93,6 +96,16 @@ function planFragment(
   }
   const wrongType = checkTypes(snapshot, ctx);
   if (wrongType) return wrongType;
+  if (ctx.delegation) {
+    return planDelegatedFragment(
+      read.value,
+      placementDelta(command.placement, snapshot),
+      command.external ?? "exclude",
+      label,
+      ctx.delegation.operationId(),
+      ctx,
+    );
+  }
 
   const maps = allocateIds(snapshot, ctx.ids);
   const records = remapRecords(

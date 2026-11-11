@@ -196,13 +196,25 @@ describe("local adapter: the default path is still the local adapter", () => {
     expect(model.reader.nodes()).toEqual([]);
   });
 
-  it("a model built on an explicit local adapter behaves the same", () => {
+  it("a model built on an explicit local adapter behaves the same, and the adapter names nodes locally", () => {
     const adapter = createLocalAdapter();
-    expect([adapter.authority, adapter.history]).toEqual(["local", "local"]);
+    expect([adapter.authority, adapter.history, adapter.nodeCreation]).toEqual([
+      "local",
+      "local",
+      "local",
+    ]);
     const model = buildGraphModel(adapter);
     expect(model.reader).toBe(adapter.reader);
     accepted(model.submit(planNode(model).patch));
     expect(model.revision()).toBe(adapter.revision());
+    expect(() =>
+      adapter.delegate({
+        kind: "create-node",
+        operationId: adapter.mintOperationId(),
+        type: "box",
+        position: { x: 0, y: 0 },
+      }),
+    ).toThrow(MisuseError);
     model.dispose();
     expect(() => adapter.revision()).not.toThrow();
     expect(() => adapter.on("change", () => {})).toThrow(MisuseError);
