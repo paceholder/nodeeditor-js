@@ -219,34 +219,17 @@ the way, as an option and not in the core.
 3. **Joint, once the adapter exists:** wire the validator and creation, verify concerns 2, 4
    and 9, then measure concern 6.
 
-## 10. Requests to the library
+## 10. Requests still open
 
-Numbered so they can be tracked. None blocks the host's backend change (section 9, step 1).
+Requests 1 to 5 of the first version (sync adapter, removing `"match"`, guide text, rejection
+codes, unscoped format identifiers) are done on `main`; the details are in section 12.
 
-1. **Sync adapter (blocking for editing).** Delegated node creation, edit intents, host
-   history, settle, and snapshot pushes that keep selection and gestures. Until it exists the
-   host can show "can connect" and rejections, but cannot persist an edit without throwaway
-   glue.
-2. **Remove `"match"` (decided).** Edit `add-snapshot-sync-adapter` (design D15, tasks, specs)
-   so that `connectionIds` has one behaviour: the client names the connection. Remove the
-   pairing code and its tests, and the option from the public surface before 1.0.
-3. **Guide text for client-named connections.** A generator example that returns random UUIDs
-   (the default counter yields `c1`, `c2`, which is unsafe when several clients write one
-   document). State what a host must reject: a connection between ports that are already
-   connected, and an ID that is already in use. State that retrying the same ID with the same
-   ports must be safe, and that the library never resubmits.
-4. **Rejection codes for the two conflicts.** A host answer "already connected" and "ID
-   claimed" must become library rejections the editor can show, and the local connection must
-   be rolled back. Check that the adapter design covers a rejection after an accepted verdict
-   (concern 4).
-5. **Release with the unscoped format identifiers.** The next version carries the renamed
-   `graph`, `document` and `fragment` identifiers. The host pins exact versions and upgrades
-   then.
-6. **Planned items still open.** A dash per connection kind in the theme, and fit on first
-   content (`initialFit` runs only at mount, so a document loaded after mount needs a manual
-   fit).
-7. **To measure after the adapter exists:** verdict latency per hovered target, the validation
+1. **Planned items.** A dash per connection kind in the theme, and fit on first content
+   (`initialFit` runs only at mount, so a document loaded after mount needs a manual fit).
+2. **To measure with a wired host:** verdict latency per hovered target, the validation
    timeout, first paint, and a large document with connections.
+
+New findings and proposals from the first integration are in `docs/host-integration-findings.md`.
 
 ## 11. What is not done
 
@@ -258,17 +241,12 @@ defect is confirmed by reading its create and delete functions; it has no test y
 Sections 1 to 11 are the host's proposal and stay as written. This section is the library's
 reply to each request and concern.
 
-### Requests of section 10
+### Requests still open (section 10)
 
 | # | Answer |
 |---|---|
-| 1 | Done. The snapshot adapter is on `main`: delegated node creation with a placeholder, edit intents, host-owned or local history, `settle`, revisioned pushes that keep selection and gestures, and the `unconfirmed` flag. Entry: `createSnapshotModel`. Walk-through: `docs/guide-host-authority.md`, with a runnable store-wrapping example in `examples/host-authority/`. |
-| 2 | Done by never shipping it. There is no `connectionIds` option, no pairing, no alias table and no `hostConnectionId`: connections are always named by the client. |
-| 3 | Done in `docs/guide-host-authority.md`: a random-UUID generator example (the idGenerator option is required, so a counter cannot be used by accident), what the host must reject, that retrying the same ID with the same ports must be safe, that the library never resubmits, and that `parallel` turns off only the library's duplicate rule. |
-| 4 | Done. A host answer of "already connected" is carried unchanged (the host uses the code `duplicate-connection`); "ID claimed" has the library code `connection-id-claimed`. Either one rolls the local connection back in one change event with one failure event, drops its selection and cancels a gesture on it with `entity-removed`. This also holds when the answer follows an accepted validator verdict. Nothing is resubmitted. |
-| 5 | Not part of this work. The identifiers in `docs/format.md` are `@paceholder/nodeeditor-js/graph` and `/document`. Please say which spelling the host expects. |
-| 6 | Planned, not built: dash per connection kind and fit on first content (change `add-host-integration-checks`). |
-| 7 | Waits on the host running the adapter. Pushing one changed node costs about 8 ms at 500 nodes and about 87 ms at 5000 (measured once, laptop on battery, so indicative); a push is linear in document size. |
+| 1 (planned items) | Planned, not built: dash per connection kind and fit on first content (change `add-host-integration-checks`). |
+| 2 (to measure) | Waits on the host running the adapter. Pushing one changed node costs about 8 ms at 500 nodes and about 87 ms at 5000 (measured once, laptop on battery, so indicative); a push is linear in document size. |
 
 ### Concerns of section 7
 
