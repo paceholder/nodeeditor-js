@@ -4,7 +4,7 @@ Host report for the library owner. It replaces host duty 2 in `docs/host-spike-f
 ("accept an optional client-supplied connection ID"). The document is written so that someone
 without the earlier conversation can continue the work. Read it top to bottom once.
 
-**Status: decisions 1 and 3 taken by the owner (section 8); 2 and 4 still open.** Library
+**Status: decisions 1, 3 and 4 taken by the owner (section 8); 2 is closed unless a host asks.** Library
 requests 1 to 4 of section 10 are implemented on `main`; section 12 lists each answer.
 Statements marked **to verify** were not checked in code.
 
@@ -204,8 +204,9 @@ the way, as an option and not in the core.
    the library, or should the core carry endpoint identity as a built-in connection mode?
 3. **Decided: remove `"match"` before 1.0.** It is a heuristic with a known failure case.
    Hosts that cannot accept client IDs need another answer, which is not designed yet.
-4. Export the host's compatibility rules to the local policy (concern 5), or keep the local
-   policy minimal?
+4. **Decided: keep the local policy minimal.** The library does not copy the host's
+   compatibility rules to the client. The host validator is the only judge of its domain
+   rules (concern 5).
 
 ## 9. Order of work
 
@@ -272,7 +273,7 @@ reply to each request and concern.
 ### Concerns of section 7
 
 1, 2, 3, 12 (derived IDs): moot, since A was chosen. 4: covered by request 4. 5: still open
-(decision 4). 6: measure after the adapter is wired. 7: `"match"` is gone. 8: the guide
+(decided, section 8). 6: measure after the adapter is wired. 7: `"match"` is gone. 8: the guide
 states that retrying the same ID with the same ports must be safe. 9: host side, see below.
 10: the reconnect tool is not built yet; its plan will say that the validator request for a
 reconnect carries the duplicate rule. 11: the guide names the owner of each rule: the
@@ -281,10 +282,11 @@ repeats the rule as its second line of defence.
 
 ### Decisions of section 8
 
-1 and 3 are implemented. 2 (derived IDs) stays closed unless a host asks for it. 4 is yours:
-export the host's compatibility table to the local policy, or keep the local policy minimal
-with the host validator as the only judge. The library recommends the second, because the
-spec only requires the host to be able to refuse.
+1 and 3 are implemented. 2 (derived IDs) stays closed unless a host asks for it. 4 is
+decided: the local policy stays minimal and the host validator is the only judge of the
+host's rules, so no host rule table is copied to the client. Consequence for the host: a
+hover over a target waits for the validator's verdict, so its latency matters (see the
+questions in `docs/host-spike-findings.md`, section 1).
 
 ### Behaviour the host should know
 
