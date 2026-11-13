@@ -34,6 +34,12 @@ actions so creation can be refused up front in the same way.
 **Why it is general.** Many embedders have fixed-size nodes, or a palette that is the only
 way to add nodes. A default is simpler than repeating the same flag on every type.
 
+**Clarification.** This does not stop the host from creating nodes. A host that owns the
+graph creates a node by calling its backend and then pushing the new snapshot into the
+model; the library takes no part. The gap is only in the library's own creation gestures
+(paste, duplicate, and the drop in P8), which cannot be refused up front for the whole
+model. The host works without this change; it only improves feedback.
+
 **Question.** Should `readOnly` stay a separate switch, or become the shortest form of the
 same setting?
 
@@ -150,6 +156,17 @@ id would cover this and similar cases.
 **Why it is general.** Embedders that own the clipboard, that have read-only or fixed
 content, or that route copy and paste through their own commands all need to turn the
 built-in behaviour off completely.
+
+**Clarification: the host wants paste and duplicate, driven by its backend.** The host does
+not want to lose these commands. It wants them to run like every other edit: the key press
+reads the selected node and connection IDs, the host sends one request to its backend, the
+backend creates the copies with new IDs and an offset, and the host pushes the new
+snapshot. So the library's local paste is turned off, not the feature. What the host needs
+from the library is small: the current selection (already available), and the key bindings
+and native events for copy, paste and duplicate routed to a host command instead of the
+built-in one. If the library offered a command that only reports "paste requested at this
+point" to the host, without creating anything, the host would not need its own key
+handling for it.
 
 ### P8. Dropping content from outside the canvas
 
