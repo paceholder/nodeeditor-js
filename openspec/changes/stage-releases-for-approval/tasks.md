@@ -10,5 +10,5 @@
 
 ## 3. Owner settings and first use
 
-- [ ] 3.1 On npmjs.com clear "Allow npm publish" on the trusted publisher once 0.2.0 is out; verify in the package settings
+- [x] 3.1 On npmjs.com clear "Allow npm publish" on the trusted publisher once 0.2.0 is out; verify in the package settings
 - [ ] 3.2 Make the next release through the staged step and approve it on npmjs.com; verify the run is green, the version appears under "Staged Packages", and it is installable with a provenance attestation after approval. Record in `notes.md` whether `prepublishOnly` and `prepare` ran during `npm stage publish` (the registry documentation does not say)
