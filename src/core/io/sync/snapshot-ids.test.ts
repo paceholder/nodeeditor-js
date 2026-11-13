@@ -111,7 +111,7 @@ describe("identifier generation under a delegating adapter", () => {
     });
     expect(creator.intents.map((i) => i.kind)).toEqual([
       "create-node",
-      "create-fragment",
+      "duplicate",
     ]);
     connectFrom(model, at("B", "B.in"), at("C", "C.p"));
     expect(asked).toEqual(["connection"]);

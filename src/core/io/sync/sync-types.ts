@@ -73,8 +73,8 @@ export interface UnconfirmedIds {
 
 /**
  * A node a delegated creation will add once the host has named it. Never part of the
- * read model, never serialized and never in history; the view may paint it. A paste or
- * duplicate has one per fragment node, sharing the operation ID.
+ * read model, never serialized and never in history; the view may paint it. A paste has
+ * one per fragment node, sharing the operation ID; a duplicate by ID has none.
  */
 export interface CreationPlaceholder {
   readonly operationId: OperationId;
@@ -83,7 +83,7 @@ export interface CreationPlaceholder {
   readonly position: Vec2;
   /** `unknown` once the outcome is unknown; it then stays until settled or arrived. */
   readonly state: "pending" | "unknown";
-  /** The fragment-local key of the node, for a delegated paste or duplicate. */
+  /** The fragment-local key of the node, for a delegated paste. */
   readonly key?: string;
   /** The ID the host named in its answer, while the node has not arrived yet. */
   readonly nodeId?: NodeId;
@@ -201,7 +201,7 @@ export type SnapshotCreationOptions =
       readonly nodeCreation: "delegated";
       /**
        * Called once per creation, while the adapter dispatches. Answer `accepted` with
-       * the node's ID (a create-node intent) or plain `accepted` (a fragment), `rejected`
+       * the node's ID (a create-node intent) or plain `accepted` (a fragment or a duplicate), `rejected`
        * with a rejection (for example `unsupported-command`), or `unknown`.
        */
       readonly onDelegate: (intent: DelegatedIntent) => Promise<HostAnswer>;

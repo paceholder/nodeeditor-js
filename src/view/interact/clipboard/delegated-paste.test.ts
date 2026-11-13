@@ -31,7 +31,7 @@ const refusal = rejectionOf(
   "This store cannot create several records in one call",
 );
 
-describe("paste, duplicate and unavailable creation: the host refuses a fragment", () => {
+describe("paste, duplicate and unavailable creation, and a duplicate of a host-named document as one host operation: the host refuses", () => {
   it("a refused duplicate settles rejected, the view reports the host's message unchanged, and nothing is created", async () => {
     const { model, host, creator, reports, service } = delegating();
     const before = exportSnapshot(model);
@@ -45,8 +45,14 @@ describe("paste, duplicate and unavailable creation: the host refuses a fragment
       },
     });
     expect(creator.intents).toHaveLength(1);
-    expect(creator.intents[0]?.kind).toBe("create-fragment");
-    expect(model.placeholders()).toHaveLength(2);
+    // A duplicate is handed over by ID, with no fragment and no placeholder.
+    expect(creator.intents[0]).toMatchObject({
+      kind: "duplicate",
+      nodes: ["A", "B"],
+      connections: ["AB"],
+      offset: { x: 20, y: 20 },
+    });
+    expect(model.placeholders()).toEqual([]);
     creator.answer(creator.intents[0]?.operationId ?? "", {
       status: "rejected",
       rejection: refusal,
@@ -76,7 +82,7 @@ describe("paste, duplicate and unavailable creation: the host refuses a fragment
     expect(model.reader.nodes()).toHaveLength(2);
   });
 
-  it("an accepted fragment adds no second report; its nodes arrive with a push", async () => {
+  it("an accepted duplicate adds no second report; its nodes arrive with a push", async () => {
     const { creator, reports, service } = delegating();
     const outcome = service.duplicate();
     creator.answer(creator.intents[0]?.operationId ?? "", {
@@ -86,7 +92,7 @@ describe("paste, duplicate and unavailable creation: the host refuses a fragment
     expect(reports).toEqual([outcome]);
   });
 
-  it("an accepted fragment keeps the user's selection, since nothing it created is known yet", async () => {
+  it("an accepted duplicate keeps the user's selection, since nothing it created is known yet", async () => {
     const { creator, selection, service } = delegating();
     const before = [...selection.keys()];
     service.duplicate();

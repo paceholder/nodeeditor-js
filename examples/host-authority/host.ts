@@ -89,7 +89,8 @@ export async function openSession(
 
   const onDelegate = (intent: DelegatedIntent): Promise<HostAnswer> =>
     viaTransport(async () => {
-      if (intent.kind === "create-fragment")
+      // A paste (fragment) or a duplicate (by ID): this store makes one node at a time.
+      if (intent.kind !== "create-node")
         return {
           status: "rejected",
           rejection: rejectionOf(

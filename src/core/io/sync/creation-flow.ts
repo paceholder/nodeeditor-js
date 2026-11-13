@@ -10,9 +10,9 @@
  * had before the hand-over, is refused with `node-id-claimed`. Silence past `timeoutMs`,
  * or a named node that does not arrive in time, makes the outcome unknown: the
  * placeholder stays, marked unknown, and resynchronization is requested. The host then
- * settles it like any unknown edit, even when it had answered before. A fragment (paste
- * or duplicate) settles from the answer alone, since the host names its nodes without
- * telling which they are.
+ * settles it like any unknown edit, even when it had answered before. A fragment (paste)
+ * or a duplicate by ID settles from the answer alone, since the host names its nodes
+ * without telling which they are. A duplicate has no placeholder.
  */
 import type { NodeId, OperationId } from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
@@ -201,6 +201,8 @@ export function placeholdersOf(
     const { intent } = entry;
     if (intent.kind === "create-node")
       return [{ ...base, type: intent.type, position: intent.position }];
+    // A duplicate by ID shows nothing until the pushed snapshot brings the copies.
+    if (intent.kind === "duplicate") return [];
     return intent.nodes.map((n) => ({
       ...base,
       type: n.type,

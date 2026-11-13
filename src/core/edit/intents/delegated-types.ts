@@ -7,7 +7,13 @@
  * to be created, because the host has not named it yet; entities inside a fragment are
  * addressed with keys local to the fragment.
  */
-import type { NodeId, OperationId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  OperationId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type {
   Payload,
   PortDirection,
@@ -74,7 +80,7 @@ export interface FragmentConnectionIntent {
 }
 
 /**
- * Create a validated fragment (paste or duplicate). The host creates the nodes, then the
+ * Create a validated fragment (a paste; a duplicate is a `DelegatedDuplicate`). The host creates the nodes, then the
  * connections between the ports it named, adding `offset` to every fragment position.
  * Connections to existing ports appear only when the command asked to preserve them.
  */
@@ -88,4 +94,34 @@ export interface DelegatedCreateFragment {
   readonly offset: Vec2;
 }
 
-export type DelegatedIntent = DelegatedCreateNode | DelegatedCreateFragment;
+/**
+ * Duplicate nodes the host already holds, as one operation in its store. No fragment is
+ * built: the host copies the listed records itself, adds `offset` to every copied
+ * position, and pushes a snapshot holding the copies. It answers `accepted` without a
+ * node ID. No placeholder is shown meanwhile.
+ */
+export interface DelegatedDuplicate {
+  readonly kind: "duplicate";
+  readonly operationId: OperationId;
+  /** The nodes to copy, each once, in paint order. */
+  readonly nodes: readonly NodeId[];
+  /**
+   * The connections the copy re-creates, in creation order: every connection between two
+   * listed nodes, plus, when the command asked to preserve external connections, every
+   * connection with one end on a listed node (the copy keeps the outside end).
+   */
+  readonly connections: readonly ConnectionId[];
+  /**
+   * The groups to copy, in creation order; omitted when none. Every member of a listed
+   * group is in `nodes`. A copied node joins the copy of its group when that group is
+   * listed; otherwise the copy belongs to no group.
+   */
+  readonly groups?: readonly GroupId[];
+  /** Added to every copied position; the offset a local duplicate would use. */
+  readonly offset: Vec2;
+}
+
+export type DelegatedIntent =
+  | DelegatedCreateNode
+  | DelegatedCreateFragment
+  | DelegatedDuplicate;

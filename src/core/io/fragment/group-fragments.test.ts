@@ -172,7 +172,7 @@ describe("duplicate and paste fragments with groups", () => {
     );
   });
 
-  it("when the host names nodes, the create-fragment intent lists the group and each node's group key", () => {
+  it("when the host names nodes, a pasted fragment's create-fragment intent lists the group and each node's group key", () => {
     const { model, pair } = delegatingModel();
     const made = model.groupNodes([pair.a.node, pair.b.node], {
       title: "Hosted",
@@ -180,10 +180,11 @@ describe("duplicate and paste fragments with groups", () => {
     expect(made.status).toBe("accepted");
     const id = model.reader.groups()[0]?.id;
     if (!id) throw new Error("no group");
+    const copied = extractFragment(model.reader, { nodes: [], groups: [id] });
+    if (!copied.ok) throw new Error("extract failed");
     const plan = model.plan({
-      kind: "duplicate",
-      nodes: [],
-      groups: [id],
+      kind: "paste",
+      fragment: copied.value.fragment,
       placement: { kind: "offset", by: { x: 0, y: 100 } },
     });
     if (plan.kind !== "delegated" || plan.intent.kind !== "create-fragment")

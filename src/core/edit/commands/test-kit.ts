@@ -91,7 +91,14 @@ export function firstConnection(model: GraphModel): ConnectionId {
  * The generator counts every call, so a test can prove no ID was minted.
  */
 export function delegatingModel(
-  options: { readonly readOnly?: boolean; readonly maxNodes?: number } = {},
+  options: {
+    readonly readOnly?: boolean;
+    readonly maxNodes?: number;
+    /** Report the pipe type as not creatable. */
+    readonly fixedPipes?: boolean;
+    /** Put the first two pipes into one group. */
+    readonly grouped?: boolean;
+  } = {},
 ) {
   const seed = makeModel();
   // Two connected pipes plus a third joined to the second.
@@ -101,6 +108,9 @@ export function delegatingModel(
   seed.connect(end(a, 1), end(b, 0));
   seed.connect(end(b, 1), end(c, 0));
   const pair = { a, b, c };
+  if (options.grouped) {
+    seed.execute({ kind: "groupNodes", nodes: [a.node, b.node] });
+  }
   const counter = createCounterIdGenerator();
   const asked: string[] = [];
   const idGenerator = {
@@ -114,6 +124,7 @@ export function delegatingModel(
     nodes: seed.reader.nodes(),
     ports: seed.reader.ports(),
     connections: seed.reader.connections(),
+    groups: seed.reader.groups(),
     idCursor: seed.idCursor(),
   });
   const intents: DelegatedIntent[] = [];
@@ -128,7 +139,15 @@ export function delegatingModel(
   const model = buildGraphModel(
     { ...local, nodeCreation: "delegated", delegate },
     {
-      registry: seed.registry,
+      registry: options.fixedPipes
+        ? {
+            ...seed.registry,
+            get: (type: string) => {
+              const found = seed.registry.get(type);
+              return found && { ...found, creatable: false };
+            },
+          }
+        : seed.registry,
       ...(options.readOnly ? { readOnly: true } : {}),
       ...(options.maxNodes
         ? { fragmentLimits: { maxNodes: options.maxNodes } }

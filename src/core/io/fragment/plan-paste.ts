@@ -8,7 +8,8 @@
  * refusal there rejects the whole paste and changes nothing. Duplicate extracts a fragment
  * from the current graph and runs the very same steps, so the two cannot diverge. When the
  * host names nodes, the same validation runs and then one create-fragment intent is built
- * instead of a patch (`plan-delegated.ts`).
+ * instead of a patch (`plan-delegated.ts`); a duplicate is then handed over by ID
+ * (`plan-delegated-duplicate.ts`) without any fragment.
  */
 import { rejectionOf } from "../../base/result.js";
 import type { PatchOp } from "../../data/patch/types.js";
@@ -26,10 +27,11 @@ import type {
   PayloadCodecRegistry,
   SnapshotLimits,
 } from "../snapshot/snapshot-errors.js";
-import type { GraphSnapshot } from "../snapshot/snapshot-types.js";
+import { checkTypes } from "./check-types.js";
 import { extractFragment } from "./extract.js";
 import { readFragment } from "./fragment-text.js";
 import { planDelegatedFragment } from "./plan-delegated.js";
+import { planDelegatedDuplicate } from "./plan-delegated-duplicate.js";
 import { planExternal } from "./plan-external.js";
 import { allocateIds, placementDelta, remapRecords } from "./remap.js";
 
@@ -43,31 +45,6 @@ interface FragmentCommand {
   readonly fragment: unknown;
   readonly placement: Placement;
   readonly external?: ExternalHandling;
-}
-
-/** Unregistered or non-creatable types, each named once in fragment order. */
-function checkTypes(
-  snapshot: GraphSnapshot,
-  ctx: PlanContext,
-): PlanResult | undefined {
-  const types = [...new Set(snapshot.nodes.map((n) => n.type))];
-  const unknown = types.filter((t) => !ctx.registry.has(t));
-  if (unknown.length > 0) {
-    return rejected(
-      "unknown-type",
-      `Node type ${unknown.join(", ")} is not registered`,
-      unknown,
-    );
-  }
-  const fixed = types.filter((t) => ctx.registry.get(t)?.creatable === false);
-  if (fixed.length > 0) {
-    return rejected(
-      "not-creatable",
-      `Node type ${fixed.join(", ")} cannot be created`,
-      fixed,
-    );
-  }
-  return undefined;
 }
 
 function planFragment(
@@ -94,7 +71,7 @@ function planFragment(
   if (snapshot.nodes.length === 0) {
     return rejected("empty-fragment", "The fragment holds no nodes");
   }
-  const wrongType = checkTypes(snapshot, ctx);
+  const wrongType = checkTypes(snapshot.nodes, ctx);
   if (wrongType) return wrongType;
   if (ctx.delegation) {
     return planDelegatedFragment(
@@ -148,6 +125,9 @@ export function createFragmentPlanners(
   const paste: PlannerFor<"paste"> = (command, ctx) =>
     planFragment(command, ctx, options, "Paste");
   const duplicate: PlannerFor<"duplicate"> = (command, ctx) => {
+    // The host copies by ID: no fragment is built, encoded or validated.
+    if (ctx.delegation)
+      return planDelegatedDuplicate(command, ctx, ctx.delegation.operationId);
     const extracted = extractFragment(
       ctx.reader,
       {
