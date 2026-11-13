@@ -4,7 +4,12 @@
  * Records are immutable: an update replaces the record object, so a kept reference keeps
  * showing the old state. They hold no ephemeral interaction state and no derived caches.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type { QuarterTurns, Size, Vec2 } from "./values.js";
 
 /** JSON-compatible, deep-readonly application data, opaque to the library. */
@@ -52,6 +57,21 @@ export interface NodeRecord {
   readonly status?: string;
   readonly payload: Payload;
   readonly capabilities?: CapabilityOverrides;
+  /** The group this node belongs to; absent for a free node. */
+  readonly group?: GroupId;
+}
+
+/**
+ * A flat visual group. It stores no rectangle and no member list: membership is the
+ * `group` field of each member node, and the frame is derived from the members.
+ */
+export interface GroupRecord {
+  readonly id: GroupId;
+  readonly title: string;
+  /** A locked group moves as one unit and its membership is frozen. */
+  readonly locked: boolean;
+  /** Names a style of the view's theme; unknown keys fall back to the default. */
+  readonly style?: string;
 }
 
 /** Node-local placement hint in the unrotated body frame; refined by geometry later. */

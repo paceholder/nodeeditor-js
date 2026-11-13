@@ -54,6 +54,13 @@ function invertOp(op: PatchOp): PatchOp {
             record: op.record,
             seq: need(op.seq, op.record.id),
           };
+        case "group":
+          return {
+            op: "remove",
+            entity: "group",
+            record: op.record,
+            seq: need(op.seq, op.record.id),
+          };
       }
       break;
     case "remove":
@@ -69,6 +76,8 @@ function invertOp(op: PatchOp): PatchOp {
             record: op.record,
             seq: op.seq,
           };
+        case "group":
+          return { op: "add", entity: "group", record: op.record, seq: op.seq };
       }
       break;
     case "update":
@@ -78,6 +87,8 @@ function invertOp(op: PatchOp): PatchOp {
         case "port":
           return { ...op, fields: swapFields(op.fields) };
         case "connection":
+          return { ...op, fields: swapFields(op.fields) };
+        case "group":
           return { ...op, fields: swapFields(op.fields) };
       }
   }

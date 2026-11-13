@@ -3,10 +3,11 @@
  * never by the view's internal keys. `createViewSelection` wraps a view's selection
  * model; tools keep using the model and its keys.
  */
-import type { ConnectionId, NodeId } from "../../../core/index.js";
-import { connectionId, nodeId } from "../../../core/index.js";
+import type { ConnectionId, GroupId, NodeId } from "../../../core/index.js";
+import { connectionId, groupId, nodeId } from "../../../core/index.js";
 import {
   connectionKey,
+  groupKey,
   nodeKey,
   type SelectionKey,
   type SelectionModel,
@@ -15,12 +16,15 @@ import {
 /** One selected entity. */
 export type SelectedEntity =
   | { readonly kind: "node"; readonly id: NodeId }
-  | { readonly kind: "connection"; readonly id: ConnectionId };
+  | { readonly kind: "connection"; readonly id: ConnectionId }
+  | { readonly kind: "group"; readonly id: GroupId };
 
 /** The whole selection: what the `"selection"` event carries and `useSelection` returns. */
 export interface SelectionState {
   readonly nodes: readonly NodeId[];
   readonly connections: readonly ConnectionId[];
+  /** Selected groups. Selecting a group does not select its member nodes. */
+  readonly groups: readonly GroupId[];
   /** The entity most recently selected, or `undefined` for an empty selection. */
   readonly primary: SelectedEntity | undefined;
 }
@@ -32,6 +36,7 @@ export interface ViewSelection {
   state(): SelectionState;
   nodes(): NodeId[];
   connections(): ConnectionId[];
+  groups(): GroupId[];
   primary(): SelectedEntity | undefined;
   has(entity: SelectedEntity): boolean;
   /** Entity IDs are unique across kinds, so a bare ID is enough for painting. */
@@ -44,19 +49,24 @@ export interface ViewSelection {
 }
 
 const keyOf = (e: SelectedEntity): SelectionKey =>
-  e.kind === "node" ? nodeKey(e.id) : connectionKey(e.id);
+  e.kind === "node"
+    ? nodeKey(e.id)
+    : e.kind === "group"
+      ? groupKey(e.id)
+      : connectionKey(e.id);
 
 function entityOf(key: SelectionKey | undefined): SelectedEntity | undefined {
   if (!key) return undefined;
-  return key.startsWith("n:")
-    ? { kind: "node", id: nodeId(key.slice(2)) }
-    : { kind: "connection", id: connectionId(key.slice(2)) };
+  if (key.startsWith("n:")) return { kind: "node", id: nodeId(key.slice(2)) };
+  if (key.startsWith("g:")) return { kind: "group", id: groupId(key.slice(2)) };
+  return { kind: "connection", id: connectionId(key.slice(2)) };
 }
 
 export function selectionStateOf(model: SelectionModel): SelectionState {
   return {
     nodes: model.nodeIds(),
     connections: model.connectionIds(),
+    groups: model.groupIds(),
     primary: entityOf(model.primary()),
   };
 }
@@ -69,6 +79,7 @@ export function createViewSelection(model: SelectionModel): ViewSelection {
     state: () => selectionStateOf(model),
     nodes: model.nodeIds,
     connections: model.connectionIds,
+    groups: model.groupIds,
     primary: () => entityOf(model.primary()),
     has: (entity) => model.has(keyOf(entity)),
     isSelected: model.isSelected,

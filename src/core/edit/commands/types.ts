@@ -8,6 +8,7 @@
 import type { IdGenerator } from "../../base/ids/id-generator.js";
 import type {
   ConnectionId,
+  GroupId,
   NodeId,
   OperationId,
   PortId,
@@ -60,6 +61,8 @@ export type Command =
       readonly kind: "deleteEntities";
       readonly nodes?: readonly NodeId[];
       readonly connections?: readonly ConnectionId[];
+      /** A listed group is removed; members that are not deleted become free. */
+      readonly groups?: readonly GroupId[];
     }
   | {
       readonly kind: "connect";
@@ -81,6 +84,14 @@ export type Command =
       readonly moves: readonly {
         readonly node: NodeId;
         readonly position: Vec2;
+      }[];
+      /**
+       * Membership changes committed with the move, so a drag that drops a node on a
+       * group or pulls it out is one edit. `null` frees the node.
+       */
+      readonly membership?: readonly {
+        readonly node: NodeId;
+        readonly group: GroupId | null;
       }[];
     }
   /** `turns` are clockwise quarter turns. */
@@ -149,12 +160,46 @@ export type Command =
       readonly placement: Placement;
       readonly external?: ExternalHandling;
     }
-  /** Copy the listed nodes and their internal connections in one step. */
+  /**
+   * Copy the listed nodes and their internal connections in one step. A listed group
+   * is copied with all its members; other copies are free nodes.
+   */
   | {
       readonly kind: "duplicate";
       readonly nodes: readonly NodeId[];
+      readonly groups?: readonly GroupId[];
       readonly placement: Placement;
       readonly external?: ExternalHandling;
+    }
+  /**
+   * Put the nodes into one new group. Nodes that belong to other groups move into it,
+   * and a group left without members is removed.
+   */
+  | {
+      readonly kind: "groupNodes";
+      readonly nodes: readonly NodeId[];
+      /** Defaults to `Group`. */
+      readonly title?: string;
+      readonly style?: string;
+    }
+  /** Remove the groups; their members stay where they are. Ignores the lock. */
+  | { readonly kind: "ungroup"; readonly groups: readonly GroupId[] }
+  | {
+      readonly kind: "addToGroup";
+      readonly group: GroupId;
+      readonly nodes: readonly NodeId[];
+    }
+  /** Free the nodes. A group that loses its last member is removed. */
+  | { readonly kind: "removeFromGroup"; readonly nodes: readonly NodeId[] }
+  | {
+      readonly kind: "renameGroup";
+      readonly group: GroupId;
+      readonly title: string;
+    }
+  | {
+      readonly kind: "setGroupLocked";
+      readonly group: GroupId;
+      readonly locked: boolean;
     }
   | { readonly kind: "undo" }
   | { readonly kind: "redo" };
@@ -165,6 +210,7 @@ export interface EntityIds {
   readonly nodes: readonly NodeId[];
   readonly ports: readonly PortId[];
   readonly connections: readonly ConnectionId[];
+  readonly groups: readonly GroupId[];
 }
 
 /**

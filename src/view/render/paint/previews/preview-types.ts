@@ -7,6 +7,7 @@ import type {
   ChoiceAlternative,
   ConnectionId,
   Endpoint,
+  GroupId,
   NodeId,
   Point,
   Rect,
@@ -43,6 +44,15 @@ export interface ConnectCandidate {
   readonly evaluation: ConnectionEvaluation;
 }
 
+/** One group frame of a move preview. */
+export interface GroupFramePreview {
+  readonly group: GroupId;
+  /** Members after the drop, in node order. */
+  readonly members: readonly NodeId[];
+  /** A dragged node will join this group. */
+  readonly joining: boolean;
+}
+
 /** A gesture preview, drawn on the interaction layer only; never serialized. */
 export type ToolPreview =
   | {
@@ -57,6 +67,11 @@ export type ToolPreview =
       readonly moving: readonly NodeId[];
       /** Selected nodes that stay put because a capability denies the move. */
       readonly locked: readonly NodeId[];
+      /**
+       * Group frames as they will be after the drop: every group a moved node belongs
+       * to, leaves or joins, with the members it will then have. Omitted: none.
+       */
+      readonly groups?: readonly GroupFramePreview[];
     }
   /** A node at a preview size, with `fixed` held in place. */
   | {

@@ -4,11 +4,12 @@
  * The patch tells which entities were touched. Geometry-relevant node and port field
  * changes, and changes of content fields the node's geometry declared (`dependsOn`),
  * rebuild that node and its incident connections; z-order and other changes only
- * refresh the cached record. Connection ops rebuild just that connection. Work is done in
+ * refresh the cached record. Connection ops rebuild just that connection. A group frame is
+ * rebuilt when its record or membership changes or a member's geometry is rebuilt. Work is done in
  * first-touched order, so results do not depend on incidental iteration order.
  */
 
-import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
+import type { ConnectionId, GroupId, NodeId } from "../../base/ids/ids.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { ChangeEvent } from "../../edit/events/types.js";
 
@@ -21,6 +22,8 @@ export interface SceneOps {
   removeNode(id: NodeId): void;
   setConnection(id: ConnectionId): boolean;
   removeConnection(id: ConnectionId): void;
+  /** Rebuild a group frame from the reader; drops it when the group is gone. */
+  setGroup(id: GroupId): void;
   nodesOfType(type: string): readonly NodeId[];
   /** Content fields the node's geometry declared it depends on. */
   contentDependencies(id: NodeId): readonly string[];
@@ -53,6 +56,8 @@ export function applyChange(
   const geometry = new Set<NodeId>(forceNodes);
   const records = new Set<NodeId>();
   const links = new Set<ConnectionId>();
+  // Groups whose record, membership or member geometry changed.
+  const groups = new Set<GroupId>(event?.changed.groups ?? []);
   for (const op of event?.patch.ops ?? []) {
     switch (op.entity) {
       case "node":
@@ -75,9 +80,14 @@ export function applyChange(
       case "connection":
         links.add(op.op === "update" ? op.id : op.record.id);
         break;
+      case "group":
+        groups.add(op.op === "update" ? op.id : op.record.id);
+        break;
     }
   }
   for (const id of geometry) {
+    const group = ops.reader.getNode(id)?.group;
+    if (group !== undefined) groups.add(group);
     if (!ops.setNode(id)) {
       ops.removeNode(id);
       continue;
@@ -86,6 +96,7 @@ export function applyChange(
   }
   for (const id of records) if (!geometry.has(id)) ops.refreshNodeRecord(id);
   for (const id of links) if (!ops.setConnection(id)) ops.removeConnection(id);
+  for (const id of groups) ops.setGroup(id);
 }
 
 /**

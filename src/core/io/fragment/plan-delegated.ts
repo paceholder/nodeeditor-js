@@ -3,7 +3,7 @@
  *
  * The fragment has already been validated and its types checked, exactly as for a local
  * paste. Instead of a patch the planner builds one create-fragment intent: the nodes with
- * their ports, the internal connections between fragment-local keys, the placement
+ * their ports, the copied groups, the internal connections between fragment-local keys, the placement
  * offset, and, only when the command asked to preserve them, the connections to existing
  * ports outside the fragment. Nothing is created and no ID is minted. The connection
  * policy does not judge these connections: their fragment ports do not exist in the
@@ -21,6 +21,7 @@ import type {
 import type {
   FragmentConnectionIntent,
   FragmentEndpoint,
+  FragmentGroupIntent,
   FragmentNodeIntent,
 } from "../../edit/intents/delegated-types.js";
 import type { EndpointSnapshot } from "../snapshot/snapshot-types.js";
@@ -78,6 +79,18 @@ export function planDelegatedFragment(
   const keys = keyed(fragment);
   const key = (map: Map<string, string>, id: string): string =>
     map.get(id) ?? id;
+  const groupKeys = new Map<string, string>();
+  const groups = (fragment.fragment.groups ?? []).map(
+    (g, i): FragmentGroupIntent => {
+      groupKeys.set(g.id, `group-${i + 1}`);
+      return {
+        key: `group-${i + 1}`,
+        title: g.title,
+        locked: g.locked ?? false,
+        ...(g.style === undefined ? {} : { style: g.style }),
+      };
+    },
+  );
   const nodes = fragment.fragment.nodes.map(
     (n, i): FragmentNodeIntent => ({
       key: key(keys.nodes, n.id),
@@ -85,6 +98,7 @@ export function planDelegatedFragment(
       position: n.position,
       ...(n.title === undefined ? {} : { title: n.title }),
       payload: payloads[i] ?? null,
+      ...(n.group === undefined ? {} : { group: key(groupKeys, n.group) }),
       ports: n.ports.map((p) => ({
         key: key(keys.ports, p.id),
         direction: p.direction,
@@ -138,6 +152,7 @@ export function planDelegatedFragment(
       operationId,
       nodes,
       connections,
+      ...(groups.length > 0 ? { groups } : {}),
       offset,
     },
     excluded,

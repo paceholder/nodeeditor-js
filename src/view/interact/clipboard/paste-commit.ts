@@ -22,7 +22,12 @@ import {
 import type { EditableModel } from "../commands/editable-model.js";
 import type { PasteOutcome } from "./clipboard-types.js";
 
-const NOTHING: ChangedIds = { nodes: [], ports: [], connections: [] };
+const NOTHING: ChangedIds = {
+  nodes: [],
+  ports: [],
+  connections: [],
+  groups: [],
+};
 
 /** What a commit reports besides its outcome. */
 export interface CommitReports {

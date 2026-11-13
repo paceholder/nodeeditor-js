@@ -48,6 +48,7 @@ export type { ViewSize } from "./interact/tools/auto-pan.js";
 // contract may change before 1.0.
 export { connectTool } from "./interact/tools/connect-tool.js";
 export { emptyPanTool } from "./interact/tools/empty-pan-tool.js";
+export { createGroupFrameTool } from "./interact/tools/group-frame-tool.js";
 export { marqueeTool } from "./interact/tools/marquee-tool.js";
 export { panTool } from "./interact/tools/pan-tool.js";
 export type {

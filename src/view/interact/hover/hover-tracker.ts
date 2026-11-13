@@ -56,6 +56,8 @@ function targetOf(hit: HitCandidate | undefined): HoverTarget | null {
         connection: hit.connectionId,
         ...(hit.member === undefined ? {} : { member: hit.member }),
       };
+    case "group":
+      return { kind: "group", group: hit.groupId, part: hit.part };
   }
 }
 
@@ -72,6 +74,10 @@ function same(a: HoverTarget | null, b: HoverTarget | null): boolean {
         a.connection === (b as typeof a).connection &&
         a.member === (b as typeof a).member
       );
+    case "group":
+      return (
+        a.group === (b as typeof a).group && a.part === (b as typeof a).part
+      );
   }
 }
 
@@ -80,7 +86,9 @@ const idsOf = (t: HoverTarget): readonly string[] =>
     ? [t.node]
     : t.kind === "port"
       ? [t.node, t.port]
-      : [t.connection];
+      : t.kind === "connection"
+        ? [t.connection]
+        : [t.group];
 
 export function createHoverTracker(deps: HoverTrackerDeps): HoverTracker {
   let current: HoverTarget | null = null;

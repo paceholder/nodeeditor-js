@@ -6,7 +6,12 @@
  * it was built from after later commits. States are built lazily, at most once per
  * revision, and frozen unless the store was created with `freezeRecords: false`.
  */
-import type { ConnectionRecord, NodeRecord, PortRecord } from "./records.js";
+import type {
+  ConnectionRecord,
+  GroupRecord,
+  NodeRecord,
+  PortRecord,
+} from "./records.js";
 import type { GraphStore } from "./store.js";
 
 /** Deep-readonly snapshot of the committed graph at one revision. */
@@ -16,6 +21,7 @@ export interface GraphState {
   readonly nodes: readonly NodeRecord[];
   readonly ports: readonly PortRecord[];
   readonly connections: readonly ConnectionRecord[];
+  readonly groups: readonly GroupRecord[];
   /** Nodes ordered by `(z, seq)` ascending. */
   readonly paintOrder: readonly NodeRecord[];
 }
@@ -30,6 +36,7 @@ export function createStateCache(store: GraphStore): () => GraphState {
       nodes: store.nodes.list(),
       ports: store.ports.list(),
       connections: store.connections.list(),
+      groups: store.groups.list(),
       paintOrder: store.paintOrder(),
     };
     cached = store.freezeRecords ? Object.freeze(built) : built;

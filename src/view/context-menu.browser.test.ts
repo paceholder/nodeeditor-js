@@ -50,6 +50,7 @@ describe("context-menu event from the pointer", () => {
     expect(events[0]?.selection).toEqual({
       nodes: [nodeId("b")],
       connections: [],
+      groups: [],
     });
     expect(events[0]?.invocation).toBe("mouse");
   });

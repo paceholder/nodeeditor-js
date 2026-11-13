@@ -8,6 +8,7 @@ export {
 } from "./base/ids/id-generator.js";
 export type {
   ConnectionId,
+  GroupId,
   IdKind,
   NodeId,
   OperationId,
@@ -15,6 +16,7 @@ export type {
 } from "./base/ids/ids.js";
 export {
   connectionId,
+  groupId,
   isWellFormedId,
   nodeId,
   operationId,
@@ -32,6 +34,7 @@ export type {
   CapabilityOverrides,
   ConnectionRecord,
   Endpoint,
+  GroupRecord,
   NodeRecord,
   Payload,
   PortDirection,
@@ -42,6 +45,10 @@ export type {
 export { translateConstraints } from "./data/model/route-constraints.js";
 export type { GraphState } from "./data/model/state.js";
 export type { StoreOptions } from "./data/model/store.js";
+export {
+  MAX_GROUP_TITLE_LENGTH,
+  validateGroupRecord,
+} from "./data/model/validate-group.js";
 export {
   validateConnectionRecord,
   validateNodeRecord,
@@ -65,6 +72,7 @@ export type {
   ConnectionFieldChanges,
   EntityKind,
   FieldChange,
+  GroupFieldChanges,
   NodeFieldChanges,
   Patch,
   PatchOp,

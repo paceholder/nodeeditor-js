@@ -2,7 +2,13 @@
  * Hover payload: plain data by stable IDs, no DOM event, so a host can
  * build tooltips, popovers and cross-panel highlights from it.
  */
-import type { ConnectionId, NodeId, PortId } from "../../../core/index.js";
+import type {
+  ConnectionId,
+  GroupFramePart,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../../core/index.js";
 import type { ViewRect } from "../../platform/view-rect.js";
 
 /** The entity under the pointer. Ports are reported only while they are pickable. */
@@ -14,6 +20,12 @@ export type HoverTarget =
       readonly connection: ConnectionId;
       /** The hit member of a composite connection, when the picker reports one. */
       readonly member?: string;
+    }
+  /** A group frame's lock icon, title strip or border. */
+  | {
+      readonly kind: "group";
+      readonly group: GroupId;
+      readonly part: GroupFramePart;
     };
 
 /**

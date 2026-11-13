@@ -2,7 +2,8 @@
  * Independent painter registries.
  *
  * Node painters are keyed by node type, port glyph painters by port type key, connection
- * painters by connection kind; the background painter is a single slot. Lookups never
+ * painters by connection kind; the background painter and the group frame painter are
+ * single slots. Lookups never
  * fail: an unregistered key returns the registry's fallback. Geometry lives in the core
  * `GeometryRegistry`, so replacing a painter here never touches geometry and vice versa.
  */
@@ -13,6 +14,7 @@ import {
   type Result,
   rejectionOf,
 } from "../../../core/index.js";
+import { createGroupFramePainter } from "../presets/group-frame-painter.js";
 import { paintGrid } from "../primitives/grid.js";
 import {
   fallbackConnectionPainter,
@@ -22,6 +24,7 @@ import {
 import type {
   BackgroundPainter,
   ConnectionPainter,
+  GroupFramePainter,
   NodePainter,
   PortGlyphPainter,
 } from "./painter-types.js";
@@ -49,6 +52,8 @@ export interface PainterRegistries {
   readonly portGlyphs: PainterRegistry<PortGlyphPainter>;
   readonly connections: PainterRegistry<ConnectionPainter>;
   readonly background: PainterSlot<BackgroundPainter>;
+  /** The one painter of every group frame. */
+  readonly group: PainterSlot<GroupFramePainter>;
 }
 
 function createRegistry<T>(fallback: T): PainterRegistry<T> {
@@ -107,5 +112,6 @@ export function createPainterRegistries(): PainterRegistries {
     portGlyphs: createRegistry<PortGlyphPainter>(fallbackPortGlyphPainter),
     connections: createRegistry<ConnectionPainter>(fallbackConnectionPainter),
     background: createSlot<BackgroundPainter>(paintGrid),
+    group: createSlot<GroupFramePainter>(createGroupFramePainter()),
   };
 }

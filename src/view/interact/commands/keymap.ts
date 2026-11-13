@@ -72,6 +72,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = deepFreeze([
   { chord: "Mod+X", command: COMMAND_IDS.cut, native: true },
   { chord: "Mod+V", command: COMMAND_IDS.paste, native: true },
   { chord: "Mod+D", command: COMMAND_IDS.duplicate, repeat: false },
+  { chord: "Mod+G", command: COMMAND_IDS.group, repeat: false },
+  { chord: "Mod+Shift+G", command: COMMAND_IDS.ungroup, repeat: false },
+  { chord: "F2", command: COMMAND_IDS.renameGroup, repeat: false },
   // Single letters are safe: text fields and IME never reach the keymap.
   {
     chord: "R",

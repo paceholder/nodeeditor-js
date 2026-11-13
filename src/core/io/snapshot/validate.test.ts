@@ -44,7 +44,7 @@ describe("composed validator", () => {
   it("reports shape, reference and limit errors in one run", () => {
     const s = sampleSnapshot();
     (s.nodes as Record<string, unknown>[])[0] = { id: "n1" };
-    s.groups = [1];
+    s.routes = [1];
     const r = validateSnapshot(s);
     expect(!r.ok && r.rejection.map((e) => e.code)).toEqual(
       expect.arrayContaining(["invalid-shape", "unsupported-section"]),

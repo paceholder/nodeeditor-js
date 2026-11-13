@@ -43,9 +43,20 @@ export interface NodeSnapshot {
   readonly title?: string;
   readonly status?: string;
   readonly capabilities?: CapabilityOverrides;
+  /** ID of the group this node belongs to; omitted for a free node. */
+  readonly group?: string;
   /** Presentation order. */
   readonly ports: readonly PortSnapshot[];
   readonly payload: JsonValue;
+}
+
+/** A group. Its members are the nodes whose `group` names it. */
+export interface GroupSnapshot {
+  readonly id: string;
+  readonly title: string;
+  /** Omitted when false. */
+  readonly locked?: boolean;
+  readonly style?: string;
 }
 
 /** Endpoint with plain-string IDs; load brands them after validation. */
@@ -72,10 +83,11 @@ export interface GraphSnapshot {
   readonly nodes: readonly NodeSnapshot[];
   /** Collection order. */
   readonly connections: readonly ConnectionSnapshot[];
+  /** Groups in document order; omitted when there are none. */
+  readonly groups?: readonly GroupSnapshot[];
   /** Reserved sections: must be empty until their capabilities land. */
   readonly assemblies?: readonly [];
   readonly references?: readonly [];
-  readonly groups?: readonly [];
   readonly routes?: readonly [];
 }
 

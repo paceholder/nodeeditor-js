@@ -6,6 +6,14 @@
 import { planConnect, planDisconnect, planReconnect } from "./connect.js";
 import { planCreateNode } from "./create-node.js";
 import { planDeleteEntities } from "./delete-entities.js";
+import {
+  planAddToGroup,
+  planGroupNodes,
+  planRemoveFromGroup,
+  planRenameGroup,
+  planSetGroupLocked,
+  planUngroup,
+} from "./group-commands.js";
 import { rejected } from "./ops.js";
 import { planResizeNode } from "./resize-node.js";
 import { planResetRoutes, planSetRoute } from "./route-commands.js";
@@ -57,6 +65,18 @@ export function planCommand(command: Command, ctx: PlanContext): PlanResult {
       return ctx.fragments
         ? ctx.fragments.duplicate(command, ctx)
         : unsupported(command.kind);
+    case "groupNodes":
+      return planGroupNodes(command, ctx);
+    case "ungroup":
+      return planUngroup(command, ctx);
+    case "addToGroup":
+      return planAddToGroup(command, ctx);
+    case "removeFromGroup":
+      return planRemoveFromGroup(command, ctx);
+    case "renameGroup":
+      return planRenameGroup(command, ctx);
+    case "setGroupLocked":
+      return planSetGroupLocked(command, ctx);
     case "undo":
       return { kind: "history", direction: "undo", label: "Undo" };
     case "redo":

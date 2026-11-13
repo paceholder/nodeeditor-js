@@ -116,6 +116,9 @@ function planFragment(
     frontZ(ctx),
   );
   const ops: PatchOp[] = [
+    ...records.groups.map(
+      (record): PatchOp => ({ op: "add", entity: "group", record }),
+    ),
     ...records.nodes.flatMap(({ node, ports }): PatchOp[] => [
       { op: "add", entity: "node", record: node },
       ...ports.map(
@@ -147,7 +150,10 @@ export function createFragmentPlanners(
   const duplicate: PlannerFor<"duplicate"> = (command, ctx) => {
     const extracted = extractFragment(
       ctx.reader,
-      { nodes: command.nodes },
+      {
+        nodes: command.nodes,
+        ...(command.groups ? { groups: command.groups } : {}),
+      },
       options,
     );
     if (!extracted.ok) return rejectedWith(extracted.rejection);

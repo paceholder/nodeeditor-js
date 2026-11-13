@@ -3,8 +3,9 @@
  *
  * `diffSnapshot(from, to)` returns the patch that turns the current read model into the
  * target snapshot, in one linear pass. Operation order: remove absent connections, remove
- * absent ports, remove absent nodes, add nodes, add ports, update surviving nodes and
- * ports, update surviving connections in place (they keep their ID), add connections.
+ * absent ports, remove absent nodes, remove absent groups, add groups, add nodes, add
+ * ports, update surviving nodes, ports and groups, update surviving connections in place
+ * (they keep their ID), add connections. Membership travels as the node's `group` field.
  * Integrity is checked on the final staged state, so the order only has to keep removes
  * ahead of re-adds of the same ID. Removes carry the current record and `seq`.
  *
@@ -16,12 +17,18 @@
  * With `codecs`, payloads of a type with a codec are compared as JSON (`diff-payload.ts`);
  * a codec failure makes the result an error list instead of a patch.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { err, ok, type Result } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { Payload } from "../../data/model/records.js";
 import type {
   ConnectionFieldChanges,
+  GroupFieldChanges,
   NodeFieldChanges,
   Patch,
   PatchOp,
@@ -29,7 +36,12 @@ import type {
 } from "../../data/patch/types.js";
 import { createPayloadDiffer } from "./diff-payload.js";
 import { cloneJson, jsonEqual } from "./json-value.js";
-import { connectionToRecord, nodeToRecord, portToRecord } from "./records.js";
+import {
+  connectionToRecord,
+  groupToRecord,
+  nodeToRecord,
+  portToRecord,
+} from "./records.js";
 import type { PayloadCodecRegistry } from "./snapshot-errors.js";
 import type {
   GraphSnapshot,
@@ -73,6 +85,7 @@ const NODE_KEYS = [
   "title",
   "status",
   "capabilities",
+  "group",
   "ports",
   "payload",
 ] as const;
@@ -85,6 +98,7 @@ const PORT_KEYS = [
 ] as const;
 const NODE_KEYS_BUT_PAYLOAD = NODE_KEYS.filter((k) => k !== "payload");
 const CONNECTION_KEYS = ["kind", "from", "to", "route"] as const;
+const GROUP_KEYS = ["title", "locked", "style"] as const;
 
 export function diffSnapshot(
   from: GraphReader,
@@ -105,7 +119,7 @@ export function diffSnapshot(
   const updates: PatchOp[] = [];
   const connectionUpdates: PatchOp[] = [];
   const connectionAdds: PatchOp[] = [];
-  const seq = (id: NodeId | PortId | ConnectionId): number =>
+  const seq = (id: NodeId | PortId | ConnectionId | GroupId): number =>
     from.seqOf(id) ?? 0;
 
   for (const c of from.connections()) {
@@ -135,6 +149,35 @@ export function diffSnapshot(
         entity: "node",
         record: n,
         seq: seq(n.id),
+      });
+    }
+  }
+
+  const wantGroups = new Set((to.groups ?? []).map((g) => g.id));
+  for (const g of from.groups()) {
+    if (!wantGroups.has(g.id)) {
+      removals.push({
+        op: "remove",
+        entity: "group",
+        record: g,
+        seq: seq(g.id),
+      });
+    }
+  }
+  for (const snap of to.groups ?? []) {
+    const current = from.getGroup(snap.id as GroupId);
+    const wanted = groupToRecord(snap);
+    if (!current) {
+      adds.push({ op: "add", entity: "group", record: wanted });
+      continue;
+    }
+    const fields = diffFields(current, wanted, GROUP_KEYS);
+    if (fields) {
+      updates.push({
+        op: "update",
+        entity: "group",
+        id: current.id,
+        fields: fields as GroupFieldChanges,
       });
     }
   }

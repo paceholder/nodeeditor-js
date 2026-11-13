@@ -11,6 +11,8 @@ export {
 export { bezierPath, straightPath } from "./connection-paths.js";
 export type { GeometryRegistry } from "./geometry-registry.js";
 export { createGeometryRegistry } from "./geometry-registry.js";
+export type { GroupFrameMetrics, GroupFramePart } from "./group-frame.js";
+export { groupFrame, groupLockBox, groupTitleStrip } from "./group-frame.js";
 export {
   checkWorldPoint,
   clampZoom,

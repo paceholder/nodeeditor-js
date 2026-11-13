@@ -21,6 +21,7 @@ import type {
   CommandRegistry,
   EditorCommand,
 } from "../commands/command-registry.js";
+import { cutCommand } from "../selection/moved-nodes.js";
 import type { ClipboardService, TextSink } from "./clipboard-service.js";
 
 export const CLIPBOARD_COMMAND_IDS = deepFreeze({
@@ -54,7 +55,7 @@ function needNode(ctx: CommandContext): Availability {
       rejection: rejectionOf("unknown-entity", "The view has no model"),
     };
   }
-  return ctx.selection.nodeIds().length > 0
+  return ctx.selection.nodeIds().length + ctx.selection.groupIds().length > 0
     ? OK
     : {
         available: false,
@@ -108,11 +109,7 @@ export function registerClipboardCommands(
             ),
           };
         }
-        return ctx.model.can({
-          kind: "deleteEntities",
-          nodes: ctx.selection.nodeIds(),
-          connections: ctx.selection.connectionIds(),
-        });
+        return ctx.model.can(cutCommand(ctx.selection, ctx.model.reader));
       },
       (args) => changed(service.cut(args?.sink), true),
     ),

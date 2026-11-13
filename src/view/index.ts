@@ -38,6 +38,10 @@ export type {
 } from "./interact/commands/editable-model.js";
 export { hasHistory } from "./interact/commands/editable-model.js";
 export type {
+  GroupArgs,
+  RenameGroupArgs,
+} from "./interact/commands/group-commands.js";
+export type {
   KeyBinding,
   KeyLike,
   Keymap,
@@ -56,6 +60,7 @@ export type {
   ContextMenuInvocation,
   ContextMenuTarget,
   GestureCancelledEvent,
+  GroupTitleEditEvent,
   PaintErrorEvent,
   ViewEventMap,
 } from "./interact/context-menu/context-menu-types.js";
@@ -88,7 +93,11 @@ export type {
 } from "./interact/selection/view-selection.js";
 export type { AutoPanOptions } from "./interact/tools/auto-pan.js";
 export { defaultToolSlots } from "./interact/tools/default-tools.js";
-export type { ToolOptions } from "./interact/tools/thresholds.js";
+export type {
+  GroupOptions,
+  ToolOptions,
+  ToolOptionsInput,
+} from "./interact/tools/thresholds.js";
 export { DEFAULT_TOOL_OPTIONS } from "./interact/tools/thresholds.js";
 export type { ToolSlot } from "./interact/tools/tool-router.js";
 // Writing a tool (the contract, the slot factory, the built-in tools) is in view/advanced.
@@ -135,6 +144,7 @@ export type { CardPainterOptions } from "./render/presets/card-painter.js";
 export { createCardPainter } from "./render/presets/card-painter.js";
 export type { ConnectionPainterOptions } from "./render/presets/connection-painter.js";
 export { createConnectionPainter } from "./render/presets/connection-painter.js";
+export { createGroupFramePainter } from "./render/presets/group-frame-painter.js";
 export type { ImageSymbolPainterOptions } from "./render/presets/image-symbol-painter.js";
 export {
   createImageSymbolPainter,
@@ -148,6 +158,8 @@ export type {
   ConnectionPainter,
   ConnectionPaintInput,
   DiagnosticBadge,
+  GroupFramePainter,
+  GroupFramePaintInput,
   NodePainter,
   NodePaintInput,
   PortGlyphInput,
@@ -170,6 +182,7 @@ export type {
 export { createRouteEditorRegistry } from "./render/registries/route-editor-registry.js";
 export type { ResolvedStyle, StyleKey } from "./render/theme/resolve-style.js";
 export type {
+  GroupStyleTokens,
   PortShape,
   StyleTokens,
   ThemeInput,

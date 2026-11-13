@@ -7,7 +7,12 @@
  * while it is open (see `GraphStore.inBatch`). The store neither validates nor rolls
  * back: whoever opens a batch must commit only already-validated changes.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { MisuseError } from "../../base/result.js";
 import {
   type Collection,
@@ -16,8 +21,14 @@ import {
   type MutableCollection,
 } from "./collection.js";
 import { deepFreeze, freezeShell } from "./freeze.js";
+import { createGroupIndex } from "./group-index.js";
 import { createIndexes, type GraphIndexes } from "./indexes.js";
-import type { ConnectionRecord, NodeRecord, PortRecord } from "./records.js";
+import type {
+  ConnectionRecord,
+  GroupRecord,
+  NodeRecord,
+  PortRecord,
+} from "./records.js";
 
 export interface StoreOptions {
   /** Freeze committed records and snapshot arrays. Defaults to true; production may pass false. */
@@ -34,21 +45,27 @@ export interface StoreTx {
   getNode(id: NodeId): NodeRecord | undefined;
   getPort(id: PortId): PortRecord | undefined;
   getConnection(id: ConnectionId): ConnectionRecord | undefined;
+  getGroup(id: GroupId): GroupRecord | undefined;
   /** Add or replace. A replacement keeps the entry's `seq`. Returns the `seq`. */
   putNode(record: NodeRecord, options?: PutOptions): number;
   putPort(record: PortRecord, options?: PutOptions): number;
   putConnection(record: ConnectionRecord, options?: PutOptions): number;
+  putGroup(record: GroupRecord, options?: PutOptions): number;
   /** Remove, returning the removed entry (with its `seq`) so it can be restored. */
   removeNode(id: NodeId): Entry<NodeRecord> | undefined;
   removePort(id: PortId): Entry<PortRecord> | undefined;
   removeConnection(id: ConnectionId): Entry<ConnectionRecord> | undefined;
+  removeGroup(id: GroupId): Entry<GroupRecord> | undefined;
 }
 
 export interface GraphStore {
   readonly nodes: Collection<NodeRecord>;
   readonly ports: Collection<PortRecord>;
   readonly connections: Collection<ConnectionRecord>;
+  readonly groups: Collection<GroupRecord>;
   readonly indexes: GraphIndexes;
+  /** Member node IDs of a group, in node collection order. */
+  membersOf(group: GroupId): readonly NodeId[];
   readonly freezeRecords: boolean;
   revision(): number;
   inBatch(): boolean;
@@ -64,6 +81,8 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
   const nodes = createCollection<NodeRecord>(freezeRecords);
   const ports = createCollection<PortRecord>(freezeRecords);
   const connections = createCollection<ConnectionRecord>(freezeRecords);
+  const groups = createCollection<GroupRecord>(freezeRecords);
+  const members = createGroupIndex();
   const indexes = createIndexes();
   let revision = 0;
   let nextSeq = 1;
@@ -98,6 +117,23 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         min: Math.min(zBounds.min, z),
         max: Math.max(zBounds.max, z),
       };
+  }
+
+  /** Move a node between member buckets; both groups are re-verified at batch end. */
+  function regroup(
+    node: NodeId,
+    from: GroupId | undefined,
+    to: GroupId | undefined,
+    seq: number,
+  ): void {
+    if (from !== undefined) {
+      members.remove(from, node);
+      touched.add(from);
+    }
+    if (to !== undefined) {
+      members.add(to, node, seq);
+      touched.add(to);
+    }
   }
 
   function writer(): StoreTx {
@@ -136,10 +172,20 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         live();
         return connections.get(id);
       },
+      getGroup(id) {
+        live();
+        return groups.get(id);
+      },
       putNode(record, o) {
         live();
-        const seq = allocate(record.id, nodes, [ports, connections], o?.seq);
+        const seq = allocate(
+          record.id,
+          nodes,
+          [ports, connections, groups],
+          o?.seq,
+        );
         const old = nodes.get(record.id);
+        regroup(record.id, old?.group, record.group, seq);
         // Re-verify the ports it listed before, so one it dropped is caught.
         for (const p of old?.ports ?? []) touched.add(p);
         if (nodes.size === 0) zBounds = undefined;
@@ -153,12 +199,17 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         return put(
           ports,
           record,
-          allocate(record.id, ports, [nodes, connections], o?.seq),
+          allocate(record.id, ports, [nodes, connections, groups], o?.seq),
         );
       },
       putConnection(record, o) {
         live();
-        const seq = allocate(record.id, connections, [nodes, ports], o?.seq);
+        const seq = allocate(
+          record.id,
+          connections,
+          [nodes, ports, groups],
+          o?.seq,
+        );
         const old = connections.get(record.id);
         if (old) indexes.removeConnection(old);
         const stored = prepare(record);
@@ -167,8 +218,17 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         touched.add(record.id);
         return seq;
       },
+      putGroup(record, o) {
+        live();
+        return put(
+          groups,
+          record,
+          allocate(record.id, groups, [nodes, ports, connections], o?.seq),
+        );
+      },
       removeNode(id) {
         const old = nodes.get(id);
+        if (old) regroup(id, old.group, undefined, 0);
         for (const p of old?.ports ?? []) touched.add(p);
         if (old && zBounds && (old.z === zBounds.min || old.z === zBounds.max))
           zDirty = true;
@@ -185,6 +245,7 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
         if (old) indexes.removeConnection(old);
         return take(connections, id);
       },
+      removeGroup: (id) => take(groups, id),
     };
   }
 
@@ -197,7 +258,10 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
       const node = nodes.get(id);
       const port = ports.get(id);
       const conn = connections.get(id);
+      const group = groups.get(id);
       if (node) {
+        if (node.group !== undefined && !groups.has(node.group))
+          bad(`node ${id} names missing group ${node.group}`);
         for (const p of node.ports) {
           if (ports.get(p)?.node !== node.id)
             bad(`node ${id} lists missing or foreign port ${p}`);
@@ -211,6 +275,11 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
             bad(`connection ${id} has a dangling endpoint`);
           }
         }
+      } else if (group) {
+        if (members.membersOf(group.id).length === 0)
+          bad(`group ${id} has no members`);
+      } else if (members.membersOf(id as GroupId).length > 0) {
+        bad(`removed group ${id} is still named by a node`);
       } else if (
         indexes.connectionsOfNode(id as NodeId).length > 0 ||
         indexes.connectionsOfPort(id as PortId).length > 0
@@ -224,7 +293,9 @@ export function createGraphStore(options: StoreOptions = {}): GraphStore {
     nodes,
     ports,
     connections,
+    groups,
     indexes,
+    membersOf: (group) => members.membersOf(group),
     freezeRecords,
     revision: () => revision,
     inBatch: () => open,

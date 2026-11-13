@@ -5,9 +5,10 @@
  * in on the way to records and omitted again on the way back. Keys are always built in a
  * fixed order, which keeps exported JSON deterministic.
  */
-import { connectionId, nodeId, portId } from "../../base/ids/ids.js";
+import { connectionId, groupId, nodeId, portId } from "../../base/ids/ids.js";
 import type {
   ConnectionRecord,
+  GroupRecord,
   NodeRecord,
   Payload,
   PortRecord,
@@ -17,6 +18,7 @@ import { normalizeRoute } from "../../data/model/route-constraints.js";
 import { cloneJson } from "./json-value.js";
 import type {
   ConnectionSnapshot,
+  GroupSnapshot,
   NodeSnapshot,
   PortSnapshot,
 } from "./snapshot-types.js";
@@ -55,6 +57,25 @@ export function nodeToRecord(
     ...(node.capabilities === undefined
       ? {}
       : { capabilities: { ...node.capabilities } }),
+    ...(node.group === undefined ? {} : { group: groupId(node.group) }),
+  };
+}
+
+export function groupToRecord(group: GroupSnapshot): GroupRecord {
+  return {
+    id: groupId(group.id),
+    title: group.title,
+    locked: group.locked ?? false,
+    ...(group.style === undefined ? {} : { style: group.style }),
+  };
+}
+
+export function groupToSnapshot(group: GroupRecord): GroupSnapshot {
+  return {
+    id: group.id,
+    title: group.title,
+    ...(group.locked ? { locked: true } : {}),
+    ...(group.style === undefined ? {} : { style: group.style }),
   };
 }
 
@@ -119,6 +140,7 @@ export function nodeToSnapshot(
     ...(node.capabilities === undefined
       ? {}
       : { capabilities: { ...node.capabilities } }),
+    ...(node.group === undefined ? {} : { group: node.group }),
     ports: ports.map(portToSnapshot),
     payload: node.payload,
   };

@@ -11,7 +11,12 @@
  * confirmed store does not share. Sequence numbers only order entities, so before a patch
  * is applied elsewhere its adds lose their `seq` and its removes take the target's.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import { applyPatch } from "../../data/patch/apply.js";
 import { valuesEqual } from "../../data/patch/equal.js";
@@ -30,6 +35,7 @@ export function copyStore(source: GraphReader): StoreView {
     nodes: source.nodes(),
     ports: source.ports(),
     connections: source.connections(),
+    groups: source.groups(),
   });
   return view;
 }
@@ -41,7 +47,8 @@ function lookup(
 ): object | undefined {
   if (entity === "node") return reader.getNode(id as NodeId);
   if (entity === "port") return reader.getPort(id as PortId);
-  return reader.getConnection(id as ConnectionId);
+  if (entity === "connection") return reader.getConnection(id as ConnectionId);
+  return reader.getGroup(id as GroupId);
 }
 
 /** `patch` with sequence numbers that fit `target`. */

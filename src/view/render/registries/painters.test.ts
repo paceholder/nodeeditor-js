@@ -60,7 +60,7 @@ describe("painter registries", () => {
     const { deps } = fixture();
     const { ctx, calls } = fakeContext();
     const stats = paintScene(ctx, deps, testFrame());
-    expect(stats).toEqual({ nodes: 2, connections: 1 });
+    expect(stats).toEqual({ nodes: 2, connections: 1, groups: 0 });
     expect(calls).toContain("roundRect");
     expect(calls).toContain("bezierCurveTo");
     expect(calls).toContain("arc"); // port glyphs

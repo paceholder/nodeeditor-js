@@ -6,9 +6,19 @@
  * insertion order unless stated otherwise. While a store batch is open,
  * reads throw `MisuseError`, so outside readers never see half-applied changes.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { MisuseError } from "../../base/result.js";
-import type { ConnectionRecord, NodeRecord, PortRecord } from "./records.js";
+import type {
+  ConnectionRecord,
+  GroupRecord,
+  NodeRecord,
+  PortRecord,
+} from "./records.js";
 import { createStateCache, type GraphState } from "./state.js";
 import type { GraphStore } from "./store.js";
 
@@ -18,10 +28,15 @@ export interface GraphReader {
   getNode(id: NodeId): NodeRecord | undefined;
   getPort(id: PortId): PortRecord | undefined;
   getConnection(id: ConnectionId): ConnectionRecord | undefined;
+  getGroup(id: GroupId): GroupRecord | undefined;
   /** All nodes in insertion order. */
   nodes(): readonly NodeRecord[];
   ports(): readonly PortRecord[];
   connections(): readonly ConnectionRecord[];
+  /** All groups in insertion order. */
+  groups(): readonly GroupRecord[];
+  /** Member nodes of a group, in node insertion order. */
+  groupMembers(group: GroupId): readonly NodeRecord[];
   /** Nodes in paint order: `(z, seq)` ascending, last painted is on top. */
   paintOrder(): readonly NodeRecord[];
   /** Ports of a node in the node's presentation order. */
@@ -32,11 +47,11 @@ export interface GraphReader {
   connectionsOfPort(port: PortId): readonly ConnectionRecord[];
   /** Distinct nodes joined to `node` by a connection, in insertion order; self excluded. */
   neighbors(node: NodeId): readonly NodeRecord[];
-  /** Insertion sequence of a node, port or connection; undefined if absent. */
-  seqOf(id: NodeId | PortId | ConnectionId): number | undefined;
+  /** Insertion sequence of a node, port, connection or group; undefined if absent. */
+  seqOf(id: NodeId | PortId | ConnectionId | GroupId): number | undefined;
   /** The ID of the entity of `kind` whose insertion sequence is `seq`, if any. */
   idWithSeq(
-    kind: "node" | "port" | "connection",
+    kind: "node" | "port" | "connection" | "group",
     seq: number,
   ): string | undefined;
   /** Snapshot of the whole committed graph; reused while the revision is unchanged. */
@@ -66,6 +81,15 @@ export function createGraphReader(store: GraphStore): GraphReader {
     nodes: () => guard(() => store.nodes.list()),
     ports: () => guard(() => store.ports.list()),
     connections: () => guard(() => store.connections.list()),
+    getGroup: (id) => guard(() => store.groups.get(id)),
+    groups: () => guard(() => store.groups.list()),
+    groupMembers: (group) =>
+      guard(() =>
+        store.membersOf(group).flatMap((id) => {
+          const n = store.nodes.get(id);
+          return n ? [n] : [];
+        }),
+      ),
     paintOrder: () => guard(() => store.paintOrder()),
     portsOf: (node) =>
       guard(() =>
@@ -100,7 +124,8 @@ export function createGraphReader(store: GraphStore): GraphReader {
         () =>
           store.nodes.seqOf(id) ??
           store.ports.seqOf(id) ??
-          store.connections.seqOf(id),
+          store.connections.seqOf(id) ??
+          store.groups.seqOf(id),
       ),
     idWithSeq: (kind, seq) =>
       guard(() =>
@@ -108,7 +133,9 @@ export function createGraphReader(store: GraphStore): GraphReader {
           ? store.nodes
           : kind === "port"
             ? store.ports
-            : store.connections
+            : kind === "connection"
+              ? store.connections
+              : store.groups
         ).idAt(seq),
       ),
     state: () => guard(stateOf),

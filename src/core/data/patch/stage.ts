@@ -8,10 +8,16 @@
  * Order comes from the collection `seq`: base entries keep theirs, adds with an explicit
  * `seq` use it, and adds without one sort after all of them in the order they were staged.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type { GraphReader } from "../model/reader.js";
 import type {
   ConnectionRecord,
+  GroupRecord,
   NodeRecord,
   PortRecord,
 } from "../model/records.js";
@@ -36,6 +42,12 @@ export type StagedWrite =
       readonly id: ConnectionId;
       readonly record: ConnectionRecord | undefined;
       readonly seq: number | undefined;
+    }
+  | {
+      readonly kind: "group";
+      readonly id: GroupId;
+      readonly record: GroupRecord | undefined;
+      readonly seq: number | undefined;
     };
 
 export interface StagedState extends GraphReader {
@@ -43,9 +55,11 @@ export interface StagedState extends GraphReader {
   putNode(record: NodeRecord, seq: number | undefined): void;
   putPort(record: PortRecord, seq: number | undefined): void;
   putConnection(record: ConnectionRecord, seq: number | undefined): void;
+  putGroup(record: GroupRecord, seq: number | undefined): void;
   dropNode(id: NodeId): void;
   dropPort(id: PortId): void;
   dropConnection(id: ConnectionId): void;
+  dropGroup(id: GroupId): void;
   /** Final state of every touched entity, in first-touched order. */
   writes(): readonly StagedWrite[];
 }
@@ -65,6 +79,9 @@ export function createStagedState(base: GraphReader): StagedState {
   const nodeSlots: Overlay<NodeRecord> = new Map();
   const portSlots: Overlay<PortRecord> = new Map();
   const connSlots: Overlay<ConnectionRecord> = new Map();
+  const groupSlots: Overlay<GroupRecord> = new Map();
+  // Staged node IDs by every group they named when staged; re-tested on lookup.
+  const stagedByGroup = new Map<string, Set<string>>();
   // Staged connection IDs by every node/port they referenced when staged. Entries can go
   // stale when a connection is re-staged or dropped; queries re-test the current record.
   const stagedByNode = new Map<string, Set<string>>();
@@ -74,6 +91,7 @@ export function createStagedState(base: GraphReader): StagedState {
     node: new Map<number, string>(),
     port: new Map<number, string>(),
     connection: new Map<number, string>(),
+    group: new Map<number, string>(),
   };
   let touches = 0;
 
@@ -101,13 +119,17 @@ export function createStagedState(base: GraphReader): StagedState {
     slots.set(id, { record, seq, order });
     if (record !== undefined && seq !== undefined) bySeq.set(seq, id);
   };
-  const slotsOf = (kind: "node" | "port" | "connection"): Overlay<unknown> =>
-    kind === "node" ? nodeSlots : kind === "port" ? portSlots : connSlots;
+  type Kind = "node" | "port" | "connection" | "group";
+  const slotsOf = (kind: Kind): Overlay<unknown> =>
+    kind === "node"
+      ? nodeSlots
+      : kind === "port"
+        ? portSlots
+        : kind === "connection"
+          ? connSlots
+          : groupSlots;
   /** Live staged holder of `seq`: a staged entry, else a base entry not re-staged away. */
-  const idWithSeq = (
-    kind: "node" | "port" | "connection",
-    seq: number,
-  ): string | undefined => {
+  const idWithSeq = (kind: Kind, seq: number): string | undefined => {
     const slots = slotsOf(kind);
     const holds = (id: string | undefined): boolean => {
       if (id === undefined) return false;
@@ -158,6 +180,9 @@ export function createStagedState(base: GraphReader): StagedState {
   const getConnection = (id: ConnectionId) =>
     connSlots.has(id) ? connSlots.get(id)?.record : base.getConnection(id);
 
+  const getGroup = (id: GroupId) =>
+    groupSlots.has(id) ? groupSlots.get(id)?.record : base.getGroup(id);
+
   const nodes = () =>
     merged(base.nodes(), nodeSlots, (id) => base.seqOf(id as NodeId));
   const ports = () =>
@@ -200,8 +225,33 @@ export function createStagedState(base: GraphReader): StagedState {
       (c) => c.from.node === node || c.to.node === node,
     );
 
-  const seqOf = (id: NodeId | PortId | ConnectionId): number | undefined => {
-    const slot = nodeSlots.get(id) ?? portSlots.get(id) ?? connSlots.get(id);
+  /** Members of `group` in node order: base members plus staged nodes, re-tested. */
+  const groupMembers = (group: GroupId): readonly NodeRecord[] => {
+    const ids = new Set<string>(base.groupMembers(group).map((n) => n.id));
+    for (const id of stagedByGroup.get(group) ?? []) ids.add(id);
+    const rows: { key: number; order: number; record: NodeRecord }[] = [];
+    for (const id of ids) {
+      const record = getNode(id as NodeId);
+      if (record?.group !== group) continue;
+      const slot = nodeSlots.get(id);
+      rows.push({
+        key: slot ? keyOf(slot) : (base.seqOf(id as NodeId) ?? 0),
+        order: slot?.order ?? -1,
+        record,
+      });
+    }
+    rows.sort((a, b) => a.key - b.key || a.order - b.order);
+    return rows.map((r) => r.record);
+  };
+
+  const seqOf = (
+    id: NodeId | PortId | ConnectionId | GroupId,
+  ): number | undefined => {
+    const slot =
+      nodeSlots.get(id) ??
+      portSlots.get(id) ??
+      connSlots.get(id) ??
+      groupSlots.get(id);
     return slot ? slot.seq : base.seqOf(id);
   };
 
@@ -216,9 +266,13 @@ export function createStagedState(base: GraphReader): StagedState {
     getNode,
     getPort,
     getConnection,
+    getGroup,
     nodes,
     ports,
     connections,
+    groups: () =>
+      merged(base.groups(), groupSlots, (id) => base.seqOf(id as GroupId)),
+    groupMembers,
     paintOrder: sortedPaint,
     portsOf: (node) =>
       (getNode(node)?.ports ?? []).flatMap((id) => {
@@ -252,11 +306,21 @@ export function createStagedState(base: GraphReader): StagedState {
         nodes: nodes(),
         ports: ports(),
         connections: connections(),
+        groups: merged(base.groups(), groupSlots, (id) =>
+          base.seqOf(id as GroupId),
+        ),
         paintOrder: sortedPaint(),
       };
     },
-    putNode: (record, seq) =>
-      stage(nodeSlots, record.id, record, seq, stagedSeq.node),
+    putNode(record, seq) {
+      stage(nodeSlots, record.id, record, seq, stagedSeq.node);
+      if (record.group !== undefined)
+        indexStaged(stagedByGroup, record.group, record.id);
+    },
+    putGroup: (record, seq) =>
+      stage(groupSlots, record.id, record, seq, stagedSeq.group),
+    dropGroup: (id) =>
+      stage(groupSlots, id, undefined, undefined, stagedSeq.group),
     putPort: (record, seq) =>
       stage(portSlots, record.id, record, seq, stagedSeq.port),
     putConnection(record, seq) {
@@ -300,6 +364,16 @@ export function createStagedState(base: GraphReader): StagedState {
           write: {
             kind: "connection",
             id: id as ConnectionId,
+            record: s.record,
+            seq: s.seq,
+          },
+        });
+      for (const [id, s] of groupSlots)
+        rows.push({
+          order: s.order,
+          write: {
+            kind: "group",
+            id: id as GroupId,
             record: s.record,
             seq: s.seq,
           },

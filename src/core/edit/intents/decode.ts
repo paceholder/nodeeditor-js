@@ -110,6 +110,11 @@ export function decodeIntents(
     slot<"move">("move", () => ({ kind: "move", nodes: [], routes: [] }));
 
   for (const op of ops) {
+    // Group edits have no intent of their own; a host sees them as raw operations.
+    if (op.entity === "group") {
+      other(op);
+      continue;
+    }
     if (op.op === "add") {
       if (op.entity === "node") creation(op.record);
       else if (op.entity === "port") {

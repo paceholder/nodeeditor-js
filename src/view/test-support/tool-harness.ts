@@ -12,6 +12,7 @@ import {
   type GeometryScene,
   type GraphModel,
   type GraphModelOptions,
+  type GroupId,
   nodeId,
   type Point,
   type Rejection,
@@ -35,7 +36,7 @@ import {
 } from "../interact/selection/selection-model.js";
 import { defaultToolSlots } from "../interact/tools/default-tools.js";
 import { gestureChangeOf } from "../interact/tools/gesture-change.js";
-import type { ToolOptions } from "../interact/tools/thresholds.js";
+import type { ToolOptionsInput } from "../interact/tools/thresholds.js";
 import {
   capabilityProbe,
   createToolContext,
@@ -72,7 +73,7 @@ export interface HarnessOptions {
   readonly routes?: RouteRegistry;
   /** Route editors the tool context offers. */
   readonly routeEditors?: RouteEditorRegistry;
-  readonly options?: Partial<ToolOptions>;
+  readonly options?: ToolOptionsInput;
   /** Port-hiding zoom (the theme's `lodHidePortsBelow`); omitted keeps ports pickable. */
   readonly hidePortsBelow?: number;
   /** Pretend a host connection chooser is installed. */
@@ -99,6 +100,8 @@ export interface ToolHarness {
     readonly chooses: ChoiceRelease[];
     /** Connection refusals reported to the host during gestures. */
     readonly rejections: Rejection[];
+    /** Groups whose title editor a gesture asked for. */
+    readonly titleEdits: GroupId[];
   };
   /** Feed one input and execute its effects. */
   send(input: ToolInput): RouteResult;
@@ -181,6 +184,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     cursors: [],
     chooses: [],
     rejections: [],
+    titleEdits: [],
   };
   function applyViewport(op: ViewportOp): void {
     switch (op.kind) {
@@ -228,6 +232,7 @@ export function createToolHarness(opts: HarnessOptions = {}): ToolHarness {
     selection,
     viewport: applyViewport,
     choose: (request) => void log.chooses.push(request),
+    editGroupTitle: (group) => void log.titleEdits.push(group),
   });
 
   // Like the mounted view: every committed change tells the router.

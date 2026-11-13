@@ -8,6 +8,7 @@ import {
   type ExecuteResult,
   err,
   type GraphReader,
+  type GroupId,
   ok,
   type Rejection,
   type Result,
@@ -48,6 +49,11 @@ export interface CommandContext {
   readonly reader: GraphReader | undefined;
   readonly selection: SelectionModel;
   readonly view: ViewCommands;
+  /**
+   * Open the title editor of a group (or raise the event a host editor answers); returns
+   * whether it opened. Absent when the view takes no input.
+   */
+  readonly editGroupTitle?: (group: GroupId) => boolean;
 }
 
 export interface EditorCommand<A = void> {

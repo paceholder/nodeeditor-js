@@ -27,7 +27,10 @@ import type {
 } from "./interact/overlay/overlay-host.js";
 import type { PresenceEntry } from "./interact/overlay/presence.js";
 import type { ViewSelection } from "./interact/selection/view-selection.js";
-import type { ToolOptions } from "./interact/tools/thresholds.js";
+import type {
+  ToolOptions,
+  ToolOptionsInput,
+} from "./interact/tools/thresholds.js";
 import type { ToolSlot } from "./interact/tools/tool-router.js";
 import type { ToolPreview } from "./interact/tools/tool-types.js";
 import type { FrameClock, LayerName } from "./platform/frame-scheduler.js";
@@ -49,7 +52,7 @@ import type { ThemeInput, ThemeTokens } from "./render/theme/tokens.js";
 export interface InputOptions {
   /** Tools in router precedence order; the built-in tools when omitted. */
   readonly tools?: readonly ToolSlot[];
-  readonly toolOptions?: Partial<ToolOptions>;
+  readonly toolOptions?: ToolOptionsInput;
   /** Replaces the default keymap. */
   readonly keymap?: readonly KeyBinding[];
   /** `Mod` is Cmd on macOS and Ctrl elsewhere; detected from `navigator` when omitted. */
@@ -235,7 +238,7 @@ export interface ViewHandle {
    * with `replace` the patch becomes the whole set of overrides, as at mount.
    */
   setToolOptions(
-    patch: Partial<ToolOptions>,
+    patch: ToolOptionsInput,
     opts?: { readonly replace?: boolean },
   ): void;
   /** Replace remote cursors/selections; repaints the interaction layer only. */

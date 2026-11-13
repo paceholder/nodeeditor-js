@@ -34,6 +34,7 @@ describe("the host's view of the selection names entities, never keys", () => {
     expect(selection.state()).toEqual({
       nodes: [],
       connections: [],
+      groups: [],
       primary: undefined,
     });
     selection.replace([node("a")]);
@@ -41,6 +42,7 @@ describe("the host's view of the selection names entities, never keys", () => {
     expect(selection.state()).toEqual({
       nodes: [nodeId("a")],
       connections: [connectionId("c1")],
+      groups: [],
       primary: conn("c1"),
     });
     expect(selection.primary()).toEqual(conn("c1"));

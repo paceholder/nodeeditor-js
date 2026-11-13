@@ -1,7 +1,8 @@
 /**
  * Move preview painter (D6): ghosts of the moved nodes and their incident
  * connections at the drag offset, drawn on the interaction layer with the same painters
- * as the scene, plus a lock marker on selected nodes that stay in place. The scene layer
+ * as the scene, plus a lock marker on selected nodes that stay in place, and the frames
+ * of the groups the move touches as they will be after the drop. The scene layer
  * skips the moved entities while this preview is active, so a pointer move repaints this
  * layer only. Context starts in world space.
  */
@@ -10,11 +11,14 @@ import {
   compose,
   type GeometryScene,
   type GraphReader,
+  groupFrame,
   type NodeEntry,
+  type Rect,
   type RouteRegistry,
   type WorldAnchor,
 } from "../../../../core/index.js";
 import type { PaintFrame } from "../../primitives/frame.js";
+import { type GroupFrameItem, paintGroupFrames } from "../group-layer.js";
 import { paintEntries, type SceneLayerDeps } from "../scene-layer.js";
 import { ghostConnections } from "./ghost-entries.js";
 import type { ToolPreview } from "./preview-types.js";
@@ -92,6 +96,28 @@ export function paintMovePreview(
     const e = deps.scene.node(id);
     if (e) moved.set(id, shiftNode(e, dx, dy));
   }
+  const frames: GroupFrameItem[] = [];
+  for (const framePreview of preview.groups ?? []) {
+    const record = deps.reader.getGroup(framePreview.group);
+    const bounds = framePreview.members.flatMap((id): Rect<"world">[] => {
+      const e = moved.get(id) ?? deps.scene.node(id);
+      return e ? [e.bodyBounds] : [];
+    });
+    const rect = groupFrame(bounds, deps.scene.groupMetrics);
+    if (record && rect)
+      frames.push({ record, frame: rect, joinTarget: framePreview.joining });
+  }
+  paintGroupFrames(
+    ctx,
+    {
+      painter: deps.painters.group.get(),
+      metrics: deps.scene.groupMetrics,
+      state: deps.state,
+      ...(deps.fault ? { fault: deps.fault } : {}),
+    },
+    frame,
+    frames,
+  );
   const connections = ghostConnections(moved, deps);
   ctx.save();
   ctx.globalAlpha = GHOST_ALPHA;

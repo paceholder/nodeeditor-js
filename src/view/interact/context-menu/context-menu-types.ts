@@ -4,6 +4,7 @@
  */
 import type {
   ConnectionId,
+  GroupId,
   HitCandidate,
   NodeId,
   Point,
@@ -12,6 +13,7 @@ import type {
   Viewport,
 } from "../../../core/index.js";
 import type { LayerName } from "../../platform/frame-scheduler.js";
+import type { ViewRect } from "../../platform/view-rect.js";
 import type { HoverEvent } from "../hover/hover-types.js";
 import type { SelectionState } from "../selection/view-selection.js";
 import type { GestureCancellation, Modifiers } from "../tools/tool-types.js";
@@ -25,6 +27,8 @@ export type ContextMenuTarget =
       readonly connection: ConnectionId;
       readonly member?: string;
     }
+  /** A group frame, opened on its title strip or border. */
+  | { readonly kind: "group"; readonly group: GroupId }
   | { readonly kind: "canvas" };
 
 export type ContextMenuInvocation = "mouse" | "pen" | "touch" | "keyboard";
@@ -37,6 +41,7 @@ export interface ContextMenuEvent {
   readonly selection: {
     readonly nodes: readonly NodeId[];
     readonly connections: readonly ConnectionId[];
+    readonly groups: readonly GroupId[];
   };
   readonly invocation: ContextMenuInvocation;
   readonly modifiers: Modifiers;
@@ -78,6 +83,19 @@ export interface ViewEventMap {
    * rest of the frame was painted. Without a listener the error is rethrown asynchronously.
    */
   readonly "paint-error": PaintErrorEvent;
+  /**
+   * The user asked to edit a group's title (double-click on the title strip, or F2) while
+   * the built-in editor is turned off: a host opens its own editor and commits with the
+   * `group.rename` command.
+   */
+  readonly "group-title-edit": GroupTitleEditEvent;
+}
+
+export interface GroupTitleEditEvent {
+  readonly group: GroupId;
+  readonly title: string;
+  /** The title strip in client pixels; absent while the view cannot be measured. */
+  readonly rect?: ViewRect;
 }
 
 export interface PaintErrorEvent {

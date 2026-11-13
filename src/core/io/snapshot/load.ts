@@ -18,7 +18,12 @@ import type { Revision } from "../../base/revision.js";
 import type { NodeTypeRegistry } from "../../data/node-types/registry.js";
 import type { DocumentReplacement } from "../../edit/adapter/replace-document.js";
 import { cloneJson } from "./json-value.js";
-import { connectionToRecord, nodeToRecord, portToRecord } from "./records.js";
+import {
+  connectionToRecord,
+  groupToRecord,
+  nodeToRecord,
+  portToRecord,
+} from "./records.js";
 import {
   createErrorSink,
   type PayloadCodecRegistry,
@@ -68,6 +73,7 @@ function reconcileCursor(
     for (const port of node.ports) cursor = observe(port.id, cursor);
   }
   for (const c of snapshot.connections) cursor = observe(c.id, cursor);
+  for (const g of snapshot.groups ?? []) cursor = observe(g.id, cursor);
   return cursor;
 }
 
@@ -114,6 +120,7 @@ export function prepareLoad(
         n.ports.map((p) => portToRecord(p, n.id)),
       ),
       connections: snapshot.connections.map(connectionToRecord),
+      groups: (snapshot.groups ?? []).map(groupToRecord),
       idCursor: reconcileCursor(target.idGenerator, snapshot),
     },
   });

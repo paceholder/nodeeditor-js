@@ -2,13 +2,17 @@
  * Deterministic snapshot export.
  *
  * Walks the read model in its explicit orders: nodes in paint order, ports in the node's
- * presentation order, connections in collection order. Only committed state is read, so
+ * presentation order, connections and groups in collection order. Only committed state is read, so
  * pending edits, previews, caches, viewport and selection never appear. Payloads are
  * shared by reference and never re-sorted, so opaque payloads stay byte-identical.
  */
 import type { IdCursor } from "../../base/ids/id-generator.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import { connectionToSnapshot, nodeToSnapshot } from "./records.js";
+import {
+  connectionToSnapshot,
+  groupToSnapshot,
+  nodeToSnapshot,
+} from "./records.js";
 import {
   FORMAT_VERSION,
   type GraphSnapshot,
@@ -41,6 +45,7 @@ export function exportSnapshot(
   options: ExportOptions = {},
 ): GraphSnapshot {
   const { reader } = source;
+  const groups = reader.groups().map(groupToSnapshot);
   return {
     format: SNAPSHOT_FORMAT,
     version: FORMAT_VERSION,
@@ -49,5 +54,6 @@ export function exportSnapshot(
       .paintOrder()
       .map((node) => nodeToSnapshot(node, reader.portsOf(node.id))),
     connections: reader.connections().map(connectionToSnapshot),
+    ...(groups.length > 0 ? { groups } : {}),
   };
 }

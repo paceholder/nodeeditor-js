@@ -17,7 +17,7 @@ import {
 } from "../../test-support/tool-harness.js";
 import { createOrthogonalSegmentEditor } from "../route-edit/orthogonal-segment-editor.js";
 import { connectionKey } from "../selection/selection-model.js";
-import type { ToolOptions } from "./thresholds.js";
+import type { ToolOptionsInput } from "./thresholds.js";
 
 const V = (at: number): RouteConstraint => ({
   kind: "segment",
@@ -33,7 +33,7 @@ function setup(opts: {
   editor?: boolean;
   select?: boolean;
   route?: readonly RouteConstraint[];
-  options?: Partial<ToolOptions>;
+  options?: ToolOptionsInput;
 }) {
   const routeEditors = createRouteEditorRegistry();
   if (opts.editor !== false) {
