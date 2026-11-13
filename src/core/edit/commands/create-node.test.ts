@@ -178,15 +178,15 @@ describe("node creation goes through the adapter: delegated creation", () => {
   });
 });
 
-describe("paste, duplicate and unavailable creation, and duplicate and paste fragments, under a delegating adapter", () => {
+describe("paste, duplicate and unavailable creation: paste fragments under a delegating adapter", () => {
   const offset = { kind: "offset", by: { x: 10, y: 0 } } as const;
 
-  it("duplicate hands over one create-fragment intent with fragment-local keys and creates nothing", () => {
-    const { model, intents, asked, pair } = delegatingModel();
+  it("paste hands over one create-fragment intent with fragment-local keys and creates nothing", () => {
+    const { model, intents, asked, pair, seed } = delegatingModel();
     const state = model.reader.state();
     const result = model.execute({
-      kind: "duplicate",
-      nodes: [pair.a.node, pair.b.node],
+      kind: "paste",
+      fragment: fragmentOf(seed, [pair.a.node, pair.b.node]),
       placement: offset,
     });
     expect(result.status).toBe("pending");
@@ -213,10 +213,10 @@ describe("paste, duplicate and unavailable creation, and duplicate and paste fra
   });
 
   it("a preserved outside connection names the existing port; an excluded one is reported and left out", () => {
-    const { model, intents, pair } = delegatingModel();
+    const { model, intents, pair, seed } = delegatingModel();
     const command = {
-      kind: "duplicate",
-      nodes: [pair.b.node],
+      kind: "paste",
+      fragment: fragmentOf(seed, [pair.b.node]),
       placement: offset,
     } as const;
     const excluded = model.plan(command);

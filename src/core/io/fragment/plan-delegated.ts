@@ -1,5 +1,5 @@
 /**
- * Paste and duplicate when the host names nodes.
+ * Paste when the host names nodes (a duplicate goes by ID: `plan-delegated-duplicate.ts`).
  *
  * The fragment has already been validated and its types checked, exactly as for a local
  * paste. Instead of a patch the planner builds one create-fragment intent: the nodes with

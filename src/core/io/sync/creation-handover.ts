@@ -101,10 +101,12 @@ export function delegateTo(
   if (
     typeof intent !== "object" ||
     intent === null ||
-    (intent.kind !== "create-node" && intent.kind !== "create-fragment")
+    (intent.kind !== "create-node" &&
+      intent.kind !== "create-fragment" &&
+      intent.kind !== "duplicate")
   )
     throw new MisuseError(
-      "delegate expects a create-node or create-fragment intent",
+      "delegate expects a create-node, create-fragment or duplicate intent",
     );
   if (findCreation(state, intent.operationId))
     throw new MisuseError(
