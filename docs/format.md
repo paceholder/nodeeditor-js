@@ -36,16 +36,18 @@ same validator.
 }
 ```
 
-Entries mirror the model records (`NodeRecord`, `PortRecord`, `ConnectionRecord`) field
+Entries mirror the model records (`NodeRecord`, `PortRecord`, `ConnectionRecord`,
+`GroupRecord`) field
 for field. Two differences: ports are embedded in their node (in presentation order) and
 do not repeat their `node` field.
 
 | Entry | Required | Optional (omitted when equal to the default) |
 | --- | --- | --- |
-| snapshot | `format`, `version`, `nodes`, `connections` | `idCursor`; reserved `assemblies`, `references`, `groups`, `routes` |
-| node | `id`, `type`, `position`, `size`, `ports`, `payload` | `rotation` (0), `mirrored` (false), `z` (0), `title`, `status`, `capabilities` |
+| snapshot | `format`, `version`, `nodes`, `connections` | `idCursor`, `groups` (omitted when empty); reserved `assemblies`, `references`, `routes` |
+| node | `id`, `type`, `position`, `size`, `ports`, `payload` | `rotation` (0), `mirrored` (false), `z` (0), `title`, `status`, `capabilities`, `group` |
 | port | `id`, `direction`, `typeKey` | `limit` ("unlimited"), `label`, `placement` |
 | connection | `id`, `from`, `to` | `kind` ("default"), `route` (omitted when empty) |
+| group | `id`, `title` | `locked` (false), `style` |
 
 Rules:
 
@@ -70,6 +72,43 @@ Rules:
   are allowed is the connection policy's decision when they are drawn.
 - Load fills the defaults back in; export omits them.
 
+### Groups
+
+A group is a visual frame around nodes. The snapshot lists groups in `groups`, and each
+member node names its group in `group`. A group stores no rectangle and no member list:
+
+```json
+{
+  "format": "@paceholder/nodeeditor-js/graph",
+  "version": 1,
+  "nodes": [
+    { "id": "n1", "type": "pipe", "position": { "x": 0, "y": 0 },
+      "size": { "width": 40, "height": 20 }, "group": "g1", "ports": [], "payload": null },
+    { "id": "n2", "type": "pipe", "position": { "x": 100, "y": 0 },
+      "size": { "width": 40, "height": 20 }, "group": "g1", "ports": [], "payload": null }
+  ],
+  "connections": [],
+  "groups": [
+    { "id": "g1", "title": "Inlet stage", "locked": true, "style": "note" }
+  ]
+}
+```
+
+- A node belongs to one group or to none. A `group` that names no entry of `groups`, and
+  a group that no node names, each fail with `dangling-reference` at their path
+  (`nodes[0].group`, `groups[1]`).
+- Group IDs share the one ID space: a group ID that a node, port or connection also uses
+  fails with `duplicate-id`.
+- `title` is at most 200 characters; a longer one fails with `out-of-range`. `style` is
+  a key the view's theme resolves; an unknown key is kept and drawn in the default style.
+- `locked` is omitted when false, and `groups` and `group` are omitted when there is
+  nothing to write, so a document without groups is byte-identical to one written before
+  groups existed. The fields are additive, so the format version stays 1. A library
+  version that predates groups refuses a document that uses them (`unsupported-section`)
+  and still reads every document that does not.
+- A fragment holds a group only when the group itself was copied, with all its members.
+  A member copied without its group is written without `group`.
+
 ### Ordering
 
 Order is explicit in arrays and never depends on object key order.
@@ -79,6 +118,7 @@ Order is explicit in arrays and never depends on object key order.
   lists nodes in snapshot order.
 - `ports` inside a node: the node's presentation order.
 - `connections`: collection order.
+- `groups`: collection order, which is also the stacking order of overlapping frames.
 - Object keys are written in a fixed order, so equal state gives byte-identical JSON text.
   The ID cursor keys are written sorted.
 
@@ -87,7 +127,7 @@ Order is explicit in arrays and never depends on object key order.
 `idCursor` is the ID generator's state, copied from the model on export. The default
 generator keeps one counter per kind (`n`, `p`, `c`, ...), so a deleted `n7` is never
 handed out again after save and load. On load the cursor becomes the
-snapshot's cursor and is then advanced past every ID found in the snapshot (through the
+snapshot's cursor and is then advanced past every ID found in the snapshot, group IDs included (through the
 generator's `observe`), so a hand-edited file with a node `n12` and a cursor at 9 still
 cannot cause reuse. A custom generator without `observe` has its cursor used as-is.
 Cursor values must be text or safe integers, and a key named `__proto__` is an error at
@@ -155,7 +195,7 @@ an error (`invalid-shape`, or `non-json-payload` for a codec).
 | `duplicate-id` | Two entities share an ID |
 | `non-finite` | A coordinate, size or z is not a finite number |
 | `dangling-endpoint` | A connection names a node or port that does not exist |
-| `dangling-reference` | A selection entry names an ID that does not exist |
+| `dangling-reference` | A selection entry names an ID that does not exist; a node names a missing group; a group has no member |
 | `out-of-range` | A coordinate, size or zoom lies outside the supported range |
 | `port-node-mismatch` | A connection endpoint names a port that belongs to another node |
 | `invalid-limit` | A port limit is not an integer of 0 or more, or `"unlimited"` |
@@ -196,9 +236,10 @@ expressions inside a document are never executed.
 ## 8. Snapshot diff
 
 `diffSnapshot(reader, target, { codecs })` returns, as a `Result`, the patch that turns
-the current model into a validated target snapshot: removes (connections, ports, nodes),
-then adds, then field updates, then in-place connection endpoint updates (connections
-keep their ID). Equal state gives an empty patch. New entities receive fresh insertion
+the current model into a validated target snapshot: removes (connections, ports, nodes,
+groups), then adds, then field updates, then in-place connection endpoint updates (connections
+keep their ID). A membership change is an update of the node's `group` field. Equal
+state gives an empty patch. New entities receive fresh insertion
 sequence numbers when the patch is applied. Snapshot-mode adapters will build on this.
 
 Pass the codecs the model was loaded with. For a type with a codec the current payload is

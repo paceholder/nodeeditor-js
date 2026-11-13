@@ -4,6 +4,31 @@ All notable changes to `@paceholder/nodeeditor-js` are listed here. The project 
 [semantic versioning](https://semver.org/); while the version is 0.x, a minor version may
 contain breaking changes.
 
+## Unreleased
+
+Groups: frames around nodes, stored in the document.
+
+- Groups are model records (`GroupRecord`) and a node names its group (`NodeRecord.group`),
+  so group edits are undoable patches, go to a host that owns the document, are saved,
+  and look the same in every view. A node is in at most one group; a group is never empty.
+- Commands `groupNodes`, `ungroup`, `addToGroup`, `removeFromGroup`, `renameGroup`,
+  `setGroupLocked`; `moveNodes` can carry membership changes and `deleteEntities` takes
+  groups. A locked group moves only as a whole (rejection code `group-locked`).
+- In the view: select and drag a frame by its title strip or border, drop a node on a
+  frame to add it, drag a member clear of the frame to remove it, click the padlock to
+  lock, double-click the title or press F2 to rename, Ctrl/Cmd+G to group and
+  Ctrl/Cmd+Shift+G to ungroup. Options under `toolOptions.groups`.
+- The frame painter is its own registration (`painters.group`) with theme tokens and
+  named group styles.
+- Snapshots carry `groups` and a node's `group`; the format version is unchanged and
+  documents without groups are written as before.
+- Breaking for exhaustive host code: `PatchOp`, `EntityKind`, `HitCandidate`,
+  `ContextMenuTarget`, `HoverTarget` and `SelectedEntity` gained a group member;
+  `ChangedIds`, `EntityIds`, `SelectionState` and `ScenePaintStats` gained a `groups`
+  field; `ThemeTokens` gained the group tokens; `GraphReader` gained `getGroup`, `groups`
+  and `groupMembers`.
+- New guide `docs/guide-groups.md`.
+
 ## 0.2.0
 
 A host application can now own the document. Minor version: painter inputs changed.

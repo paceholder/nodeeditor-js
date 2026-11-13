@@ -56,6 +56,9 @@ adapter leaves the browser's default alone. The right button belongs to the cont
 | Ctrl/Cmd+click | Toggle in the selection. |
 | Click empty canvas | Clear the selection (Shift or Ctrl/Cmd keeps it). |
 | Drag a node | Move it, or the whole selection if it was selected. Moves snap to `gridStep` when set; hold Alt to suppress snapping. Locked nodes in the selection stay put and are marked with a padlock. |
+| Click or drag a group's title strip or border | Select the group, or move all its members. The blank interior of a frame behaves as empty canvas. See `guide-groups.md`. |
+| Drag a node onto a group frame, or a member clear of it | The node joins or leaves the group on release, in the same undo step as the move. |
+| Click a group's padlock; double-click its title | Lock or unlock; edit the title in place. |
 | Drag from a port | Connect (section 4). |
 | Drag the resize handle | Resize the single selected node with the opposite screen corner fixed (section 4a). Shift keeps the aspect ratio. |
 | Drag empty canvas | Pan. |
@@ -383,6 +386,9 @@ is detected once at mount, or set with `input.platform`:
 | Mod+X | `edit.cut` (native route) |
 | Mod+V | `edit.paste` (native route) |
 | Mod+D | `edit.duplicate` (also stops the browser's bookmark shortcut) |
+| Mod+G | `group.create`: group the selected nodes and edit the new title |
+| Mod+Shift+G | `group.ungroup` |
+| F2 | `group.rename`: edit the title of the one selected group |
 
 Single-letter keys are safe: text fields, contentEditable and IME composition never reach
 the keymap (section 7), and Mod+R stays the browser's reload. Replace or extend the map
