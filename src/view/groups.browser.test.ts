@@ -168,8 +168,9 @@ describe("group title is shown and editable in the browser", () => {
     expect(field.selectionEnd).toBe(5);
     const rect = field.getBoundingClientRect();
     const origin = view.element.getBoundingClientRect();
-    expect(rect.left - origin.left).toBeCloseTo(64, 0);
-    expect(rect.top - origin.top).toBeCloseTo(50, 0);
+    // Inside the frame's 2 px border, so the field never covers the border.
+    expect(rect.left - origin.left).toBeCloseTo(66, 0);
+    expect(rect.top - origin.top).toBeCloseTo(52, 0);
     // No frame of its own: focus shows as the caret and the selected text.
     const look = getComputedStyle(field);
     expect(look.outlineStyle).toBe("none");
