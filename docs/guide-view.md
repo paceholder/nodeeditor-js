@@ -1169,6 +1169,52 @@ portable, so the fragment travels as JSON text with a format marker
 serves as the export format. Each view owns its own buffer; the system clipboard is the
 shared channel.
 
+#### Routing the clipboard to the host
+
+The keymap decides which clipboard commands the keyboard and the browser's Edit menu run.
+To turn one off, leave its chord out of `input.keymap`; its native event then does nothing.
+
+To have your backend do the work instead, register your own command under the built-in
+ID. It replaces the built-in for the shortcut, the native event and your menus, and the
+library's clipboard is not touched for that command:
+
+```ts
+import { COMMAND_IDS } from "@paceholder/nodeeditor-js/view";
+
+const remove = view.commands.register({
+  id: COMMAND_IDS.duplicate,
+  labelKey: "command.edit.duplicate",
+  availability: (_args, ctx) =>
+    ctx.selection.nodeIds().length > 0
+      ? { available: true }
+      : { available: false, rejection: rejectionOf("empty-fragment", "Select a node") },
+  run(args, ctx) {
+    // A "Paste here" menu passes { at }; a shortcut leaves the pointer in the context.
+    const at = (args as { at?: Point<"world"> } | undefined)?.at ?? ctx.pointer;
+    backend.duplicate(ctx.selection.nodeIds(), at); // the backend pushes the new snapshot
+    return { ok: true, value: { changed: false } };
+  },
+});
+```
+
+- `ctx.pointer` is the pointer's world position while a mouse or pen is over the view,
+  and absent otherwise.
+- Copy and cut receive `{ sink }` from a native event: call `sink(text)` synchronously to
+  put your own text on the system clipboard. Paste receives `{ text }`.
+- Return `{ changed: false }`: the change arrives later, when you push the snapshot.
+- A replacement without `allowWhenLocked: true` is refused while the view is locked, like
+  any host command.
+- The remover leaves the ID empty; the built-in does not come back. A remount does bring
+  it back and drops your command, so register again after a remount. With React, register
+  in an effect keyed on the view.
+
+You often do not need any of this. With a snapshot model whose host names nodes
+(`nodeCreation: "delegated"`, see [guide-host-authority.md](guide-host-authority.md#9-node-creation-by-the-store)),
+copy and paste stay on the client with JSON on the system clipboard, so several clients
+can paste into each other with no server-side buffer. A paste reaches the host as one
+`create-fragment` intent, and a duplicate as one `duplicate` intent that carries only IDs
+and an offset, for the backend to copy in one operation.
+
 ## 9. Viewport, picking and coordinate conversion
 
 ```ts

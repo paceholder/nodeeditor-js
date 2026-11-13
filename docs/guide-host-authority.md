@@ -369,9 +369,9 @@ Answer with the ID the store gave the node, built with `nodeId(text)`:
 
 ```ts
 const onDelegate = async (intent: DelegatedIntent): Promise<HostAnswer> => {
-  if (intent.kind === "create-fragment")
+  if (intent.kind !== "create-node") // create-fragment (paste) or duplicate
     return { status: "rejected",
-             rejection: rejectionOf("unsupported-command", "This store cannot paste") };
+             rejection: rejectionOf("unsupported-command", "This store cannot copy") };
   const { type, position, title } = intent;
   const reply = await store.apply([
     { op: "add-node", kind: type, x: position.x, y: position.y, label: title ?? type },
@@ -392,7 +392,7 @@ is published). An ID that another creation already claimed, or that existed befo
 refused with `node-id-claimed`. A refusal settles the result as rejected with your
 rejection.
 
-**Paste and duplicate** first validate the fragment exactly like a local paste (shape,
+**Paste** first validates the fragment exactly like a local paste (shape,
 references, and the fragment size limits, `fragmentLimits`, by default the snapshot
 limits above); an invalid fragment is rejected before you are called. Then `onDelegate`
 receives one `create-fragment` intent: the nodes (type, position, title, payload, ports),
@@ -405,6 +405,38 @@ The editor cannot apply its connection policy to those connections, because thei
 do not exist yet: **your store owns the policy for connections it creates from a
 fragment**. If your store cannot do it, answer `unsupported-command` with a message of
 your own; the view reports exactly that message and nothing is created.
+
+Copy and paste stay on the client: the fragment is JSON text on the system clipboard, so
+users can copy in one client and paste in another without any copy buffer on your server.
+Your store only sees the paste, as the `create-fragment` intent above.
+
+**Duplicate** is different, because your store already holds everything it copies. No
+fragment is built. `onDelegate` receives one `duplicate` intent:
+
+```ts
+{ kind: "duplicate", operationId,
+  nodes: ["n7", "n9"],          // the nodes to copy, each once, in paint order
+  connections: ["c3"],          // the connections the copy re-creates
+  groups: ["g2"],               // groups to copy; omitted when none
+  offset: { x: 20, y: 20 } }    // add this to every copied position
+```
+
+`connections` lists every connection between two of the listed nodes. When the command
+asked to preserve external connections, it also lists those with one end on a listed node;
+the copy keeps the other end where it is. Otherwise those are left out and reported as
+excluded, as for a local duplicate. `groups` lists the selected groups, each copied with
+all its members (they are in `nodes`). Put the copy of a node into the copy of its group
+when that group is listed; a node whose group is not listed is copied as a free node.
+`offset` is what a local duplicate would have added (one placement step from the
+keyboard). Send the IDs to your server, copy the records there as one operation, and
+answer plain `accepted` (no `nodeId`), `rejected` with your rejection, or `unknown`. There
+is no placeholder: the copies appear with the snapshot you push next, and the user's
+selection stays on the originals. Before you are called, the editor checks that the nodes
+and groups exist and that the node types may be created, and refuses while the model is
+read-only.
+
+To take over copy, cut or paste as well, replace those commands in the view instead
+([guide-view.md](guide-view.md#routing-the-clipboard-to-the-host)).
 
 With `nodeCreation: "local"` the editor names nodes and ports with your generator and a
 creation is an ordinary submission (a `create-node` intent with the node and its ports);
