@@ -48,4 +48,4 @@ The `involved` hook, `gesture-cancelled` and the cancel reasons `entity-removed`
 
 ## 6. Gates
 
-- [ ] 6.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build`, `npm run bench:size`; verify all pass and record results and sizes in `notes.md`
+- [x] 6.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build`, `npm run bench:size`; verify all pass and record results and sizes in `notes.md`
