@@ -33,7 +33,12 @@ describe("workflows", () => {
     expect(release).toMatch(/npm install -g npm@\d+\.\d+\.\d+$/m);
   });
 
-  it("a version with a pre-release part is published under the next dist-tag", () => {
+  it("the release stages the version for a maintainer's approval and never publishes directly", () => {
+    expect(release).toMatch(/^ {6}- run: npm stage publish /m);
+    expect(release).not.toMatch(/run: npm publish/);
+  });
+
+  it("a version with a pre-release part is staged under the next dist-tag", () => {
     expect(release).toMatch(/\*-\*\) echo "tag=next"/);
     expect(release).toContain('--tag "$DIST_TAG"');
   });

@@ -1,18 +1,21 @@
 name: Release
 
-# Publishes to npm when a version tag is pushed. Tags in this repository have no "v"
+# Stages a version on npm when a version tag is pushed. Tags in this repository have no "v"
 # prefix (for example 0.1.0).
 #
 # Guards:
+# - The workflow only stages the version (npm stage publish). Nobody can install it until a
+#   maintainer approves it on npmjs.com with two-factor authentication. The trusted publisher
+#   on npmjs.com must not allow a direct "npm publish". See docs/guide-releasing.md.
 # - The job runs in the "release" environment. Create it in the repository settings
 #   (Settings, Environments) and add required reviewers, so a pushed tag alone cannot
 #   publish. See docs/guide-releasing.md.
 # - The tagged commit must be on the main branch.
 # - Every third-party action is pinned to a full commit; the comment names the version.
-# - A version with a pre-release part (for example 1.0.0-rc.1) is published under the
+# - A version with a pre-release part (for example 1.0.0-rc.1) is staged under the
 #   "next" dist-tag, never "latest".
 #
-# No long-lived npm token is used. Publishing authenticates through npm trusted publishing
+# No long-lived npm token is used. Staging authenticates through npm trusted publishing
 # (OIDC). Trusted publishing must be enabled on npmjs.com for this repository and this
 # workflow file (release.yml) after the first manual publish, because the package has to exist
 # on the registry before a trusted publisher can be configured. See docs/guide-releasing.md.
@@ -51,9 +54,9 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
-      # Trusted publishing needs npm 11.5.1 or newer; Node 22 ships an older npm. The exact
+      # Staged publishing needs npm 11.15.0 or newer; Node 22 ships an older npm. The exact
       # version keeps the publish tool the same from one release to the next.
-      - run: npm install -g npm@11.5.1
+      - run: npm install -g npm@11.21.2
 
       - name: Check that the tag equals the package version
         run: |
@@ -79,7 +82,8 @@ jobs:
       - run: npm run build
       - run: node scripts/consumer-smoke.mjs
 
-      # prepublishOnly repeats lint, typecheck and tests; the build runs again through prepare.
-      - run: npm publish --provenance --access public --tag "$DIST_TAG"
+      # Stages the version; it goes live when a maintainer approves it on npmjs.com. The
+      # dist-tag is fixed here and cannot be changed at approval.
+      - run: npm stage publish --provenance --access public --tag "$DIST_TAG"
         env:
           DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
