@@ -13,6 +13,35 @@ Items not yet settled or not yet delivered. Resolved decisions are in
    Answered in section 5: the large document is checked, rotation and mirror are checked on
    the sample only, and dashes cannot be checked until the library offers them.
 3. **Confirm Node 20.** Resolved: Node 20 is enough; supported and tested on 20 and 22.
+4. **Install of version 0.2.0.** The package is on the public npm registry as
+   `@paceholder/nodeeditor-js@0.2.0` and contains the snapshot adapter. Does the host's
+   registry proxy public packages, so that `npm install @paceholder/nodeeditor-js@0.2.0`
+   works there? If not, say so and the library offers a packed tarball.
+5. **Format identifiers.** An earlier host note asked for the next version to carry
+   renamed `graph`, `document` and `fragment` identifiers without the package scope. The
+   identifiers in `docs/format.md` today are `@paceholder/nodeeditor-js/graph` and
+   `@paceholder/nodeeditor-js/document`. Which exact spelling does the host expect, and
+   does it store these identifiers or only read them?
+6. **Duplicate connections.** Has the host rejected a connection between two ports that are
+   already connected, in either order, on every creation path and in the validation call,
+   and is there a test? The editor refuses it locally, but the host is the second line of
+   defence.
+7. **Undo and connection IDs.** After an undo or redo in the host, does a restored
+   connection come back under the same stored ID? Can that ID collide with an ID the
+   editor generated in between? The editor refuses a node whose ID a pending edit adds,
+   but the host must keep its IDs unique.
+8. **Order of answers.** The host chains its own calls. Can the answer to a later edit
+   reach the library before the answer to an earlier edit it depends on (for example two
+   moves of one node)? The library may confirm edits in commit order; this tells it
+   whether that is needed.
+9. **Validation latency.** The local connection policy stays minimal, so the host
+   validator is the only judge of the host's rules and a hover over a target waits for its
+   verdict. What are the typical and the worst latency of the validation call, and does
+   it read any state that can change between hovering and releasing?
+10. **Blocking creation up front.** In delegated mode the host answers a creation, and may
+    refuse it. Does the host also need the editor to refuse creating nodes before any
+    request is sent (for example a read-only project or missing permission), or is the
+    host's refusal with a message enough? Read-only mode already blocks creation.
 
 ## 2. Host-side duties
 
