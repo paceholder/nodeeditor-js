@@ -14,27 +14,29 @@ settled decision; reorder freely.
 | - | ------ | ---------- | ------ | ---------- |
 | 1 | `route-clipboard-to-host` | 0 of 19 | Implemented and merged | Nothing: archive it with the next change |
 | 2 | `stage-releases-for-approval` | 1 of 4 | Workflow changed; 3.2 needs a real staged release | The next release, approved on npmjs.com with two-factor authentication |
-| 3 | `add-reconnect-tool` | 9 of 9 | Planned; core `reconnect` command already exists, view tool missing | Nothing |
-| 4 | `add-docking` | 10 of 10 | Planned; snap and connect-only modes, policy-driven compatibility | Nothing |
-| 5 | `fix-safari-clipboard` | 16 of 16 | Planned; hidden clipboard proxy for WebKit | Owner decision on scope; needs a real Safari for the manual checklist |
-| 6 | `add-host-integration-checks` | 25 of 25 | Planned; verification of host-facing behavior, then fixes for gaps | Nothing |
-| 7 | `cache-picking-polylines` | 9 of 9 | Planned; measure first, cache only if the numbers justify it | Owner decision on thresholds |
-| 8 | `close-archive-gaps` | 19 of 19 | Planned; sentences and scenarios in existing specs | Task 3.3 needs a named reference machine and memory ceiling |
-| 9 | `add-keyboard-navigation` | 15 of 15 | Proposed | Owner approval: it widens the settled "keyboard shortcuts only" accessibility decision (tasks 0.1 and 0.2) |
+| 3 | `add-submission-label` | 5 of 5 | Planned; a pure function that describes decoded intents as data, for a host's history labels | Nothing |
+| 4 | `add-reconnect-tool` | 9 of 9 | Planned; core `reconnect` command already exists, view tool missing | Nothing |
+| 5 | `add-docking` | 10 of 10 | Planned; snap and connect-only modes, policy-driven compatibility | Nothing |
+| 6 | `fix-safari-clipboard` | 16 of 16 | Planned; hidden clipboard proxy for WebKit | Owner decision on scope; needs a real Safari for the manual checklist |
+| 7 | `add-host-integration-checks` | 25 of 25 | Planned; verification of host-facing behavior, then fixes for gaps | Nothing |
+| 8 | `cache-picking-polylines` | 9 of 9 | Planned; measure first, cache only if the numbers justify it | Owner decision on thresholds |
+| 9 | `close-archive-gaps` | 19 of 19 | Planned; sentences and scenarios in existing specs | Task 3.3 needs a named reference machine and memory ceiling |
+| 10 | `add-keyboard-navigation` | 15 of 15 | Proposed | Owner approval: it widens the settled "keyboard shortcuts only" accessibility decision (tasks 0.1 and 0.2) |
 
-Reasoning for the order: finish what is nearly done (1, 2), then user-visible gestures that
-the specs already require (3, 4), then browser and host verification (5, 6), then measured or
-documentation work (7, 8), then the change that needs a product decision first (9).
+Reasoning for the order: finish what is nearly done (1, 2), then the small host-facing
+function (3), then user-visible gestures that the specs already require (4, 5), then browser
+and host verification (6, 7), then measured or documentation work (8, 9), then the change
+that needs a product decision first (10).
 
 ## Ideas without a change yet
 
 Later queue from the roadmap; each needs a proposal before work starts, roughly in this order.
 
 - Host proposals accepted in the reply on `research`, each needs its own change: default
-  capabilities and a `create` action (P1); icon tint (P2); snap the node's box (P3b); a
-  data label for a submission (P4); the resync recipe and test (P6) and the token-free push recipe
-  (P5), both folded into `add-host-integration-checks` as section 4c. Dropping content from outside (P8) is deferred
-  until P1 exists.
+  capabilities and a `create` action (P1); icon tint (P2); snap the node's box (P3b).
+  The resync recipe and test (P6) and the token-free push recipe (P5) are folded into
+  `add-host-integration-checks` as section 4c. Dropping content from outside (P8) is
+  deferred until P1 exists.
 - Waypoints on connections
 - Wire jumps at crossings
 - Obstacle avoidance in routing
