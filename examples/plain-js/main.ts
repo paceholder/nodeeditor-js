@@ -150,6 +150,9 @@ const valve = add("valve", "Valve", 500, 280, { asset: "valve-symbol" });
 const vent = add("valve", "Vent valve", -20, 222, { asset: "valve-symbol" });
 const ctrl = add("controller", "Controller", 740, 270, { subtitle: "demo" });
 add("sensor", "Level sensor", 740, 90, { subtitle: "signal" });
+// A group is a frame around nodes, stored in the document. Drag its title strip to move
+// it, drop a node on it to add the node, click the padlock to lock it.
+model.groupNodes([pump.id, valve.id], { title: "Pumping stage" });
 
 // A connection needs a verdict first: ask for the ones it lacks, then repeat the command.
 async function connectVerified(
@@ -216,6 +219,10 @@ const view = mountView(container, {
   // Signal ports are square and amber, so the two port types read apart.
   theme: {
     typeOverrides: { signal: { portShape: "square", portFill: "#f2b84b" } },
+    // A named group style: `groupNodes(nodes, { style: "note" })` selects it.
+    groupStyles: {
+      note: { groupFill: "rgba(242, 184, 75, 0.10)", groupStroke: "#f2b84b" },
+    },
   },
   initialViewport: { zoom: 1, panX: 130, panY: 90 },
   // Input is built in: pan, select, Shift-marquee, move, connect, wheel zoom and the

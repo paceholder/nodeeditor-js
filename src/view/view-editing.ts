@@ -8,7 +8,9 @@ import {
   err,
   type GeometryScene,
   type GraphReader,
+  type GroupId,
   type PlanResult,
+  type Rect,
   type Rejection,
   type RouteRegistry,
   rejectionOf,
@@ -73,6 +75,11 @@ import {
   LOCKED,
   VIEW_LOCKED,
 } from "./interact/lock/view-lock.js";
+import {
+  createGroupTitleEditor,
+  type GroupTitleEditor,
+} from "./interact/overlay/group-title-editor.js";
+import type { OverlayHost } from "./interact/overlay/overlay-host.js";
 import type { SelectionModel } from "./interact/selection/selection-model.js";
 import { defaultToolSlots } from "./interact/tools/default-tools.js";
 import { gestureChangeOf } from "./interact/tools/gesture-change.js";
@@ -81,6 +88,7 @@ import { routeCursorAt } from "./interact/tools/route-edit-tool.js";
 import {
   resolveToolOptions,
   type ToolOptions,
+  type ToolOptionsInput,
 } from "./interact/tools/thresholds.js";
 import {
   capabilityProbe,
@@ -101,6 +109,7 @@ import type { ResolvedZoomLimits } from "./platform/zoom-limits.js";
 import type { InteractionLayer } from "./render/paint/interaction-layer.js";
 import { rerouteEntry } from "./render/paint/previews/ghost-entries.js";
 import type { RouteEditorRegistry } from "./render/registries/route-editor-registry.js";
+import type { ThemeTokens } from "./render/theme/tokens.js";
 import {
   attachViewConnectionChoice,
   type ViewConnectionChoice,
@@ -128,6 +137,11 @@ export interface EditingDeps {
   readonly setHovered: (id: string | undefined) => void;
   /** The node's body bounds in client pixels; used by hover events. */
   readonly nodeRect: (id: string) => ViewRect | undefined;
+  /** A world rectangle in client pixels; undefined while the view cannot be measured. */
+  readonly clientRect: (bounds: Rect<"world">) => ViewRect | undefined;
+  /** Attach an element to the DOM overlay (the group title editor lives there). */
+  readonly attachOverlay: OverlayHost["attach"];
+  readonly theme: () => ThemeTokens;
   /** `false` keeps selection and commands but attaches no DOM listeners. */
   readonly input: false | InputOptions;
   readonly routeEditors: Pick<RouteEditorRegistry, "get">;
@@ -162,7 +176,7 @@ export interface Editing {
   readonly setConnectionChooser: ViewConnectionChoice["setChooser"];
   toolOptions(): ToolOptions;
   setToolOptions(
-    patch: Partial<ToolOptions>,
+    patch: ToolOptionsInput,
     opts?: { readonly replace?: boolean },
   ): void;
   /** Fit all content once with the given padding and cap. */
@@ -188,7 +202,8 @@ const UNBOUND_VIEW: Omit<ViewCommands, keyof ZoomCommands> = {
 /** The ID painters see as hovered: a port counts as its node. */
 function hoverId(target: HoverTarget | null): string | undefined {
   if (!target) return undefined;
-  return target.kind === "connection" ? target.connection : target.node;
+  if (target.kind === "connection") return target.connection;
+  return target.kind === "group" ? target.group : target.node;
 }
 
 export function attachEditing(deps: EditingDeps): Editing {
@@ -247,8 +262,44 @@ export function attachEditing(deps: EditingDeps): Editing {
     }
     return fitCommands.commands;
   };
+  // Group title editing: the built-in field, or an event for a host editor.
+  let toolOptions: ToolOptionsInput =
+    (deps.input !== false && deps.input?.toolOptions) || {};
+  const titleEditor: GroupTitleEditor | undefined =
+    editable && reader && scene && deps.input !== false
+      ? createGroupTitleEditor({
+          document: deps.root.ownerDocument,
+          attach: deps.attachOverlay,
+          reader,
+          scene,
+          theme: deps.theme,
+          rename: (group, title) =>
+            void editable.execute({ kind: "renameGroup", group, title }),
+          focusView: () => deps.root.focus({ preventScroll: true }),
+        })
+      : undefined;
+  const editGroupTitle = (group: GroupId): boolean => {
+    const entry = scene?.group(group);
+    const options = resolveToolOptions(toolOptions).groups;
+    if (!entry || !titleEditor || lock.get() || options === false) return false;
+    if (options.titleEditor) return titleEditor.open(group);
+    if (events.count("group-title-edit") === 0) return false;
+    const rect = deps.clientRect(entry.titleStrip);
+    events.emit("group-title-edit", {
+      group,
+      title: entry.record.title,
+      ...(rect ? { rect } : {}),
+    });
+    return true;
+  };
   const commands = createCommandRegistry(
-    () => ({ model: editable, reader, selection, view: currentView() }),
+    () => ({
+      model: editable,
+      reader,
+      selection,
+      view: currentView(),
+      ...(titleEditor ? { editGroupTitle } : {}),
+    }),
     lock.get,
     () => events.emit("availability", { cause: "commands" }),
   );
@@ -279,9 +330,8 @@ export function attachEditing(deps: EditingDeps): Editing {
       })
     : undefined;
   registerBuiltinCommands(commands, clipboard);
-  // One object per change, so the tool context re-resolves only after `setToolOptions`.
-  let toolOptions: Partial<ToolOptions> =
-    (deps.input !== false && deps.input?.toolOptions) || {};
+  // `toolOptions` is one object per change, so the tool context re-resolves only after
+  // `setToolOptions`.
   if (deps.input !== false && model && reader && scene) {
     const options = deps.input ?? {};
     const platform =
@@ -377,6 +427,7 @@ export function attachEditing(deps: EditingDeps): Editing {
           verdictDriver?.request(source, target),
         rejected: (rejection) =>
           events.emit("connection-rejected", { rejection, source: "gesture" }),
+        editGroupTitle: (group) => void editGroupTitle(group),
         selection,
         viewport(op) {
           if (op.kind === "panBy") viewport.panBy(op.dx, op.dy);
@@ -468,8 +519,10 @@ export function attachEditing(deps: EditingDeps): Editing {
       model.on("change", (e) => {
         dom.modelChanged(gestureChangeOf(e));
         hover?.entitiesRemoved(removedIds(e.patch.ops));
+        titleEditor?.groupsChanged(e.changed.groups);
       }),
       model.on("reset", () => {
+        titleEditor?.cancel();
         dom.modelReset();
         hover?.modelReset();
       }),
@@ -492,6 +545,7 @@ export function attachEditing(deps: EditingDeps): Editing {
           events.emit("gesture-cancelled", { reason: "locked", ids: [] });
         }
         choices?.cancel();
+        titleEditor?.cancel();
         deps.setPreview(null);
       }
       events.emit("lock", { locked: next });
@@ -508,6 +562,7 @@ export function attachEditing(deps: EditingDeps): Editing {
     dispose() {
       for (const off of offs.splice(0)) off();
       menu.dispose();
+      titleEditor?.dispose();
       hover?.dispose();
       hover = undefined;
       events.clear();

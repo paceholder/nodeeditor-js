@@ -5,13 +5,20 @@
  * existing ID, a remove or update needs the entity and matching old values (otherwise
  * `conflict`), and every resulting record must pass structural validation.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { type Rejection, type Result, rejectionOf } from "../../base/result.js";
 import type {
   ConnectionRecord,
+  GroupRecord,
   NodeRecord,
   PortRecord,
 } from "../model/records.js";
+import { validateGroupRecord } from "../model/validate-group.js";
 import {
   validateConnectionRecord,
   validateNodeRecord,
@@ -21,6 +28,7 @@ import { valuesEqual } from "./equal.js";
 import type { StagedState } from "./stage.js";
 import type {
   ConnectionFieldChanges,
+  GroupFieldChanges,
   NodeFieldChanges,
   PatchOp,
   PortFieldChanges,
@@ -39,6 +47,7 @@ const NODE_FIELDS: Record<keyof NodeFieldChanges, true> = {
   status: true,
   payload: true,
   capabilities: true,
+  group: true,
 };
 const PORT_FIELDS: Record<keyof PortFieldChanges, true> = {
   direction: true,
@@ -53,10 +62,15 @@ const CONNECTION_FIELDS: Record<keyof ConnectionFieldChanges, true> = {
   to: true,
   route: true,
 };
+const GROUP_FIELDS: Record<keyof GroupFieldChanges, true> = {
+  title: true,
+  locked: true,
+  style: true,
+};
 
 interface Kind<R extends { readonly id: string }> {
   readonly label: string;
-  readonly entity: "node" | "port" | "connection";
+  readonly entity: "node" | "port" | "connection" | "group";
   readonly fields: Readonly<Record<string, true>>;
   validate(input: unknown): Result<R, Rejection>;
   get(stage: StagedState, id: string): R | undefined;
@@ -91,6 +105,15 @@ const CONNECTION: Kind<ConnectionRecord> = {
   put: (s, r, seq) => s.putConnection(r, seq),
   drop: (s, id) => s.dropConnection(id as ConnectionId),
 };
+const GROUP: Kind<GroupRecord> = {
+  label: "Group",
+  entity: "group",
+  fields: GROUP_FIELDS,
+  validate: validateGroupRecord,
+  get: (s, id) => s.getGroup(id as GroupId),
+  put: (s, r, seq) => s.putGroup(r, seq),
+  drop: (s, id) => s.dropGroup(id as GroupId),
+};
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -115,7 +138,8 @@ function idInUse(stage: StagedState, id: string): boolean {
   return Boolean(
     stage.getNode(id as NodeId) ??
       stage.getPort(id as PortId) ??
-      stage.getConnection(id as ConnectionId),
+      stage.getConnection(id as ConnectionId) ??
+      stage.getGroup(id as GroupId),
   );
 }
 
@@ -241,6 +265,8 @@ export function applyOp(
           return add(PORT, stage, op.record, op.seq);
         case "connection":
           return add(CONNECTION, stage, op.record, op.seq);
+        case "group":
+          return add(GROUP, stage, op.record, op.seq);
       }
       break;
     case "remove":
@@ -251,6 +277,8 @@ export function applyOp(
           return remove(PORT, stage, op.record, op.seq);
         case "connection":
           return remove(CONNECTION, stage, op.record, op.seq);
+        case "group":
+          return remove(GROUP, stage, op.record, op.seq);
       }
       break;
     case "update":
@@ -261,6 +289,8 @@ export function applyOp(
           return update(PORT, stage, op.id, op.fields);
         case "connection":
           return update(CONNECTION, stage, op.id, op.fields);
+        case "group":
+          return update(GROUP, stage, op.id, op.fields);
       }
   }
   return rejectionOf("malformed-record", "Unknown patch operation");

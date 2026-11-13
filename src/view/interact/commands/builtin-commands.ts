@@ -1,6 +1,7 @@
 /**
  * Built-in editor commands (D9): edit.delete, history.undo/redo,
- * selection.selectAll/clear, nodes.nudge, route.reset, nodes.rotate/mirror, the view.* commands, and
+ * selection.selectAll/clear, nodes.nudge, route.reset, nodes.rotate/mirror, group.create/ungroup/rename,
+ * the view.* commands, and
  * edit.copy/cut/paste/duplicate when a clipboard service is given. Each is a thin wrapper
  * over the model's command API or the view-local services, so a shortcut and an API call
  * produce identical patches on equal models.
@@ -22,7 +23,12 @@ import {
   registerClipboardCommands,
 } from "../clipboard/clipboard-commands.js";
 import type { ClipboardService } from "../clipboard/clipboard-service.js";
-import { connectionKey, nodeKey } from "../selection/selection-model.js";
+import { nodesToMove } from "../selection/moved-nodes.js";
+import {
+  connectionKey,
+  groupKey,
+  nodeKey,
+} from "../selection/selection-model.js";
 import { capabilityProbe } from "../tools/tool-context.js";
 import {
   type CommandContext,
@@ -32,6 +38,7 @@ import {
   outcomeOf,
 } from "./command-registry.js";
 import type { EditableModel } from "./editable-model.js";
+import { GROUP_COMMAND_IDS, registerGroupCommands } from "./group-commands.js";
 import {
   registerTransformCommands,
   TRANSFORM_COMMAND_IDS,
@@ -53,6 +60,7 @@ export const COMMAND_IDS = deepFreeze({
   nudge: "nodes.nudge",
   resetRoute: "route.reset",
   ...TRANSFORM_COMMAND_IDS,
+  ...GROUP_COMMAND_IDS,
   fitAll: "view.fitAll",
   zoomIn: "view.zoomIn",
   zoomOut: "view.zoomOut",
@@ -109,9 +117,16 @@ function modelEdit<A>(
 function planDelete(ctx: CommandContext): Command | Refusal {
   const nodes = ctx.selection.nodeIds();
   const connections = ctx.selection.connectionIds();
-  return nodes.length === 0 && connections.length === 0
-    ? refusal("Nothing is selected")
-    : { kind: "deleteEntities", nodes, connections };
+  // A selected group loses its frame only; its nodes go when they are selected too.
+  const groups = ctx.selection.groupIds();
+  if (nodes.length + connections.length + groups.length === 0)
+    return refusal("Nothing is selected");
+  return {
+    kind: "deleteEntities",
+    nodes,
+    connections,
+    ...(groups.length > 0 ? { groups } : {}),
+  };
 }
 
 function planNudge(
@@ -123,15 +138,17 @@ function planNudge(
     return refusal("nodes.nudge needs finite dx and dy");
   }
   const can = capabilityProbe(model);
-  const moves = ctx.selection.nodeIds().flatMap((id) => {
-    const node = model.reader.getNode(id);
-    if (!node || !can("move", id).available) return [];
-    const position = {
-      x: node.position.x + args.dx,
-      y: node.position.y + args.dy,
-    };
-    return [{ node: id, position }];
-  });
+  const moves = nodesToMove(ctx.selection.keys(), model.reader).flatMap(
+    (id) => {
+      const node = model.reader.getNode(id);
+      if (!node || !can("move", id).available) return [];
+      const position = {
+        x: node.position.x + args.dx,
+        y: node.position.y + args.dy,
+      };
+      return [{ node: id, position }];
+    },
+  );
   return moves.length === 0
     ? refusal("No selected node can move")
     : { kind: "moveNodes", moves };
@@ -220,6 +237,7 @@ function selectAll(ctx: CommandContext): CommandOutcome {
   const keys = [
     ...reader.nodes().map((n) => nodeKey(n.id)),
     ...reader.connections().map((c) => connectionKey(c.id)),
+    ...reader.groups().map((g) => groupKey(g.id)),
   ];
   return ok({ changed: selection.replace(keys) });
 }
@@ -252,6 +270,7 @@ export function registerBuiltinCommands(
   registry.register(modelEdit<NudgeArgs>(COMMAND_IDS.nudge, planNudge));
   registry.register(modelEdit<void>(COMMAND_IDS.resetRoute, planResetRoute));
   registerTransformCommands(registry);
+  registerGroupCommands(registry);
   registry.register(
     simple(
       COMMAND_IDS.fitAll,

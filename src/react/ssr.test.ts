@@ -94,6 +94,7 @@ describe("react entry in Node", () => {
     expect(seen[1]).toEqual({
       nodes: [],
       connections: [],
+      groups: [],
       primary: undefined,
     });
     expect(seen[2]).toEqual({ zoom: 1, panX: 0, panY: 0 });

@@ -78,7 +78,7 @@ describe("level of detail", () => {
       testFrame({ zoom: 0.1, panX: 400, panY: 300 }),
     );
     expect(called).toEqual([]);
-    expect(stats).toEqual({ nodes: 2, connections: 1 });
+    expect(stats).toEqual({ nodes: 2, connections: 1, groups: 0 });
     // One batch per layer: nodes filled and stroked once, connections stroked once.
     expect(calls.filter((c) => c === "fill")).toHaveLength(1);
     expect(calls.filter((c) => c === "stroke")).toHaveLength(2);

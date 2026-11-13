@@ -5,7 +5,7 @@ import {
   createToolHarness,
 } from "../../test-support/tool-harness.js";
 import { nodeKey } from "../selection/selection-model.js";
-import type { ToolOptions } from "./thresholds.js";
+import type { ToolOptionsInput } from "./thresholds.js";
 import { type Modifiers, NO_MODIFIERS } from "./tool-types.js";
 
 type Harness = ReturnType<typeof createToolHarness>;
@@ -27,7 +27,7 @@ const down = at("pointer-down");
 const move = at("pointer-move");
 const up = at("pointer-up");
 
-const fixture = (options: Partial<ToolOptions> = {}) =>
+const fixture = (options: ToolOptionsInput = {}) =>
   createToolHarness({ nodes: [cornerNode("a", 0, 0)], options });
 
 describe("empty-canvas pan", () => {

@@ -1,5 +1,10 @@
 /** Small patch-building helpers shared by planners. */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { Patch, PatchOp } from "../../data/patch/types.js";
@@ -26,15 +31,18 @@ function bucket(): {
   nodes: NodeId[];
   ports: PortId[];
   connections: ConnectionId[];
+  groups: GroupId[];
 } {
-  return { nodes: [], ports: [], connections: [] };
+  return { nodes: [], ports: [], connections: [], groups: [] };
 }
 
 function put(into: ReturnType<typeof bucket>, op: PatchOp): void {
   const id = op.op === "update" ? op.id : op.record.id;
   if (op.entity === "node") into.nodes.push(id as NodeId);
   else if (op.entity === "port") into.ports.push(id as PortId);
-  else into.connections.push(id as ConnectionId);
+  else if (op.entity === "connection")
+    into.connections.push(id as ConnectionId);
+  else into.groups.push(id as GroupId);
 }
 
 /** Summarize a patch: adds are created, removes removed, updates updated. */
@@ -94,6 +102,17 @@ export function removeConnectionOp(
   const seq = reader.seqOf(id);
   return record && seq !== undefined
     ? { op: "remove", entity: "connection", record, seq }
+    : undefined;
+}
+
+export function removeGroupOp(
+  reader: GraphReader,
+  id: GroupId,
+): PatchOp | undefined {
+  const record = reader.getGroup(id);
+  const seq = reader.seqOf(id);
+  return record && seq !== undefined
+    ? { op: "remove", entity: "group", record, seq }
     : undefined;
 }
 

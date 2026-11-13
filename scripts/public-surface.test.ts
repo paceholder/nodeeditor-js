@@ -43,21 +43,37 @@ type Entry = keyof typeof ENTRIES;
  * Core rose by two names that the built declarations of `SnapshotModelOptions` refer to
  * (`GraphModelSettings`, `SnapshotAdapterBaseOptions`); without them a consumer's own
  * declaration build can fail with TS2742.
+ * Core rose by thirteen names and six values for groups, which are model entities a host
+ * reads, validates and paints: the record and its ID (`GroupRecord`, `GroupId`, `groupId`,
+ * `validateGroupRecord`, `MAX_GROUP_TITLE_LENGTH`, `GroupFieldChanges`), the scene's frame
+ * entries and hits (`GroupEntry`, `GroupHit`, `GroupFramePart`), and the frame geometry a
+ * custom frame painter or a headless host needs (`GroupFrameMetrics`, `groupFrame`,
+ * `groupTitleStrip`, `groupLockBox`).
+ * View rose by nine names and one value for groups: the frame painter contract and its
+ * default (`GroupFramePainter`, `GroupFramePaintInput`, `createGroupFramePainter`), the
+ * group colors of the theme (`GroupStyleTokens`), the options that turn drag membership
+ * and the title editor on or off, with the partial form a host passes (`GroupOptions`,
+ * `ToolOptionsInput`), the arguments of the group commands (`GroupArgs`,
+ * `RenameGroupArgs`) and the event a host editor answers (`GroupTitleEditEvent`).
+ * Advanced rose by one name and one value for the built-in tool that handles the lock
+ * icon and title double-click of a group frame (`createGroupFrameTool`), exported with
+ * the other built-in tools for hosts that reorder them.
  */
 const MAX_NAMES: Record<Entry, number> = {
-  core: 310,
-  view: 134,
-  advanced: 95,
+  core: 323,
+  view: 143,
+  advanced: 96,
   react: 26,
 };
 const MAX_VALUES: Record<Entry, number> = {
-  core: 109,
-  view: 19,
-  advanced: 47,
+  core: 115,
+  view: 20,
+  advanced: 48,
   react: 16,
 };
 
-/** Removed as internal: low-level math, record checks, reserved ID kinds, tool internals. */
+/** Removed as internal: low-level math, record checks, reserved ID kinds, tool internals.
+ * `groupId` and `GroupId` left this list when groups became model entities. */
 const REMOVED: Record<Entry, string[]> = {
   core: [
     "checkDpr",
@@ -65,8 +81,6 @@ const REMOVED: Record<Entry, string[]> = {
     "checkPortOwnership",
     "defaultLimit",
     "deviceToViewport",
-    "groupId",
-    "GroupId",
     "ID_KINDS",
     "inflateRect",
     "intersectRects",

@@ -28,6 +28,8 @@ export function touchedBy(patch: Patch): TouchedEntities {
     } else if (op.entity === "port") {
       ports.add(op.op === "update" ? op.id : op.record.id);
       if (op.op !== "update") nodes.add(op.record.node);
+    } else if (op.entity === "group") {
+      // Groups never bear on a connection verdict.
     } else if (op.op === "update") {
       endpoint(op.fields.from?.old);
       endpoint(op.fields.from?.new);

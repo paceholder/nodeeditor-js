@@ -40,7 +40,7 @@ describe("paste, duplicate and unavailable creation: the host refuses a fragment
       ok: true,
       value: {
         status: "pending",
-        created: { nodes: [], ports: [], connections: [] },
+        created: { nodes: [], ports: [], connections: [], groups: [] },
         excluded: [],
       },
     });

@@ -9,10 +9,12 @@ import type { IdCursor } from "../../base/ids/id-generator.js";
 import { parseConnection } from "./parse-connection.js";
 import { parseNode } from "./parse-entries.js";
 import { isObj, type Obj, onlyKeys } from "./parse-fields.js";
+import { parseGroup } from "./parse-group.js";
 import type { ErrorSink, SnapshotLimits } from "./snapshot-errors.js";
 import {
   type ConnectionSnapshot,
   FORMAT_VERSION,
+  type GroupSnapshot,
   type NodeSnapshot,
   SNAPSHOT_FORMAT,
 } from "./snapshot-types.js";
@@ -26,6 +28,7 @@ export interface ShapeParts {
   readonly cursor: IdCursor | undefined;
   readonly nodes: readonly Item<NodeSnapshot>[];
   readonly connections: readonly Item<ConnectionSnapshot>[];
+  readonly groups: readonly Item<GroupSnapshot>[];
   /** IDs declared by entries that failed the shape pass. */
   readonly skipped: ReadonlySet<string>;
   /** True when the node list was not read (size limit): endpoints cannot be checked. */
@@ -37,7 +40,7 @@ export interface ShapeOptions {
   readonly fragment: boolean;
 }
 
-const RESERVED = ["assemblies", "references", "groups", "routes"] as const;
+const RESERVED = ["assemblies", "references", "routes"] as const;
 const TOP_KEYS = [
   "format",
   "version",
@@ -45,6 +48,7 @@ const TOP_KEYS = [
   ...RESERVED,
   "nodes",
   "connections",
+  "groups",
 ];
 
 function parseCursor(value: unknown, sink: ErrorSink): IdCursor | undefined {
@@ -181,10 +185,23 @@ export function parseShape(
     (entry, path) => parseConnection(entry, path, options.limits, sink),
     skipped,
   );
+  // A group needs a member, so there are never more groups than nodes.
+  const groups =
+    o.groups === undefined
+      ? []
+      : parseList(
+          o.groups,
+          "groups",
+          options.limits.maxNodes,
+          sink,
+          (entry, path) => parseGroup(entry, path, sink),
+          skipped,
+        );
   return {
     cursor,
     nodes,
     connections,
+    groups,
     skipped,
     nodesUnread:
       !Array.isArray(o.nodes) || o.nodes.length > options.limits.maxNodes,

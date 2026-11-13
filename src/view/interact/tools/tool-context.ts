@@ -28,20 +28,30 @@ import type {
 } from "../../render/registries/route-editor-registry.js";
 import type { ReadonlySelection } from "../selection/selection-model.js";
 import { evaluationOf, NO_MODEL_EVALUATION } from "./connect-evaluation.js";
-import { resolveToolOptions, type ToolOptions } from "./thresholds.js";
+import {
+  resolveToolOptions,
+  type ToolOptions,
+  type ToolOptionsInput,
+} from "./thresholds.js";
 import type { ConnectionEvaluation, ToolContext } from "./tool-types.js";
 
 export interface ToolContextDeps {
   readonly reader: GraphReader;
   readonly scene: Pick<
     GeometryScene,
-    "queryRect" | "node" | "connection" | "pick"
+    | "queryRect"
+    | "node"
+    | "connection"
+    | "pick"
+    | "group"
+    | "groups"
+    | "groupMetrics"
   >;
   readonly selection: ReadonlySelection;
   readonly viewport: () => Viewport;
   readonly can: (action: CapabilityAction, id: NodeId) => Availability;
   /** Read on every gesture step, so a getter lets options change at runtime. */
-  readonly options?: Partial<ToolOptions> | (() => Partial<ToolOptions>);
+  readonly options?: ToolOptionsInput | (() => ToolOptionsInput);
   /** Resolved size limits (`GraphModel.sizeLimits`); omitted: the library default. */
   readonly sizeLimits?: SizeLimitsLookup;
   /** Dry-run planner of the model (`GraphModel.plan`); without it nothing can connect. */
@@ -84,7 +94,7 @@ export type ToolContextProvider = (() => ToolContext) & {
 
 export function createToolContext(deps: ToolContextDeps): ToolContextProvider {
   const source = deps.options;
-  let resolvedFrom: Partial<ToolOptions> | undefined;
+  let resolvedFrom: ToolOptionsInput | undefined;
   let options = resolveToolOptions();
   // Re-resolve only when the getter hands back a different object.
   const currentOptions = (): ToolOptions => {
@@ -157,7 +167,8 @@ export function createToolContext(deps: ToolContextDeps): ToolContextProvider {
 /**
  * Capability probe through a model's `can`: each action is answered by a
  * one-step trial command, so it exercises exactly the capability gate a real edit would
- * hit. `resize` tries one unit wider (or narrower, or taller or shorter where the limits
+ * hit. `move` of a member of a locked group tries the whole group, which is the only
+ * move such a node can make, so one member that may not move holds all of them. `resize` tries one unit wider (or narrower, or taller or shorter where the limits
  * require); a node whose limits leave no other size is unavailable with `out-of-range`.
  */
 export function capabilityProbe(model: {
@@ -179,12 +190,14 @@ export function capabilityProbe(model: {
       case "move":
         return model.can({
           kind: "moveNodes",
-          moves: [
-            {
-              node: id,
-              position: { x: node.position.x + 1, y: node.position.y },
-            },
-          ],
+          moves: (node.group !== undefined &&
+          model.reader.getGroup(node.group)?.locked
+            ? model.reader.groupMembers(node.group)
+            : [node]
+          ).map((n) => ({
+            node: n.id,
+            position: { x: n.position.x + 1, y: n.position.y },
+          })),
         });
       case "resize": {
         const limits = model.sizeLimits?.(id) ?? DEFAULT_SIZE_LIMITS;

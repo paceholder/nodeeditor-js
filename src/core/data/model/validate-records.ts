@@ -113,6 +113,8 @@ export function validateNodeRecord(
       [id],
     );
   }
+  if (o.group !== undefined && !isWellFormedId(o.group))
+    return reject("malformed-id", "Node group ID is malformed", [id]);
   const position = o.position as NodeRecord["position"];
   const size = o.size as NodeRecord["size"];
   return ok({
@@ -128,6 +130,7 @@ export function validateNodeRecord(
     ...(o.status === undefined ? {} : { status: o.status }),
     payload: o.payload,
     ...(capabilities ? { capabilities } : {}),
+    ...(o.group === undefined ? {} : { group: o.group }),
   } as unknown as NodeRecord);
 }
 

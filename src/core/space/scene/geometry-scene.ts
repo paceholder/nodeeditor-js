@@ -3,11 +3,11 @@
  *
  * A derived cache over a graph model: per-node transform, world bounds and anchors,
  * per-connection path geometry routed per connection kind, and one spatial index keyed `n:<id>` per node and
- * `c:<id>#<i>` per connection piece. It is never authoritative. `change` events update only the touched nodes and their incident
+ * `c:<id>#<i>` per connection piece, plus one frame per group. It is never authoritative. `change` events update only the touched nodes and their incident
  * connections; `reset` and `rebuild()` recompute everything.
  */
 
-import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
+import type { ConnectionId, GroupId, NodeId } from "../../base/ids/ids.js";
 import type { GraphReader } from "../../data/model/reader.js";
 import type { NodeRecord } from "../../data/model/records.js";
 import type { EventHub } from "../../edit/events/event-hub.js";
@@ -16,6 +16,10 @@ import {
   createGeometryRegistry,
   type GeometryRegistry,
 } from "../geometry/geometry-registry.js";
+import {
+  DEFAULT_GROUP_FRAME_METRICS,
+  type GroupFrameMetrics,
+} from "../geometry/group-frame.js";
 import type { Point, Rect } from "../geometry/spaces.js";
 import {
   createRouteRegistry,
@@ -23,7 +27,9 @@ import {
 } from "../routing/route-registry.js";
 import { createAabbTree } from "../spatial-index/aabb-tree.js";
 import type { SpatialIndex } from "../spatial-index/spatial-index.js";
+import { createGroupFrames, type GroupEntry } from "./group-frames.js";
 import {
+  DEFAULT_TOLERANCE_PX,
   type HitCandidate,
   type HitKind,
   type PickOptions,
@@ -52,6 +58,8 @@ export interface SceneStats {
   readonly nodeRebuilds: number;
   /** Connection paths computed since creation. */
   readonly connectionRebuilds: number;
+  /** Group frames computed since creation. */
+  readonly groupRebuilds: number;
   /** Calls made to the spatial index (insert, update, remove). */
   readonly indexWrites: number;
 }
@@ -70,6 +78,12 @@ export interface GeometryScene {
    */
   project(id: NodeId, change: NodePlacementChange): NodeEntry | undefined;
   connection(id: ConnectionId): ConnectionEntry | undefined;
+  /** The frame entry of a group; undefined when the group is unknown or has no frame. */
+  group(id: GroupId): GroupEntry | undefined;
+  /** Group entries in document order; with `rect`, only frames intersecting it. */
+  groups(rect?: Rect<"world">): readonly GroupEntry[];
+  /** Padding, title strip and lock target sizes the frames are built with. */
+  readonly groupMetrics: GroupFrameMetrics;
   /**
    * Culling query: items whose painted (default) or hit bounds intersect `rect`, in paint
    * order (bottom first) so a painter can iterate directly. A connection also
@@ -77,7 +91,7 @@ export interface GeometryScene {
    * touches `rect` but whose stroke stays outside is not returned.
    */
   queryRect(rect: Rect<"world">, bounds?: "painted" | "hit"): SceneItem[];
-  /** Ordered candidates under `point`, topmost first. */
+  /** Ordered candidates under `point`, topmost first; group frames come last. */
   pick(point: Point<"world">, options: PickOptions): HitCandidate[];
   stats(): SceneStats;
   /** Recompute everything from the reader. */
@@ -96,6 +110,8 @@ export interface GeometrySceneOptions {
   readonly connectionMargin?: number;
   /** Paint layers bottom to top. Default `connection, node, port`. */
   readonly layerOrder?: readonly SceneLayer[];
+  /** Group frame sizes; missing fields take `DEFAULT_GROUP_FRAME_METRICS`. */
+  readonly groupFrame?: Partial<GroupFrameMetrics>;
 }
 
 export interface SceneSource {
@@ -119,6 +135,11 @@ export function createGeometryScene(
   const connections = new Map<ConnectionId, ConnectionEntry>();
   let maxCapture = 0;
   const stats = { nodeRebuilds: 0, connectionRebuilds: 0 };
+  const groupMetrics = {
+    ...DEFAULT_GROUP_FRAME_METRICS,
+    ...options.groupFrame,
+  };
+  const groups = createGroupFrames(reader, (id) => nodes.get(id), groupMetrics);
 
   const ops: SceneOps = {
     reader,
@@ -174,6 +195,7 @@ export function createGeometryScene(
       connections.delete(id);
       index.removeConnection(entry);
     },
+    setGroup: (id) => groups.set(id),
     connectionsOfKind(kind) {
       return reader
         .connections()
@@ -195,9 +217,11 @@ export function createGeometryScene(
     nodes.clear();
     connections.clear();
     index.clear();
+    groups.clear();
     maxCapture = 0;
     for (const n of reader.nodes()) ops.setNode(n.id);
     for (const c of reader.connections()) ops.setConnection(c.id);
+    for (const g of reader.groups()) groups.set(g.id);
   }
   rebuild();
 
@@ -226,6 +250,9 @@ export function createGeometryScene(
   return {
     node: (id) => nodes.get(id),
     connection: (id) => connections.get(id),
+    group: (id) => groups.get(id),
+    groups: (rect) => (rect ? groups.inRect(rect) : groups.list()),
+    groupMetrics,
     project(id, change) {
       const record = reader.getNode(id);
       if (!record) return undefined;
@@ -236,8 +263,8 @@ export function createGeometryScene(
       );
     },
     queryRect: (rect, bounds = "painted") => query.queryRect(rect, bounds),
-    pick: (point, o) =>
-      pickAt(
+    pick(point, o) {
+      const hits = pickAt(
         {
           index: index.spatial,
           lookup: index.lookup,
@@ -246,8 +273,18 @@ export function createGeometryScene(
         },
         point,
         o,
-      ),
-    stats: () => ({ ...stats, indexWrites: index.writes() }),
+      );
+      if (o.groups === false || !(o.zoom > 0)) return hits;
+      const tolerance = (o.tolerancePx ?? DEFAULT_TOLERANCE_PX) / o.zoom;
+      for (const hit of groups.hitsAt(point, o.zoom, tolerance))
+        hits.push({ kind: "group", ...hit });
+      return hits;
+    },
+    stats: () => ({
+      ...stats,
+      groupRebuilds: groups.rebuilds(),
+      indexWrites: index.writes(),
+    }),
     rebuild,
     dispose() {
       for (const off of unsubscribers) off();

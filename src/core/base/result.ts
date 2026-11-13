@@ -57,6 +57,9 @@ export type RejectionCode =
   | "validator-stale"
   // Capabilities
   | "capability-denied"
+  // Groups
+  /** A locked group moves as one unit and its membership is frozen. */
+  | "group-locked"
   // Snapshots and documents
   | "invalid-shape"
   | "unsupported-format"

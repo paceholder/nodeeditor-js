@@ -107,6 +107,7 @@ const NODE_KEYS = [
   "title",
   "status",
   "capabilities",
+  "group",
   "ports",
   "payload",
 ];
@@ -149,6 +150,7 @@ export function parseNode(
   }
   const title = optStr(raw, "title", path, sink);
   const status = optStr(raw, "status", path, sink);
+  const group = optStr(raw, "group", path, sink);
   const caps =
     raw.capabilities === undefined
       ? undefined
@@ -213,6 +215,7 @@ export function parseNode(
     ...(title === undefined ? {} : { title }),
     ...(status === undefined ? {} : { status }),
     ...(caps ? { capabilities: caps } : {}),
+    ...(group === undefined ? {} : { group }),
     ports,
     payload: raw.payload as NodeSnapshot["payload"],
   };

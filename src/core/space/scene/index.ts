@@ -8,6 +8,7 @@ export type {
   SceneStats,
 } from "./geometry-scene.js";
 export { createGeometryScene } from "./geometry-scene.js";
+export type { GroupEntry, GroupHit } from "./group-frames.js";
 export type {
   HitCandidate,
   HitKind,

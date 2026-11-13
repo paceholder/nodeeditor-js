@@ -8,7 +8,7 @@ const change = (n: number): ChangeEvent => ({
   patch: { ops: [] },
   origin: "local",
   operationId: operationId(`op${n}`),
-  changed: { nodes: [], ports: [], connections: [] },
+  changed: { nodes: [], ports: [], connections: [], groups: [] },
 });
 
 describe("typed events", () => {

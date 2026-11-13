@@ -3,9 +3,11 @@
  *
  * Only entities the patch touched are checked, so state that was already odd but safe
  * (for example an over-limit attachment) is left alone. A violation is reported as
- * `dangling-reference` (or the endpoint codes for connections).
+ * `dangling-reference` (or the endpoint codes for connections). Groups add two rules: a
+ * node names only an existing group, and a group always has at least one member.
  */
 
+import type { GroupId } from "../../base/ids/ids.js";
 import { type Rejection, rejectionOf } from "../../base/result.js";
 import { checkConnectionEndpoints } from "../model/validate-records.js";
 import type { StagedState } from "./stage.js";
@@ -15,12 +17,33 @@ function dangling(message: string, entities: readonly string[]): Rejection {
   return rejectionOf("dangling-reference", message, entities);
 }
 
+/** A group that still exists must keep a member; `because` names what touched it. */
+function checkNotEmpty(
+  stage: StagedState,
+  group: GroupId | undefined,
+): Rejection | undefined {
+  if (group === undefined || !stage.getGroup(group)) return undefined;
+  return stage.groupMembers(group).length > 0
+    ? undefined
+    : dangling(`Group ${group} would have no members`, [group]);
+}
+
 function checkOp(stage: StagedState, op: PatchOp): Rejection | undefined {
   switch (op.entity) {
     case "node": {
       const id = op.op === "update" ? op.id : op.record.id;
       const node = stage.getNode(id);
+      const before =
+        op.op === "update" ? op.fields.group?.old : op.record.group;
+      const emptied = checkNotEmpty(stage, before);
+      if (emptied) return emptied;
       if (node) {
+        if (node.group !== undefined && !stage.getGroup(node.group)) {
+          return dangling(`Node ${id} names missing group ${node.group}`, [
+            id,
+            node.group,
+          ]);
+        }
         for (const p of node.ports) {
           if (stage.getPort(p)?.node !== node.id) {
             return dangling(`Node ${id} lists missing or foreign port ${p}`, [
@@ -98,6 +121,17 @@ function checkOp(stage: StagedState, op: PatchOp): Rejection | undefined {
       if (!connection) return undefined;
       const checked = checkConnectionEndpoints(connection, stage);
       return checked.ok ? undefined : checked.rejection;
+    }
+    case "group": {
+      const id = op.op === "update" ? op.id : op.record.id;
+      if (stage.getGroup(id)) return checkNotEmpty(stage, id);
+      const first = stage.groupMembers(id)[0];
+      return first
+        ? dangling(`Group ${id} is still named by node ${first.id}`, [
+            id,
+            first.id,
+          ])
+        : undefined;
     }
   }
 }

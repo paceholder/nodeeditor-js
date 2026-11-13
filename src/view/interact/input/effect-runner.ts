@@ -3,7 +3,12 @@
  * adapter supplies pointer capture and cursor, everything else goes to view services.
  * A `commit` goes through the host's command path, the same one the API uses.
  */
-import type { Command, Endpoint, Rejection } from "../../../core/index.js";
+import type {
+  Command,
+  Endpoint,
+  GroupId,
+  Rejection,
+} from "../../../core/index.js";
 import type { SelectionModel } from "../selection/selection-model.js";
 import type {
   ChoiceRelease,
@@ -28,6 +33,8 @@ export interface EffectHost {
   requestVerdict?(source: Endpoint, target: Endpoint): void;
   /** A connection was refused during the gesture; omitted: ignored. */
   rejected?(rejection: Rejection): void;
+  /** Edit a group's title in place; omitted: ignored. */
+  editGroupTitle?(group: GroupId): void;
 }
 
 export function createEffectRunner(
@@ -67,6 +74,9 @@ export function createEffectRunner(
           break;
         case "reject":
           host.rejected?.(effect.rejection);
+          break;
+        case "edit-group-title":
+          host.editGroupTitle?.(effect.group);
           break;
       }
     }

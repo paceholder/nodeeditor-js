@@ -2,7 +2,7 @@
  * Patch format.
  *
  * A patch is plain JSON-compatible data: an ordered list of add, remove and update
- * operations on nodes, ports and connections. Updates carry the old and new value of every
+ * operations on nodes, ports, connections and groups. Updates carry the old and new value of every
  * changed field. Removes carry the full record and its collection order key (`seq`), so an
  * inverse restores the exact prior state including order.
  *
@@ -11,14 +11,20 @@
  */
 
 import type { IdCursor } from "../../base/ids/id-generator.js";
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import type {
   ConnectionRecord,
+  GroupRecord,
   NodeRecord,
   PortRecord,
 } from "../model/records.js";
 
-export type EntityKind = "node" | "port" | "connection";
+export type EntityKind = "node" | "port" | "connection" | "group";
 
 /** Old and new value of one field. A missing key means the field is absent. */
 export interface FieldChange<V> {
@@ -34,6 +40,8 @@ export type NodeFieldChanges = Changes<Omit<NodeRecord, "id">>;
 export type PortFieldChanges = Changes<Omit<PortRecord, "id" | "node">>;
 /** Endpoints may change; the ID stays. */
 export type ConnectionFieldChanges = Changes<Omit<ConnectionRecord, "id">>;
+/** Membership is not here: it is the `group` field of each member node. */
+export type GroupFieldChanges = Changes<Omit<GroupRecord, "id">>;
 
 export type PatchOp =
   | {
@@ -89,6 +97,24 @@ export type PatchOp =
       readonly entity: "connection";
       readonly id: ConnectionId;
       readonly fields: ConnectionFieldChanges;
+    }
+  | {
+      readonly op: "add";
+      readonly entity: "group";
+      readonly record: GroupRecord;
+      readonly seq?: number;
+    }
+  | {
+      readonly op: "remove";
+      readonly entity: "group";
+      readonly record: GroupRecord;
+      readonly seq: number;
+    }
+  | {
+      readonly op: "update";
+      readonly entity: "group";
+      readonly id: GroupId;
+      readonly fields: GroupFieldChanges;
     };
 
 export interface Patch {
@@ -105,6 +131,8 @@ export interface ChangedIds {
   readonly nodes: readonly NodeId[];
   readonly ports: readonly PortId[];
   readonly connections: readonly ConnectionId[];
+  /** Groups added, removed or updated, and groups that gained or lost a member. */
+  readonly groups: readonly GroupId[];
 }
 
 /** A committed patch: every add carries the `seq` it was given, so it can be inverted. */

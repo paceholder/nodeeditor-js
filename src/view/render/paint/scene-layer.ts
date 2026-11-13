@@ -1,8 +1,9 @@
 /**
  * Scene layer painting.
  *
- * Per frame: ask the geometry scene for items whose painted bounds meet the visible world
- * rectangle (already in paint order), then paint by z-layer in the configured order. Each
+ * Per frame: paint the group frames that meet the visible world rectangle, then ask the
+ * geometry scene for items whose painted bounds meet it (already in paint order) and
+ * paint them by z-layer in the configured order, so frames lie beneath everything else. Each
  * node gets one composed matrix (device . viewport . node) set once; connections and port
  * glyphs paint in world space. Painters come from the registries and can be swapped
  * independently of geometry. At the `overview` detail level nodes and connections are
@@ -36,6 +37,7 @@ import {
   drawNodeBadges,
   drawNodeSelection,
 } from "./decorations.js";
+import { paintGroupFrames } from "./group-layer.js";
 import {
   type DetailPolicy,
   detailPolicy,
@@ -106,6 +108,8 @@ function boundsOf(deps: SceneLayerDeps, e: NodeEntry): Rect<"local"> {
 export interface ScenePaintStats {
   readonly nodes: number;
   readonly connections: number;
+  /** Group frames painted. */
+  readonly groups: number;
 }
 
 export const DEFAULT_Z_ORDER: readonly SceneLayer[] = deepFreeze([
@@ -293,6 +297,20 @@ export function paintScene(
   const nodes: NodeEntry[] = [];
   const connections: ConnectionEntry[] = [];
   const hidden = deps.state.isHidden;
+  const groups = deps.scene
+    .groups(frame.visibleWorld)
+    .filter((g) => !hidden?.(g.id));
+  paintGroupFrames(
+    ctx,
+    {
+      painter: deps.painters.group.get(),
+      metrics: deps.scene.groupMetrics,
+      state: deps.state,
+      ...(deps.fault ? { fault: deps.fault } : {}),
+    },
+    frame,
+    groups,
+  );
   for (const item of deps.scene.queryRect(frame.visibleWorld, "painted")) {
     if (hidden?.(item.id)) continue;
     if (item.kind === "node") {
@@ -304,5 +322,9 @@ export function paintScene(
     }
   }
   paintEntries(ctx, deps, frame, nodes, connections);
-  return { nodes: nodes.length, connections: connections.length };
+  return {
+    nodes: nodes.length,
+    connections: connections.length,
+    groups: groups.length,
+  };
 }

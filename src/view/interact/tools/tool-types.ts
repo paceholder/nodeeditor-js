@@ -14,6 +14,7 @@ import type {
   Endpoint,
   GeometryScene,
   GraphReader,
+  GroupId,
   HitCandidate,
   NodeId,
   Point,
@@ -203,7 +204,9 @@ export type ToolEffect =
       readonly target: Endpoint;
     }
   /** A connection was refused during the gesture; the host may show the reason. */
-  | { readonly type: "reject"; readonly rejection: Rejection };
+  | { readonly type: "reject"; readonly rejection: Rejection }
+  /** Open the title editor of a group (a double-click on its title strip). */
+  | { readonly type: "edit-group-title"; readonly group: GroupId };
 
 /** What a release on a choice target hands to the choice controller. */
 export interface ChoiceRelease {
@@ -218,7 +221,10 @@ export interface ToolContext {
   /** Hit candidates at a world point, best first; tolerances are CSS pixels. */
   pick(world: Point<"world">): HitCandidate[];
   readonly reader: GraphReader;
-  readonly scene: Pick<GeometryScene, "queryRect" | "node" | "connection">;
+  readonly scene: Pick<
+    GeometryScene,
+    "queryRect" | "node" | "connection" | "group" | "groups" | "groupMetrics"
+  >;
   readonly selection: ReadonlySelection;
   readonly viewport: Viewport;
   readonly zoom: number;

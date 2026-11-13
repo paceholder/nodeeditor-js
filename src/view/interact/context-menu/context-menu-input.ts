@@ -112,6 +112,7 @@ export function attachContextMenuInput(
       selection: {
         nodes: deps.selection.nodeIds(),
         connections: deps.selection.connectionIds(),
+        groups: deps.selection.groupIds(),
       },
       invocation,
       modifiers,

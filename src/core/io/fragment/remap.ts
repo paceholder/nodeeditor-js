@@ -2,15 +2,22 @@
  * ID remapping and placement for paste.
  *
  * Fresh IDs come from the plan's allocator in a fixed order: each node in fragment order
- * followed by its ports in presentation order, then the internal connections. The maps
+ * followed by its ports in presentation order, then the internal connections, then the
+ * groups. The maps
  * are only read by key, never iterated for output. The allocator advances the document
  * cursor, so a retired ID is never handed out again.
  */
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { MisuseError } from "../../base/result.js";
 import type {
   ConnectionRecord,
   Endpoint,
+  GroupRecord,
   NodeRecord,
   Payload,
   PortRecord,
@@ -21,6 +28,7 @@ import type { IdAllocator } from "../../edit/commands/id-allocator.js";
 import type { Placement } from "../../edit/commands/types.js";
 import {
   connectionToRecord,
+  groupToRecord,
   nodeToRecord,
   portToRecord,
 } from "../snapshot/records.js";
@@ -34,6 +42,7 @@ export interface IdMaps {
   readonly nodes: ReadonlyMap<string, NodeId>;
   readonly ports: ReadonlyMap<string, PortId>;
   readonly connections: ReadonlyMap<string, ConnectionId>;
+  readonly groups: ReadonlyMap<string, GroupId>;
 }
 
 export function allocateIds(snapshot: GraphSnapshot, ids: IdAllocator): IdMaps {
@@ -45,7 +54,9 @@ export function allocateIds(snapshot: GraphSnapshot, ids: IdAllocator): IdMaps {
     for (const port of node.ports) ports.set(port.id, ids.port());
   }
   for (const c of snapshot.connections) connections.set(c.id, ids.connection());
-  return { nodes, ports, connections };
+  const groups = new Map<string, GroupId>();
+  for (const g of snapshot.groups ?? []) groups.set(g.id, ids.group());
+  return { nodes, ports, connections, groups };
 }
 
 /** The new endpoint for an endpoint inside the fragment, or undefined outside it. */
@@ -76,6 +87,7 @@ export interface RemappedRecords {
     readonly ports: readonly PortRecord[];
   }[];
   readonly connections: readonly ConnectionRecord[];
+  readonly groups: readonly GroupRecord[];
 }
 
 /**
@@ -110,6 +122,9 @@ export function remapRecords(
       },
       z: baseZ + i,
       ports: ports.map((p) => p.id),
+      ...(record.group === undefined
+        ? {}
+        : { group: need(maps.groups.get(record.group)) }),
     };
     return { node, ports };
   });
@@ -126,5 +141,9 @@ export function remapRecords(
         : {}),
     };
   });
-  return { nodes, connections };
+  const groups = (snapshot.groups ?? []).map((g) => ({
+    ...groupToRecord(g),
+    id: need(maps.groups.get(g.id)),
+  }));
+  return { nodes, connections, groups };
 }

@@ -1,6 +1,11 @@
 /** Record builders shared by model tests. */
-import { connectionId, nodeId, portId } from "../../base/ids/ids.js";
-import type { ConnectionRecord, NodeRecord, PortRecord } from "./records.js";
+import { connectionId, groupId, nodeId, portId } from "../../base/ids/ids.js";
+import type {
+  ConnectionRecord,
+  GroupRecord,
+  NodeRecord,
+  PortRecord,
+} from "./records.js";
 
 export function mkNode(id: string, over: Partial<NodeRecord> = {}): NodeRecord {
   return {
@@ -45,4 +50,11 @@ export function mkConn(
     from: { node: nodeId(fromNode), port: portId(fromPort) },
     to: { node: nodeId(toNode), port: portId(toPort) },
   };
+}
+
+export function mkGroup(
+  id: string,
+  over: Partial<GroupRecord> = {},
+): GroupRecord {
+  return { id: groupId(id), title: "Group", locked: false, ...over };
 }

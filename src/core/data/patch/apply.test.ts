@@ -121,6 +121,7 @@ describe("applying a patch", () => {
       nodes: ["n1", "n2"],
       ports: [],
       connections: ["c3"],
+      groups: [],
     });
   });
 

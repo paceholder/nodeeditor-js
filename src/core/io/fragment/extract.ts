@@ -4,11 +4,13 @@
  * The copied nodes come out in paint order with their ports in presentation order,
  * dynamic ports included. Every connection whose two ends are copied nodes is internal
  * and copied, whether or not it was selected. Connections reaching outside the set are
- * listed in `external` and reported as excluded, never copied. Original IDs are kept;
+ * listed in `external` and reported as excluded, never copied. A selected group is copied
+ * with all its members; a node whose group is not selected is copied as a free node.
+ * Original IDs are kept;
  * paste remaps them, so one fragment can be pasted any number of times. Payloads go
  * through the type's codec or must be plain JSON, exactly as `saveDocument` requires.
  */
-import type { ConnectionId, NodeId } from "../../base/ids/ids.js";
+import type { ConnectionId, GroupId, NodeId } from "../../base/ids/ids.js";
 import {
   err,
   ok,
@@ -17,9 +19,17 @@ import {
   rejectionOf,
 } from "../../base/result.js";
 import type { GraphReader } from "../../data/model/reader.js";
-import type { ConnectionRecord, NodeRecord } from "../../data/model/records.js";
+import type {
+  ConnectionRecord,
+  GroupRecord,
+  NodeRecord,
+} from "../../data/model/records.js";
 import { checkJson } from "../snapshot/json-value.js";
-import { connectionToSnapshot, nodeToSnapshot } from "../snapshot/records.js";
+import {
+  connectionToSnapshot,
+  groupToSnapshot,
+  nodeToSnapshot,
+} from "../snapshot/records.js";
 import {
   type PayloadCodecRegistry,
   resolveLimits,
@@ -38,6 +48,8 @@ export interface FragmentSelection {
   readonly nodes: readonly NodeId[];
   /** Selected connections; internal ones are copied anyway, others are external. */
   readonly connections?: readonly ConnectionId[];
+  /** Selected groups: each is copied together with all of its members. */
+  readonly groups?: readonly GroupId[];
 }
 
 export interface ExtractOptions {
@@ -99,6 +111,18 @@ export function extractFragment(
     if (!inSet.has(id)) nodes.push(node);
     inSet.add(id);
   }
+  const groups: GroupRecord[] = [];
+  for (const id of new Set(selection.groups ?? [])) {
+    const group = reader.getGroup(id);
+    if (!group) {
+      return err(rejectionOf("unknown-entity", `${id} does not exist`, [id]));
+    }
+    groups.push(group);
+    for (const member of reader.groupMembers(id)) {
+      if (!inSet.has(member.id)) nodes.push(member);
+      inSet.add(member.id);
+    }
+  }
   if (nodes.length === 0) {
     return err(
       rejectionOf("empty-fragment", "Select at least one node to copy"),
@@ -128,11 +152,14 @@ export function extractFragment(
     (c) => !(inSet.has(c.from.node) && inSet.has(c.to.node)),
   );
 
+  groups.sort((a, b) => (reader.seqOf(a.id) ?? 0) - (reader.seqOf(b.id) ?? 0));
+  const copied = new Set<string>(groups.map((g) => g.id));
   const encoded: NodeSnapshot[] = [];
   for (const node of nodes) {
     const one = encodeNode(node, reader, options);
     if (!one.ok) return one;
-    encoded.push(one.value);
+    const { group, ...free } = one.value;
+    encoded.push(group !== undefined && copied.has(group) ? one.value : free);
   }
   return ok({
     fragment: {
@@ -143,6 +170,7 @@ export function extractFragment(
         version: FORMAT_VERSION,
         nodes: encoded,
         connections: internal.map(connectionToSnapshot),
+        ...(groups.length > 0 ? { groups: groups.map(groupToSnapshot) } : {}),
       },
       external: external.map(connectionToSnapshot),
     },

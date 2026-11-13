@@ -155,7 +155,7 @@ export function unconfirmedOf(
       const id = op.op === "update" ? op.id : op.record.id;
       if (op.entity === "node") nodes.add(id as NodeId);
       else if (op.entity === "port") ports.add(id as PortId);
-      else connections.add(id as ConnectionId);
+      else if (op.entity === "connection") connections.add(id as ConnectionId);
     }
   }
   return { nodes, ports, connections };

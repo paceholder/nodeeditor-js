@@ -298,6 +298,12 @@ export function mountView(
     interaction,
     clock,
     nodeRect: (id) => handleNodeRect(id),
+    clientRect: (bounds) =>
+      metrics.isMeasurable()
+        ? clientRectOf(bounds, viewport.get(), metrics.clientRect())
+        : undefined,
+    attachOverlay: overlay.attach,
+    theme: () => theme,
     setHovered(id) {
       if (id === hovered) return;
       const left = hovered;
@@ -330,6 +336,7 @@ export function mountView(
     painters.portGlyphs.onChange(() => markDirty("scene")),
     painters.connections.onChange(() => markDirty("scene")),
     painters.background.onChange(() => markDirty("background")),
+    painters.group.onChange(() => markDirty("scene")),
     routeEditors.onChange(() => markDirty("scene")),
     // A ready or failed asset repaints the scene.
     assets.onChange(() => markDirty("scene")),

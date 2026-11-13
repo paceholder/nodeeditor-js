@@ -10,8 +10,14 @@
  * by paint order descending (topmost first), then nearest port first, then by ID.
  */
 
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import { applyPoint } from "../geometry/affine.js";
+import type { GroupFramePart } from "../geometry/group-frame.js";
 import { clampZoom } from "../geometry/limits.js";
 import { pathDistance } from "../geometry/path-geometry.js";
 import { shapeContains } from "../geometry/shapes.js";
@@ -23,7 +29,8 @@ import {
 import type { ConnectionEntry, NodeEntry } from "./scene-entries.js";
 import type { IndexedRef } from "./scene-index.js";
 
-export type HitKind = "port" | "node" | "connection";
+/** Group frames are always last in the interactive order, whatever `order` says. */
+export type HitKind = "port" | "node" | "connection" | "group";
 
 /** `member` is reserved for bundled-path members and is never set yet. */
 export type HitCandidate =
@@ -33,6 +40,12 @@ export type HitCandidate =
       readonly kind: "connection";
       readonly connectionId: ConnectionId;
       readonly member?: string;
+    }
+  /** A group frame's lock icon, title strip or border; never its interior. */
+  | {
+      readonly kind: "group";
+      readonly groupId: GroupId;
+      readonly part: GroupFramePart;
     };
 
 export interface PickOptions {
@@ -47,6 +60,8 @@ export interface PickOptions {
    * out, the level of detail rule): capture radii then leave the broad phase and no port is returned.
    */
   readonly ports?: boolean;
+  /** Include group frames, after every other candidate. Default true. */
+  readonly groups?: boolean;
 }
 
 export interface PickSource {

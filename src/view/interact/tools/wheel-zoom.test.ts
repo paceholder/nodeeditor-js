@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveToolOptions, type ToolOptions } from "./thresholds.js";
+import { resolveToolOptions, type ToolOptionsInput } from "./thresholds.js";
 import {
   NO_MODIFIERS,
   type ToolContext,
@@ -11,7 +11,7 @@ type Wheel = Extract<ToolInput, { type: "wheel" }>;
 
 function ctxOf(
   zoom: number,
-  over: Partial<ToolOptions> = {},
+  over: ToolOptionsInput = {},
   range = { min: 0.1, max: 4 },
 ): ToolContext {
   return {

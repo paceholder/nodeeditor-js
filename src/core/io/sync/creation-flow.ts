@@ -40,7 +40,7 @@ function complete(state: SyncState, entry: CreationEntry, id?: NodeId): void {
     status: "accepted",
     operationId: entry.operationId,
     revision: state.displayed.reader.revision(),
-    changed: { nodes: id ? [id] : [], ports, connections: [] },
+    changed: { nodes: id ? [id] : [], ports, connections: [], groups: [] },
     ...(id ? { nodeId: id } : {}),
   });
 }

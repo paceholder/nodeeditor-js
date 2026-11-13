@@ -68,6 +68,7 @@ function ordered(fragment: ClipboardFragment): ClipboardFragment {
     version: FORMAT_VERSION,
     nodes: fragment.fragment.nodes,
     connections: fragment.fragment.connections,
+    ...(fragment.fragment.groups ? { groups: fragment.fragment.groups } : {}),
   };
   return {
     format: FRAGMENT_FORMAT,

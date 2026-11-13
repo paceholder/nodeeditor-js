@@ -15,6 +15,9 @@ const LABELS: ReadonlyArray<readonly [string, string, unknown?]> = [
   ["command.edit.paste", "Paste here"],
   ["command.edit.duplicate", "Duplicate"],
   ["command.edit.delete", "Delete"],
+  ["command.group.create", "Group"],
+  ["command.group.ungroup", "Ungroup"],
+  ["command.group.rename", "Rename group"],
   ["command.nodes.rotate", "Rotate clockwise", { turns: 1 }],
   ["command.nodes.mirror", "Mirror left-right", { axis: "horizontal" }],
   ["command.route.reset", "Reset route"],
@@ -83,8 +86,9 @@ export function installContextMenu(view: ViewHandle): () => void {
       item.disabled = !state.available;
       if (!state.available) item.title = state.rejection.message;
       item.addEventListener("click", () => {
-        view.commands.run(id, args);
+        // Close first: a command may move focus itself (the group title editor).
         close(true);
+        view.commands.run(id, args);
       });
       menu.append(item);
     }

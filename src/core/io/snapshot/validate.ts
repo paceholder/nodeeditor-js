@@ -71,6 +71,9 @@ export function validateSnapshotInto(
     ...(parts.cursor ? { idCursor: parts.cursor } : {}),
     nodes: parts.nodes.map((n) => n.value),
     connections: parts.connections.map((c) => c.value),
+    ...(parts.groups.length > 0
+      ? { groups: parts.groups.map((g) => g.value) }
+      : {}),
   };
 }
 
@@ -78,8 +81,9 @@ export function validateSnapshotInto(
  * Reference pass of the snapshot validator.
  *
  * Runs on the structurally valid parts only: duplicate IDs across all entity kinds,
- * dangling connection endpoints, and endpoint ports that belong to another node. For a
- * fragment the same checks make every connection reference only nodes inside it.
+ * dangling connection endpoints, endpoint ports that belong to another node, nodes that
+ * name a missing group, and groups that no node names. For a fragment the same checks
+ * make every connection and membership reference only entities inside it.
  */
 export function checkReferences(parts: ShapeParts, sink: ErrorSink): void {
   const seen = new Map<string, string>();
@@ -105,6 +109,30 @@ export function checkReferences(parts: ShapeParts, sink: ErrorSink): void {
       if (claim(port.id, `${path}.ports[${j}]`))
         portOwner.set(port.id, node.id);
     });
+  }
+  const groupIds = new Set<string>();
+  for (const { path, value: group } of parts.groups) {
+    if (claim(group.id, path)) groupIds.add(group.id);
+  }
+  const named = new Set<string>();
+  for (const { path, value: node } of parts.nodes) {
+    if (node.group === undefined) continue;
+    named.add(node.group);
+    if (!groupIds.has(node.group) && !parts.skipped.has(node.group)) {
+      sink.add(
+        "dangling-reference",
+        `Group ${node.group} does not exist`,
+        `${path}.group`,
+        [node.id, node.group],
+      );
+    }
+  }
+  for (const { path, value: group } of parts.groups) {
+    if (!named.has(group.id) && !parts.nodesUnread) {
+      sink.add("dangling-reference", `Group ${group.id} has no members`, path, [
+        group.id,
+      ]);
+    }
   }
   for (const { path, value: c } of parts.connections) {
     claim(c.id, path);

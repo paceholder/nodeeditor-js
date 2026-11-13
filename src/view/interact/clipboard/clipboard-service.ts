@@ -20,7 +20,12 @@ import {
   rejectionOf,
 } from "../../../core/index.js";
 import { LOCKED, VIEW_LOCKED } from "../lock/view-lock.js";
-import { connectionKey, nodeKey } from "../selection/selection-model.js";
+import { cutCommand } from "../selection/moved-nodes.js";
+import {
+  connectionKey,
+  groupKey,
+  nodeKey,
+} from "../selection/selection-model.js";
 import type {
   ClipboardEventMap,
   ClipboardService,
@@ -76,7 +81,11 @@ export function createClipboardService(
   function extract(): CopyOutcome {
     const r = extractFragment(
       reader,
-      { nodes: selection.nodeIds(), connections: selection.connectionIds() },
+      {
+        nodes: selection.nodeIds(),
+        connections: selection.connectionIds(),
+        groups: selection.groupIds(),
+      },
       parseOptions,
     );
     if (!r.ok) return r;
@@ -117,6 +126,7 @@ export function createClipboardService(
         selection.replace([
           ...created.nodes.map(nodeKey),
           ...created.connections.map(connectionKey),
+          ...created.groups.map(groupKey),
         ]),
       // The paste was reported pending; its final refusal is a second report.
       refused: (rejection) => {
@@ -165,11 +175,7 @@ export function createClipboardService(
       if (!model) return err(NO_MODEL);
       const r = extract();
       if (!r.ok) return r;
-      const result = model.execute({
-        kind: "deleteEntities",
-        nodes: selection.nodeIds(),
-        connections: selection.connectionIds(),
-      });
+      const result = model.execute(cutCommand(selection, reader));
       if (result.status === "rejected") return err(result.rejection);
       if (result.status === "choice-required" || result.status === "unverified")
         return err(
@@ -192,6 +198,7 @@ export function createClipboardService(
         commit({
           kind: "duplicate",
           nodes: selection.nodeIds(),
+          groups: selection.groupIds(),
           placement: duplicatePlacement(step),
           external,
         }),
@@ -250,7 +257,8 @@ export function createClipboardService(
       if (isLocked()) return LOCKED;
       if (!model) return { available: false, rejection: NO_MODEL };
       const nodes = selection.nodeIds();
-      if (nodes.length === 0) {
+      const groups = selection.groupIds();
+      if (nodes.length + groups.length === 0) {
         return {
           available: false,
           rejection: rejectionOf("empty-fragment", "Select at least one node"),
@@ -259,6 +267,7 @@ export function createClipboardService(
       return model.can({
         kind: "duplicate",
         nodes,
+        groups,
         placement: duplicatePlacement(step),
         external,
       });

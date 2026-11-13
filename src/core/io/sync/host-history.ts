@@ -54,7 +54,7 @@ export function createHostSyncHistory(
           status: "accepted",
           operationId,
           revision: state.displayed.reader.revision(),
-          changed: { nodes: [], ports: [], connections: [] },
+          changed: { nodes: [], ports: [], connections: [], groups: [] },
         });
       } else if (answer.status === "rejected") {
         refuse(state, emptyStep(state, kind, operationId), answer.rejection);

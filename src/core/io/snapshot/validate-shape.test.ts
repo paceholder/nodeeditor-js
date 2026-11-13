@@ -129,9 +129,9 @@ describe("shape validation", () => {
   });
 
   it("rejects a non-empty reserved section but accepts an empty one", () => {
-    expect(validateSnapshot({ ...sampleSnapshot(), groups: [] }).ok).toBe(true);
-    const e = errorsOf({ ...sampleSnapshot(), groups: [{ id: "g1" }] });
-    expect(e[0]).toMatchObject({ code: "unsupported-section", path: "groups" });
+    expect(validateSnapshot({ ...sampleSnapshot(), routes: [] }).ok).toBe(true);
+    const e = errorsOf({ ...sampleSnapshot(), routes: [{ id: "r1" }] });
+    expect(e[0]).toMatchObject({ code: "unsupported-section", path: "routes" });
   });
 
   it("treats a fragment as a snapshot without an ID cursor", () => {

@@ -1,15 +1,20 @@
 /**
  * View-local selection.
  *
- * An ordered list of entity keys (`n:<id>` / `c:<id>`) plus a primary key. Insertion
+ * An ordered list of entity keys (`n:<id>` / `c:<id>` / `g:<id>`) plus a primary key. Insertion
  * order is the documented tie-break. Each view owns its own model; nothing here touches
  * the graph, and entities that disappear from the model are dropped when its events
  * arrive. The model also satisfies the scene painter's `ViewState` for selection.
  */
-import type { ConnectionId, NodeId, SceneSource } from "../../../core/index.js";
-import { connectionId, nodeId } from "../../../core/index.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  SceneSource,
+} from "../../../core/index.js";
+import { connectionId, groupId, nodeId } from "../../../core/index.js";
 
-export type SelectionKey = `n:${string}` | `c:${string}`;
+export type SelectionKey = `n:${string}` | `c:${string}` | `g:${string}`;
 
 export function nodeKey(id: NodeId): SelectionKey {
   return `n:${id}`;
@@ -17,6 +22,10 @@ export function nodeKey(id: NodeId): SelectionKey {
 
 export function connectionKey(id: ConnectionId): SelectionKey {
   return `c:${id}`;
+}
+
+export function groupKey(id: GroupId): SelectionKey {
+  return `g:${id}`;
 }
 
 export type SelectionChange =
@@ -60,6 +69,7 @@ export interface ReadonlySelection {
   primary(): SelectionKey | undefined;
   nodeIds(): NodeId[];
   connectionIds(): ConnectionId[];
+  groupIds(): GroupId[];
 }
 
 export interface SelectionModel extends ReadonlySelection {
@@ -116,6 +126,8 @@ export function createSelectionModel(): SelectionModel {
       keys
         .filter((k) => k.startsWith("c:"))
         .map((k) => connectionId(k.slice(2))),
+    groupIds: () =>
+      keys.filter((k) => k.startsWith("g:")).map((k) => groupId(k.slice(2))),
     isSelected: (id) => ids.has(id),
     apply(change) {
       const hint = change.mode === "clear" ? [] : change.keys;
@@ -136,7 +148,9 @@ export function createSelectionModel(): SelectionModel {
         const live = keys.filter((k) =>
           k.startsWith("n:")
             ? source.reader.getNode(nodeId(k.slice(2)))
-            : source.reader.getConnection(connectionId(k.slice(2))),
+            : k.startsWith("g:")
+              ? source.reader.getGroup(groupId(k.slice(2)))
+              : source.reader.getConnection(connectionId(k.slice(2))),
         );
         if (live.length !== keys.length) set(live, []);
       };

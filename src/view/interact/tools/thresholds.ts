@@ -5,6 +5,25 @@
 import { deepFreeze } from "../../platform/deep-freeze.js";
 import { type AutoPanOptions, DEFAULT_AUTO_PAN } from "./auto-pan.js";
 
+/** How group frames respond to the pointer. */
+export interface GroupOptions {
+  /**
+   * Dropping a dragged free node on a group adds it, and dropping a member clear of the
+   * other members removes it. Off: a drag never changes membership.
+   */
+  readonly dragMembership: boolean;
+  /**
+   * Double-click on a title and F2 open the built-in text editor. Off: the view raises
+   * the `group-title-edit` event instead, for a host editor.
+   */
+  readonly titleEditor: boolean;
+}
+
+export const DEFAULT_GROUP_OPTIONS: GroupOptions = deepFreeze({
+  dragMembership: true,
+  titleEditor: true,
+});
+
 export interface ToolOptions {
   /** Movement before a press becomes a drag. */
   readonly dragThresholdPx: { readonly mouse: number; readonly touch: number };
@@ -49,6 +68,11 @@ export interface ToolOptions {
    * ms. The second press must also stay within the drag threshold.
    */
   readonly doubleClickMs: number;
+  /**
+   * Group frame interaction; `false` leaves frames painted but not interactive (no
+   * selection, drag, lock click or title editing by pointer).
+   */
+  readonly groups: GroupOptions | false;
 }
 
 export const DEFAULT_TOOL_OPTIONS: ToolOptions = deepFreeze({
@@ -63,12 +87,21 @@ export const DEFAULT_TOOL_OPTIONS: ToolOptions = deepFreeze({
   autoPan: DEFAULT_AUTO_PAN,
   longPressMs: 500,
   doubleClickMs: 500,
+  groups: DEFAULT_GROUP_OPTIONS,
 });
 
-export function resolveToolOptions(
-  over: Partial<ToolOptions> = {},
-): ToolOptions {
-  return { ...DEFAULT_TOOL_OPTIONS, ...over };
+/** `ToolOptions` as a host gives them: nested group options may be partial. */
+export type ToolOptionsInput = Partial<Omit<ToolOptions, "groups">> & {
+  readonly groups?: Partial<GroupOptions> | false;
+};
+
+export function resolveToolOptions(over: ToolOptionsInput = {}): ToolOptions {
+  const { groups, ...rest } = over;
+  return {
+    ...DEFAULT_TOOL_OPTIONS,
+    ...rest,
+    groups: groups === false ? false : { ...DEFAULT_GROUP_OPTIONS, ...groups },
+  };
 }
 
 export function dragThreshold(

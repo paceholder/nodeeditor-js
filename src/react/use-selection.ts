@@ -5,6 +5,7 @@ import { useEditorState } from "./use-editor-state.js";
 const NONE: SelectionState = {
   nodes: [],
   connections: [],
+  groups: [],
   primary: undefined,
 };
 
@@ -15,7 +16,8 @@ const same = (a: SelectionState, b: SelectionState): boolean =>
   a.primary?.kind === b.primary?.kind &&
   a.primary?.id === b.primary?.id &&
   sameIds(a.nodes, b.nodes) &&
-  sameIds(a.connections, b.connections);
+  sameIds(a.connections, b.connections) &&
+  sameIds(a.groups, b.groups);
 
 const EVENTS = ["selection"] as const;
 const OPTIONS = { fallback: NONE, isEqual: same };

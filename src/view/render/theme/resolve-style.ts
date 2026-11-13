@@ -3,7 +3,7 @@
  * override. With no override the theme itself is returned, so the common case allocates
  * nothing per painted entity.
  */
-import type { StyleTokens, ThemeTokens } from "./tokens.js";
+import type { GroupStyleTokens, StyleTokens, ThemeTokens } from "./tokens.js";
 
 export type ResolvedStyle = Readonly<StyleTokens>;
 
@@ -41,4 +41,19 @@ export function resolveStyle(theme: ThemeTokens, key: StyleKey): ResolvedStyle {
   const byEntity = own(theme.entityOverrides, key.id);
   if (!byType && !byEntity) return theme;
   return { ...theme, ...byType, ...byEntity };
+}
+
+/**
+ * The style of a group: the theme's group tokens, then the named style its `style` key
+ * selects. An unknown or absent key gives the theme's own values.
+ */
+export function resolveGroupStyle(
+  theme: ThemeTokens,
+  style: string | undefined,
+): Readonly<GroupStyleTokens> {
+  const named =
+    style !== undefined && Object.hasOwn(theme.groupStyles, style)
+      ? theme.groupStyles[style]
+      : undefined;
+  return named ? { ...theme, ...named } : theme;
 }

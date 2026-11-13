@@ -30,7 +30,14 @@ export interface StyleTokens {
   readonly connectionWidth: number;
 }
 
-export interface ThemeTokens extends StyleTokens {
+/** The values one group frame is painted with. */
+export interface GroupStyleTokens {
+  readonly groupFill: string;
+  readonly groupStroke: string;
+  readonly groupTitleColor: string;
+}
+
+export interface ThemeTokens extends StyleTokens, GroupStyleTokens {
   readonly background: string;
   readonly gridMinor: string;
   readonly gridMajor: string;
@@ -55,6 +62,12 @@ export interface ThemeTokens extends StyleTokens {
    * every zoom.
    */
   readonly lodHidePortsBelow: number;
+  /** Corner radius of a group frame, world units. */
+  readonly groupRadius: number;
+  /** Border of a group that a dragged node is about to join. */
+  readonly groupJoin: string;
+  /** Named group styles: a group's `style` key selects one; unknown keys use the default. */
+  readonly groupStyles: Readonly<Record<string, Partial<GroupStyleTokens>>>;
   /** Overrides by node type, port type key, or connection kind. */
   readonly typeOverrides: Readonly<Record<string, Partial<StyleTokens>>>;
   /** Overrides by entity ID; they win over type overrides. */
@@ -68,9 +81,15 @@ type OverridePatch = Readonly<Record<string, Partial<StyleTokens> | undefined>>;
  * `undefined` removes that override.
  */
 export interface ThemeInput
-  extends Partial<Omit<ThemeTokens, "typeOverrides" | "entityOverrides">> {
+  extends Partial<
+    Omit<ThemeTokens, "typeOverrides" | "entityOverrides" | "groupStyles">
+  > {
   readonly typeOverrides?: OverridePatch;
   readonly entityOverrides?: OverridePatch;
+  /** Merged per key like the override tables; `undefined` removes a style. */
+  readonly groupStyles?: Readonly<
+    Record<string, Partial<GroupStyleTokens> | undefined>
+  >;
 }
 
 export const DEFAULT_THEME: ThemeTokens = deepFreeze({
@@ -100,15 +119,21 @@ export const DEFAULT_THEME: ThemeTokens = deepFreeze({
   lodMinimalBelow: 0.25,
   lodOverviewBelow: 0.15,
   lodHidePortsBelow: 0.25,
+  groupFill: "rgba(138, 148, 166, 0.10)",
+  groupStroke: "#8a94a6",
+  groupTitleColor: "#c3c9d4",
+  groupRadius: 8,
+  groupJoin: "#7fd08a",
+  groupStyles: {},
   typeOverrides: {},
   entityOverrides: {},
 });
 
-function mergeOverrides(
-  base: ThemeTokens["typeOverrides"],
-  patch: OverridePatch | undefined,
-): ThemeTokens["typeOverrides"] {
-  const merged: Record<string, Partial<StyleTokens>> = { ...base };
+function mergeOverrides<T>(
+  base: Readonly<Record<string, T>>,
+  patch: Readonly<Record<string, T | undefined>> | undefined,
+): Readonly<Record<string, T>> {
+  const merged: Record<string, T> = { ...base };
   for (const [key, value] of Object.entries(patch ?? {})) {
     if (value === undefined) delete merged[key];
     else merged[key] = value;
@@ -122,11 +147,12 @@ function mergeOverrides(
  * removes the `pump` override.
  */
 export function mergeTheme(base: ThemeTokens, patch: ThemeInput): ThemeTokens {
-  const { typeOverrides, entityOverrides, ...scalars } = patch;
+  const { typeOverrides, entityOverrides, groupStyles, ...scalars } = patch;
   return {
     ...base,
     ...scalars,
     typeOverrides: mergeOverrides(base.typeOverrides, typeOverrides),
     entityOverrides: mergeOverrides(base.entityOverrides, entityOverrides),
+    groupStyles: mergeOverrides(base.groupStyles, groupStyles),
   };
 }

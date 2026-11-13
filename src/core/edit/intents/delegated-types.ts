@@ -44,8 +44,18 @@ export interface FragmentNodeIntent {
   readonly position: Vec2;
   readonly title?: string;
   readonly payload: Payload;
+  /** Key of the fragment group this node belongs to, if any. */
+  readonly group?: string;
   /** Presentation order. */
   readonly ports: readonly FragmentPortIntent[];
+}
+
+/** A group copied with the fragment, by a positional key (`group-1`, ...). */
+export interface FragmentGroupIntent {
+  readonly key: string;
+  readonly title: string;
+  readonly locked: boolean;
+  readonly style?: string;
 }
 
 /** A connection end: a fragment port by its keys, or an existing port of the model. */
@@ -73,6 +83,8 @@ export interface DelegatedCreateFragment {
   readonly operationId: OperationId;
   readonly nodes: readonly FragmentNodeIntent[];
   readonly connections: readonly FragmentConnectionIntent[];
+  /** Groups the host creates around the nodes that name them; omitted when none. */
+  readonly groups?: readonly FragmentGroupIntent[];
   readonly offset: Vec2;
 }
 

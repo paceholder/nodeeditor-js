@@ -8,6 +8,8 @@ import type { IdCursor, IdGenerator } from "../../base/ids/id-generator.js";
 import {
   type ConnectionId,
   connectionId,
+  type GroupId,
+  groupId,
   type NodeId,
   nodeId,
   type PortId,
@@ -18,6 +20,7 @@ export interface IdAllocator {
   node(): NodeId;
   port(): PortId;
   connection(): ConnectionId;
+  group(): GroupId;
   /** Cursor after all allocations, or undefined if nothing was allocated. */
   cursor(): IdCursor | undefined;
 }
@@ -28,7 +31,7 @@ export function createIdAllocator(
 ): IdAllocator {
   let current = start;
   let used = false;
-  const take = (kind: "node" | "port" | "connection"): string => {
+  const take = (kind: "node" | "port" | "connection" | "group"): string => {
     const next = generator.next(kind, current);
     current = next.cursor;
     used = true;
@@ -38,6 +41,7 @@ export function createIdAllocator(
     node: () => nodeId(take("node")),
     port: () => portId(take("port")),
     connection: () => connectionId(take("connection")),
+    group: () => groupId(take("group")),
     cursor: () => (used ? current : undefined),
   };
 }

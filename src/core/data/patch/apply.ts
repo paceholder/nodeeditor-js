@@ -7,7 +7,12 @@
  * nor rolls back, which is why all checks happen first.
  */
 import { cursorProblem } from "../../base/ids/id-generator.js";
-import type { ConnectionId, NodeId, PortId } from "../../base/ids/ids.js";
+import type {
+  ConnectionId,
+  GroupId,
+  NodeId,
+  PortId,
+} from "../../base/ids/ids.js";
 import {
   err,
   ok,
@@ -34,15 +39,26 @@ export interface ApplyContext {
   readonly operationId: string;
 }
 
-/** Changed IDs: touched entities plus the nodes at both ends of touched connections. */
+/**
+ * Changed IDs: touched entities, the nodes at both ends of touched connections, and the
+ * groups a touched node belongs to, joined or left.
+ */
 export function changedIds(ops: readonly PatchOp[]): ChangedIds {
   const nodes = new Set<NodeId>();
   const ports = new Set<PortId>();
   const connections = new Set<ConnectionId>();
+  const groups = new Set<GroupId>();
   for (const op of ops) {
     const id = op.op === "update" ? op.id : op.record.id;
-    if (op.entity === "node") nodes.add(id as NodeId);
-    else if (op.entity === "port") ports.add(id as PortId);
+    if (op.entity === "node") {
+      nodes.add(id as NodeId);
+      const named =
+        op.op === "update"
+          ? [op.fields.group?.old, op.fields.group?.new]
+          : [op.record.group];
+      for (const group of named) if (group !== undefined) groups.add(group);
+    } else if (op.entity === "port") ports.add(id as PortId);
+    else if (op.entity === "group") groups.add(id as GroupId);
     else {
       connections.add(id as ConnectionId);
       const ends =
@@ -61,6 +77,7 @@ export function changedIds(ops: readonly PatchOp[]): ChangedIds {
     nodes: [...nodes],
     ports: [...ports],
     connections: [...connections],
+    groups: [...groups],
   };
 }
 
@@ -74,7 +91,9 @@ function commit(
       ? store.nodes.seqOf(w.id)
       : w.kind === "port"
         ? store.ports.seqOf(w.id)
-        : store.connections.seqOf(w.id);
+        : w.kind === "connection"
+          ? store.connections.seqOf(w.id)
+          : store.groups.seqOf(w.id);
   store.batch((tx) => {
     for (const w of writes) {
       const current = baseSeq(w);
@@ -84,7 +103,8 @@ function commit(
         continue;
       if (w.kind === "node") tx.removeNode(w.id);
       else if (w.kind === "port") tx.removePort(w.id);
-      else tx.removeConnection(w.id);
+      else if (w.kind === "connection") tx.removeConnection(w.id);
+      else tx.removeGroup(w.id);
     }
     for (const w of writes) {
       if (w.record === undefined) continue;
@@ -94,7 +114,9 @@ function commit(
           ? tx.putNode(w.record, options)
           : w.kind === "port"
             ? tx.putPort(w.record, options)
-            : tx.putConnection(w.record, options);
+            : w.kind === "connection"
+              ? tx.putConnection(w.record, options)
+              : tx.putGroup(w.record, options);
       assigned.set(w.id, seq);
     }
   });

@@ -26,10 +26,16 @@ describe("view events", () => {
     view.selection.replace([selNode("a")]);
     view.selection.add([selNode("b")]);
     expect(seen).toEqual([
-      { nodes: [selNode("a").id], connections: [], primary: selNode("a") },
+      {
+        nodes: [selNode("a").id],
+        connections: [],
+        groups: [],
+        primary: selNode("a"),
+      },
       {
         nodes: [selNode("a").id, selNode("b").id],
         connections: [],
+        groups: [],
         primary: selNode("b"),
       },
     ]);

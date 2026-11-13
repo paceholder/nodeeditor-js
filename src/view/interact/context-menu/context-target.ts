@@ -5,6 +5,7 @@
 import {
   connectionId,
   type GeometryScene,
+  groupId,
   type HitCandidate,
   nodeId,
   type Point,
@@ -13,6 +14,7 @@ import {
 } from "../../../core/index.js";
 import {
   connectionKey,
+  groupKey,
   nodeKey,
   type ReadonlySelection,
   type SelectionChange,
@@ -39,6 +41,8 @@ export function contextTarget(
             connection: top.connectionId,
             member: top.member,
           };
+    case "group":
+      return { kind: "group", group: top.groupId };
   }
 }
 
@@ -49,6 +53,8 @@ function keyOf(target: ContextMenuTarget): SelectionKey | undefined {
       return nodeKey(target.node);
     case "connection":
       return connectionKey(target.connection);
+    case "group":
+      return groupKey(target.group);
     case "canvas":
       return undefined;
   }
@@ -69,13 +75,13 @@ export function selectOnOpen(
 }
 
 /**
- * Keyboard invocation (D6): the primary selected node or connection, else the canvas,
+ * Keyboard invocation (D6): the primary selected node, connection or group, else the canvas,
  * placed at the centre of the entity's bounds clamped into the visible world rectangle,
  * or at the view centre.
  */
 export function keyboardTarget(
   selection: ReadonlySelection,
-  scene: Pick<GeometryScene, "node" | "connection">,
+  scene: Pick<GeometryScene, "node" | "connection" | "group">,
   visible: Rect<"world">,
 ): { readonly target: ContextMenuTarget; readonly world: Point<"world"> } {
   const primary = selection.primary();
@@ -93,6 +99,12 @@ export function keyboardTarget(
     if (entry) {
       target = { kind: "connection", connection: entry.id };
       bounds = entry.paintedBounds;
+    }
+  } else if (primary?.startsWith("g:")) {
+    const entry = scene.group(groupId(id));
+    if (entry) {
+      target = { kind: "group", group: entry.id };
+      bounds = entry.titleStrip;
     }
   }
   const at = rectCenter(bounds ?? visible);

@@ -1,10 +1,15 @@
 /** moveNodes, rotateNodes, mirrorNodes, reorderNodes planners. */
-import type { NodeId } from "../../base/ids/ids.js";
+import type { GroupId, NodeId } from "../../base/ids/ids.js";
 import { mirroredRotation } from "../../data/model/node-frame.js";
 import type { ConnectionRecord } from "../../data/model/records.js";
 import { translateConstraints } from "../../data/model/route-constraints.js";
 import type { QuarterTurns, Vec2 } from "../../data/model/values.js";
 import type { PatchOp } from "../../data/patch/types.js";
+import {
+  groupLocked,
+  lockedMembership,
+  membershipOps,
+} from "./group-membership.js";
 import { ready, unknownEntity } from "./ops.js";
 import type { PlanContext, PlannerFor, PlanResult } from "./types.js";
 
@@ -23,6 +28,21 @@ export const planMoveNodes: PlannerFor<"moveNodes"> = (command, ctx) => {
   );
   if (bad) return bad;
   const last = new Map(command.moves.map((m) => [m.node, m.position]));
+  const membership = command.membership ?? [];
+  const absent = missing(
+    ctx,
+    membership.map((m) => m.node),
+  );
+  if (absent) return absent;
+  const targets = new Map<NodeId, GroupId | undefined>(
+    membership.map((m) => [m.node, m.group ?? undefined]),
+  );
+  for (const group of targets.values())
+    if (group !== undefined && !ctx.reader.getGroup(group))
+      return unknownEntity(group);
+  const frozen =
+    lockedMembership(ctx.reader, targets) ?? splitsLocked(ctx, last);
+  if (frozen) return frozen;
   const ops: PatchOp[] = [];
   for (const [id, position] of last) {
     const node = ctx.reader.getNode(id);
@@ -39,8 +59,26 @@ export const planMoveNodes: PlannerFor<"moveNodes"> = (command, ctx) => {
     });
   }
   ops.push(...shiftPins(ctx, last));
+  ops.push(...membershipOps(ctx.reader, { targets }));
   return ready("Move", ops, ctx.ids);
 };
+
+/** A locked group moves as one unit: a move must list all of its members or none. */
+function splitsLocked(
+  ctx: PlanContext,
+  moves: ReadonlyMap<NodeId, unknown>,
+): PlanResult | undefined {
+  const checked = new Set<GroupId>();
+  for (const id of moves.keys()) {
+    const group = ctx.reader.getNode(id)?.group;
+    if (group === undefined || checked.has(group)) continue;
+    checked.add(group);
+    if (!ctx.reader.getGroup(group)?.locked) continue;
+    if (ctx.reader.groupMembers(group).some((m) => !moves.has(m.id)))
+      return groupLocked(group);
+  }
+  return undefined;
+}
 
 /**
  * Route updates for connections whose both endpoint nodes move: their pins shift

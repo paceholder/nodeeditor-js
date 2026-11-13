@@ -108,6 +108,9 @@ class Checker {
       }
       case "connection":
         return this.checkConnection(op);
+      case "group":
+        // Groups carry no per-node capability; read-only mode was checked above.
+        return undefined;
     }
   }
 

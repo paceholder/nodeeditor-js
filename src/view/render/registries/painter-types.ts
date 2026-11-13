@@ -11,6 +11,7 @@
  */
 import type {
   ConnectionRecord,
+  GroupRecord,
   NodeRecord,
   PathGeometry,
   Point,
@@ -22,6 +23,7 @@ import type { AssetDrawer } from "../assets/asset-types.js";
 import type { DetailPolicy } from "../paint/level-of-detail.js";
 import type { PaintFrame } from "../primitives/frame.js";
 import type { ResolvedStyle } from "../theme/resolve-style.js";
+import type { GroupStyleTokens, ThemeTokens } from "../theme/tokens.js";
 
 export interface DiagnosticBadge {
   readonly severity: "error" | "warning";
@@ -93,6 +95,38 @@ export interface ConnectionPaintInput {
 /** Context transform: world space. */
 export interface ConnectionPainter {
   paint(ctx: CanvasRenderingContext2D, input: ConnectionPaintInput): void;
+}
+
+export interface GroupFramePaintInput {
+  readonly group: GroupRecord;
+  /** The whole frame, title strip included. */
+  readonly frame: Rect<"world">;
+  readonly titleStrip: Rect<"world">;
+  /** Where the lock icon goes: a square of constant screen size in the strip's corner. */
+  readonly lockBox: Rect<"world">;
+  /** The group's colors: theme defaults, then the named style its `style` key selects. */
+  readonly style: Readonly<GroupStyleTokens>;
+  readonly theme: ThemeTokens;
+  /** At the `overview` level a frame is drawn without title and lock icon. */
+  readonly detail: DetailPolicy;
+  readonly unit: number;
+  readonly state: {
+    readonly selected: boolean;
+    readonly hovered: boolean;
+    /** A dragged node will join this group when it is dropped. */
+    readonly joinTarget: boolean;
+    /** An edit of the group still awaits an external authority's answer. */
+    readonly unconfirmed: boolean;
+  };
+}
+
+/**
+ * Paints one group frame beneath connections and nodes. Its own registration: replacing
+ * it touches no node, port or connection painter. Context transform: world space; the
+ * layer saves and restores around each call.
+ */
+export interface GroupFramePainter {
+  paint(ctx: CanvasRenderingContext2D, input: GroupFramePaintInput): void;
 }
 
 /** Fills the whole layer; the context starts in CSS-pixel (viewport) space. */

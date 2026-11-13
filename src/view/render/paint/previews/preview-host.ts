@@ -66,8 +66,12 @@ function hiddenBy(
   preview: ToolPreview | null,
 ): Set<string> {
   switch (preview?.kind) {
-    case "move":
-      return previewedEntityIds(reader, preview.moving);
+    case "move": {
+      const ids = previewedEntityIds(reader, preview.moving);
+      // The preview draws these frames as they will be after the drop.
+      for (const frame of preview.groups ?? []) ids.add(frame.group);
+      return ids;
+    }
     case "resize":
       return previewedEntityIds(reader, [preview.node]);
     case "route":
