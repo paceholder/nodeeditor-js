@@ -87,6 +87,8 @@ export function createGroupTitleEditor(
       const strip = entry.titleStrip;
       // World units: the anchor scales the field with the zoom, like the painted title.
       const lock = groupLockBox(entry.frame, deps.scene.groupMetrics, 1);
+      // Inside the frame's border, so the field never covers the border or the rounded corner.
+      const inset = theme.selectionWidth;
       const field = deps.document.createElement("input");
       field.type = "text";
       field.value = entry.record.title;
@@ -96,11 +98,11 @@ export function createGroupTitleEditor(
       // No border and no ring: the field looks like the painted title it covers, on the
       // frame's own fill, and the caret and the selected text show that it has focus.
       field.style.cssText =
-        `box-sizing:border-box;width:${Math.max(40, lock.x - strip.x - 4)}px;` +
-        `height:${strip.h}px;margin:0;padding:0 ${TITLE_PAD}px;font:${theme.font};` +
+        `box-sizing:border-box;width:${Math.max(40, lock.x - strip.x - inset - 4)}px;` +
+        `height:${strip.h - inset}px;margin:0;padding:0 ${TITLE_PAD}px 0 ${TITLE_PAD - inset}px;font:${theme.font};` +
         `color:${style.groupTitleColor};caret-color:${theme.selection};` +
         `background:linear-gradient(${style.groupFill},${style.groupFill}),` +
-        `${theme.background};border:0;border-radius:0;outline:none;`;
+        `${theme.background};border:0;border-radius:${Math.max(0, theme.groupRadius - inset)}px 0 0 0;outline:none;`;
       field.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           event.preventDefault();
@@ -113,7 +115,7 @@ export function createGroupTitleEditor(
       field.addEventListener("blur", () => close(true));
       const handle = deps.attach(field, {
         kind: "world",
-        point: { x: strip.x, y: strip.y },
+        point: { x: strip.x + inset, y: strip.y + inset },
         scale: true,
       });
       open = { group, field, handle };
