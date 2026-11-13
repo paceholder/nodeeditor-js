@@ -293,13 +293,17 @@ export function attachEditing(deps: EditingDeps): Editing {
     return true;
   };
   const commands = createCommandRegistry(
-    () => ({
-      model: editable,
-      reader,
-      selection,
-      view: currentView(),
-      ...(titleEditor ? { editGroupTitle } : {}),
-    }),
+    () => {
+      const pointer = input?.pointerWorld();
+      return {
+        model: editable,
+        reader,
+        selection,
+        view: currentView(),
+        ...(titleEditor ? { editGroupTitle } : {}),
+        ...(pointer ? { pointer } : {}),
+      };
+    },
     lock.get,
     () => events.emit("availability", { cause: "commands" }),
   );
