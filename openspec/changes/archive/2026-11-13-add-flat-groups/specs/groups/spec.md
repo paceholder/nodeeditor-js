@@ -156,7 +156,7 @@ A group SHALL have a lock state stored in the document, off for a new group. Whi
 - **THEN** the command is rejected with a reason naming the lock and nothing moves
 
 ### Requirement: Group title is shown and editable
-The frame SHALL draw the group's title in its title strip, shortened with an ellipsis when it does not fit. Double-clicking the title strip, or pressing F2 while exactly one group is selected, SHALL open a text editor in place over the title. Pressing Enter or moving focus out of the editor SHALL commit the text as one rename and one history entry when it differs from the current title; Escape SHALL close the editor without a change. The editor SHALL have visible focus and SHALL keep graph shortcuts from running while it has focus. A title SHALL be limited in length, and a longer one SHALL be rejected with a reason. A view option SHALL turn the built-in editor off, in which case the same double-click and key SHALL raise an event a host can answer with its own editor.
+The frame SHALL draw the group's title in its title strip, shortened with an ellipsis when it does not fit. Double-clicking the title strip, or pressing F2 while exactly one group is selected, SHALL open a text editor in place over the title. Pressing Enter, moving focus out of the editor, or pressing the pointer anywhere outside it SHALL close the editor and commit the text as one rename and one history entry when it differs from the current title; Escape SHALL close the editor without a change. The editor SHALL draw no border or ring of its own; the text caret and the selected text SHALL show that it has focus. It SHALL keep graph shortcuts from running while it has focus. A title SHALL be limited in length, and a longer one SHALL be rejected with a reason. A view option SHALL turn the built-in editor off, in which case the same double-click and key SHALL raise an event a host can answer with its own editor.
 
 #### Scenario: Rename in place
 - **WHEN** the user double-clicks a group's title, types a new name and presses Enter
@@ -165,6 +165,10 @@ The frame SHALL draw the group's title in its title strip, shortened with an ell
 #### Scenario: Escape while renaming
 - **WHEN** the user opens the title editor, types, and presses Escape
 - **THEN** the title is unchanged and the history gains no entry
+
+#### Scenario: Press on the canvas while renaming
+- **WHEN** the user types a new name in the title editor and then starts dragging a node
+- **THEN** the editor closes, the group has the new title, and the drag proceeds as usual
 
 #### Scenario: Typing letters in the title editor
 - **WHEN** the user types R, M or Delete in the title editor
