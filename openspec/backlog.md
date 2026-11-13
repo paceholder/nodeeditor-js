@@ -12,7 +12,7 @@ settled decision; reorder freely.
 
 | # | Change | Open tasks | Status | Blocked on |
 | - | ------ | ---------- | ------ | ---------- |
-| 1 | `add-snapshot-sync-adapter` | 1 of 26 | Implemented; only the final verification run (6.1) remains | Nothing: run the checks, record results in `notes.md`, archive |
+| 1 | `route-clipboard-to-host` | 0 of 19 | Implemented and merged | Nothing: archive it with the next change |
 | 2 | `stage-releases-for-approval` | 1 of 4 | Workflow changed; 3.2 needs a real staged release | The next release, approved on npmjs.com with two-factor authentication |
 | 3 | `add-reconnect-tool` | 9 of 9 | Planned; core `reconnect` command already exists, view tool missing | Nothing |
 | 4 | `add-docking` | 10 of 10 | Planned; snap and connect-only modes, policy-driven compatibility | Nothing |
@@ -30,6 +30,11 @@ documentation work (7, 8), then the change that needs a product decision first (
 
 Later queue from the roadmap; each needs a proposal before work starts, roughly in this order.
 
+- Host proposals accepted in the reply on `research`, each needs its own change: default
+  capabilities and a `create` action (P1); icon tint (P2); snap the node's box (P3b); a
+  data label for a submission (P4); the resync recipe, test and optional helper (P6); the
+  token-free push recipe (P5, guide text only). Dropping content from outside (P8) is deferred
+  until P1 exists.
 - Waypoints on connections
 - Wire jumps at crossings
 - Obstacle avoidance in routing
