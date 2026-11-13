@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { nodeId } from "../core/index.js";
 import { buildModel, twoPortNode } from "../core/space/scene/scene-fixtures.js";
 import { cleanupScope, makeHost, selNode } from "./browser-support.js";
+import { DEFAULT_KEYMAP } from "./interact/commands/keymap.js";
 import { mountView } from "./mount-view.js";
 
 const cleanup = cleanupScope();
@@ -43,5 +44,21 @@ describe("view commands API", () => {
     view.selection.replace([selNode("a")]);
     expect(view.commands.run("edit.delete").ok).toBe(false);
     expect(full.reader.nodes()).toHaveLength(1);
+  });
+});
+
+describe("clipboard events follow the keymap: the command API is not keyboard input", () => {
+  it("a view without a copy binding still copies through view.commands.run", () => {
+    const model = buildModel([twoPortNode("a", 100, 100)]);
+    const keymap = DEFAULT_KEYMAP.filter((b) => b.command !== "edit.copy");
+    const view = mountView(makeHost(500, 300), { model, input: { keymap } });
+    cleanup(() => view.dispose());
+    view.selection.replace([selNode("a")]);
+    let written = "";
+    const sink = (text: string) => {
+      written = text;
+    };
+    expect(view.commands.run("edit.copy", { sink }).ok).toBe(true);
+    expect(written).toContain("@paceholder/nodeeditor-js/fragment");
   });
 });

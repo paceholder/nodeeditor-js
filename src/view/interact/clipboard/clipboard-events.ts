@@ -12,6 +12,10 @@
  * content in the overlay (an overlay editor or menu keeps its own clipboard). Two editors on one page therefore never share an
  * event.
  *
+ * The keymap decides: an event runs its command only while some chord is bound to that
+ * command, so a host that unbinds a clipboard command turns off every keyboard and menu
+ * route to it. The API still runs it.
+ *
  * There is no timed fallback: a native chord does nothing by itself, and the event alone
  * runs the command, so one shortcut is always one command. Browsers read the system
  * clipboard asynchronously before a paste event, so guessing that "no event came" after
@@ -29,6 +33,12 @@ export interface ClipboardEventsDeps {
   readonly commands?: Partial<Record<"copy" | "cut" | "paste", string>>;
   /** The view's overlay layer; focus on host content inside it is not the editor's. */
   readonly overlay?: HTMLElement;
+  /**
+   * Whether the keymap binds a chord to a command. An event whose command is unbound runs
+   * nothing and keeps the browser's default, so unbinding a clipboard command also turns
+   * off the Edit menu and the platform's other clipboard chords for it. Default: all bound.
+   */
+  readonly bound?: (id: string) => boolean;
 }
 
 export interface ClipboardEvents {
@@ -53,10 +63,12 @@ export function attachClipboardEvents(
     return !isTextTarget(active) && !isTextTarget(e.target);
   };
 
+  const bound = deps.bound ?? (() => true);
+
   const onCopyOrCut = (e: ClipboardEvent): void => {
-    if (!owns(e)) return;
-    const data = e.clipboardData;
     const id = e.type === "cut" ? ids.cut : ids.copy;
+    if (!owns(e) || !bound(id)) return;
+    const data = e.clipboardData;
     const sink = data
       ? (text: string) => data.setData("text/plain", text)
       : undefined;
@@ -66,7 +78,7 @@ export function attachClipboardEvents(
   };
 
   const onPaste = (e: ClipboardEvent): void => {
-    if (!owns(e)) return;
+    if (!owns(e) || !bound(ids.paste)) return;
     const data = e.clipboardData;
     // Text without the fragment marker is reported as not-a-fragment by the command; the
     // in-app buffer is not used, because the user evidently copied something else.

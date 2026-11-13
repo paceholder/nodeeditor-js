@@ -28,8 +28,10 @@ export interface KeyBinding {
   /** Arguments, built from the nudge step (world units) where they need it. */
   readonly args?: (step: number) => unknown;
   /**
-   * The browser's own action for this chord carries the command (copy, cut, paste: the
-   * native clipboard event runs it), so the key-down is not default-prevented.
+   * The browser's own action for this chord carries the command (the native clipboard
+   * event runs it), so the key-down is not default-prevented. Only means something on a
+   * binding for `edit.copy`, `edit.cut` or `edit.paste`; on any other command it is
+   * ignored and the key-down runs the command like any other binding.
    */
   readonly native?: boolean;
   /**
@@ -174,6 +176,13 @@ function matches(c: Chord, e: KeyLike, platform: Platform): boolean {
   );
 }
 
+/** The commands a browser clipboard event can run. */
+const NATIVE: ReadonlySet<string> = new Set([
+  COMMAND_IDS.copy,
+  COMMAND_IDS.cut,
+  COMMAND_IDS.paste,
+]);
+
 export function createKeymap(
   platform: Platform,
   bindings: readonly KeyBinding[] = DEFAULT_KEYMAP,
@@ -190,7 +199,8 @@ export function createKeymap(
         hit && {
           command: hit.binding.command,
           args: hit.binding.args?.(step),
-          native: hit.binding.native === true,
+          native:
+            hit.binding.native === true && NATIVE.has(hit.binding.command),
           repeat: hit.binding.repeat !== false,
         }
       );

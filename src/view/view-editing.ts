@@ -470,6 +470,7 @@ export function attachEditing(deps: EditingDeps): Editing {
       bridge = attachClipboardEvents(deps.root, {
         run: commands.run,
         overlay: deps.overlay,
+        bound: (id) => keymap.bindings.some((b) => b.command === id),
       });
     }
     hover = createHoverTracker({
