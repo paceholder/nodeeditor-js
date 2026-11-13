@@ -22,6 +22,9 @@ fails on a code in any tracked file outside `docs/archive/` or in the built pack
 document are history, not a source to follow. Every MUST needs linked evidence (a test
 that names the rule).
 
+`openspec/backlog.md` is the ranked list of open changes and queued ideas. Update it whenever a
+change is proposed, reprioritized, finished or archived.
+
 Delivery slices A–E proceed in order (Slice A: headless model, patches/history, commands
 and policy, graph snapshot, geometry and spatial index, minimal Canvas2D view and basic
 tools, performance baseline). Use `/opsx:apply <change>` to implement a change and
