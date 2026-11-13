@@ -10,6 +10,7 @@ import {
   type GraphReader,
   type GroupId,
   ok,
+  type Point,
   type Rejection,
   type Result,
   rejectionOf,
@@ -54,6 +55,11 @@ export interface CommandContext {
    * whether it opened. Absent when the view takes no input.
    */
   readonly editGroupTitle?: (group: GroupId) => boolean;
+  /**
+   * World position of a mouse or pen pointer over the view, the point the built-in paste
+   * centres on. Absent once the pointer has left the view, for touch, and without input.
+   */
+  readonly pointer?: Point<"world">;
 }
 
 export interface EditorCommand<A = void> {
