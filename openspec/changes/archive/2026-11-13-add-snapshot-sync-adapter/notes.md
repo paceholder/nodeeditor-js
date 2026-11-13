@@ -216,3 +216,7 @@ close it; that changes the public surface, so it is left for a decision.
 - The view state leaves `isUnconfirmed` and `placeholders` unset for a model that reports
   neither, reads a single source directly, and the adapter returns one shared empty list
   when no creation is pending, so a paint allocates no list.
+
+## Final gates (measured 2026-11-13, on main at 1c8cadc)
+
+lint clean; typecheck passes; npm test 215 files, 1324 tests pass; build succeeds. The lint error in the config file noted earlier was fixed in the archive commit of the finished changes. The browser tests and size budget were last run before the release and passed.
