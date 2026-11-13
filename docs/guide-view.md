@@ -656,6 +656,11 @@ view.setTheme({ gridSpacing: 40 });          // patch; scalars replace
 
 `setTheme` repaints the background and scene layers and never touches geometry.
 
+Group frames have their own tokens (`groupFill`, `groupStroke`, `groupTitleColor`,
+`groupRadius`, `groupJoin`) and a `groupStyles` table of named styles that a group's
+`style` key selects; the frame painter is the single slot `painters.group`. See
+`guide-groups.md`.
+
 Overrides tailor individual node types, port types, connection kinds or single entities:
 
 - `typeOverrides` is keyed by node type, port `typeKey`, or connection `kind`.
@@ -918,10 +923,10 @@ node can be entered without closing.
 
 ### The selection: entities, not keys
 
-`view.selection` names entities by kind and ID. `nodes()`, `connections()` and `primary()`
+`view.selection` names entities by kind and ID. `nodes()`, `connections()`, `groups()` and `primary()`
 read it (`primary` is the entity selected last, as `{ kind, id }`), `state()` returns all
 three as one value, and `has(entity)` and `isSelected(id)` ask about one entity. `replace`,
-`add` and `toggle` take a list of `{ kind: "node" | "connection", id }` and return whether
+`add` and `toggle` take a list of `{ kind: "node" | "connection" | "group", id }` and return whether
 the selection changed; `clear()` empties it. Entities that leave the model drop out on
 their own. The view's internal key strings (used by the tools) never appear here.
 

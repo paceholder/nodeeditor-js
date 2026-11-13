@@ -46,6 +46,7 @@ gates, not style preferences:
 | Cubic built in `ConnectionPainter` / `ConnectionGraphicsObject` | Route registry per connection kind: straight, Bezier or orthogonal routers (core) | The path is a registration of its own, computed headlessly and shared by painting, picking and culling. |
 | `NodeGeometry` / `AbstractNodePainter`    | Separate geometry and painter registrations per node type         | Change the look without touching hit-testing, and vice versa. |
 | `NodeDelegateModelRegistry`               | Node type registry (`createNodeTypeRegistry`)                     | Model-level only: label, size, ports. Looks are registered separately. |
+| `NodeGroup` owned by `BasicGraphicsScene` | `GroupRecord` in the model, membership as `NodeRecord.group`      | Group edits are patches: undoable, sent to the host, the same in every client. |
 | `QGraphicsItem::DeviceCoordinateCache`    | Zoom-bucketed `ImageBitmap` cache for SVG/raster symbols (`createAssetService`) | Same idea: rasterize once, copy every frame. |
 
 ### Size, and what Qt gave QtNodes for free
@@ -93,13 +94,15 @@ synchronization is **(planned: Slice D)**, see section 5.
 
 ## 3. What the model stores
 
-Three kinds of records, all plain immutable objects (`src/core/data/model/records.ts`):
+Four kinds of records, all plain immutable objects (`src/core/data/model/records.ts`):
 
 ```
 NodeRecord        id, type, position, size, rotation (quarter turns), mirrored, z,
-                  ports (ordered list of PortIds), title?, status?, payload, capabilities?
+                  ports (ordered list of PortIds), title?, status?, payload, capabilities?,
+                  group?
 PortRecord        id, node, direction, typeKey, limit, label?, placement?
 ConnectionRecord  id, kind, from {node, port}, to {node, port}
+GroupRecord       id, title, locked, style?
 ```
 
 - **`payload`** is the host application's data. The library stores it and never interprets it.
@@ -115,10 +118,37 @@ What the model deliberately does **not** store: hover, the current drag preview,
 cached geometry, rendered bitmaps. Those live in views, and they never appear in a saved
 document.
 
+### Groups
+
+A group is a visual frame around some nodes. It changes nothing about ports or
+connections. Three choices shape how it is stored:
+
+- **Groups live in the model, not in the view.** In QtNodes a `NodeGroup` belongs to the
+  graphics scene, so the graph model does not know it exists. Here one backend can serve
+  many clients, so a group must travel the same road as every other edit: it is a record,
+  changing it is a patch, the adapter (or the host behind it) accepts or refuses that
+  patch, undo is the inverse patch, and every view of the model shows the same groups.
+- **Membership is a field of the node** (`group`), not a list on the group. A node can
+  therefore be in at most one group by construction, deleting a node takes its membership
+  with it, and two clients adding different nodes to one group change different records
+  instead of fighting over one list. `reader.groupMembers(id)` reads an index, in node
+  insertion order.
+- **A group stores no rectangle.** Its frame is computed from its members (section 6),
+  as in QtNodes. Because a frame needs at least one member, a group never exists empty:
+  the patch that takes the last member away must remove the group too, and the model
+  rejects a patch that would leave an empty group or a node naming a missing group.
+
+Commands: `groupNodes`, `ungroup`, `addToGroup`, `removeFromGroup`, `renameGroup`,
+`setGroupLocked`. Moving a group is a `moveNodes` over its members; `moveNodes` can carry
+membership changes so a drag that drops a node into a group is a single edit, and
+`deleteEntities` removes a group whose members are all deleted. A **locked** group moves
+only as a whole and accepts or releases no node (rejection code `group-locked`); the lock
+is part of the record, so it is shared and undoable like the title.
+
 ### Identity
 
 IDs are opaque strings. The default generator mints `n1, n2, …` for nodes,
-`p1, …` for ports, `c1, …` for connections. Its state, the *cursor*, is saved with the
+`p1, …` for ports, `c1, …` for connections, `g1, …` for groups. Its state, the *cursor*, is saved with the
 document, so a deleted `n7` is never handed out again, even after save and reload.
 A host can plug in its own generator (UUIDs, server IDs). The library never
 parses or sorts IDs it did not mint.
