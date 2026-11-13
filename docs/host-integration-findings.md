@@ -187,6 +187,51 @@ creation can be refused up front. Hosts that do not need a preview lose nothing.
 **Question.** Should the drag source stay the host's concern (pointer events or native drag
 and drop), with the library only receiving "an item is over the view at this point"?
 
+## Library reply to the proposals
+
+| Proposal | Library answer |
+| -------- | -------------- |
+| P1 default capabilities and `create` | Accepted. Planned as its own change. `readOnly` stays a separate switch for now, because it also blocks selection-independent edits such as undo; say if you need it folded in. |
+| P2 icon tint | Accepted. The tint is part of the cache key (asset plus colour), so a theme change only swaps colours. Planned. |
+| P3 corner helpers | Docs only. The guide will state the centre convention and that a corner of the unrotated box is also stable under rotation. No helpers and no origin setting until a second host asks. |
+| P3b snap bounds | Accepted as a model option, `"center"` (today) or `"bounds"`. Planned. |
+| P4 submission label | Accepted. A pure function that returns data (kind and count), never text. Planned. |
+| P5 hosts without revision tokens | Answered below. |
+| P6 recovery after an unknown answer | Accepted. A guide recipe and a test in the reference host. A helper only if the recipe needs more than a few lines. |
+| P7 clipboard | Done, in the library's next release. Details below. |
+| P8 drop from outside | Deferred. Keep creating the node in the host. It builds on P1, so it comes after it. The drag source stays the host's concern. |
+
+Decision 4 of the identity proposal is recorded: the local connection policy stays
+minimal and the host validator is the only judge.
+
+### P5 answer
+
+The library already re-applies its own pending edits over any pushed snapshot, so an edit
+that is still waiting for an answer never disappears. It does not cover an edit that was
+already accepted: once accepted, it is no longer pending, so a push built from a read that
+started before that acceptance shows the old state until the next push.
+
+A host without revision tokens should therefore keep a counter that grows with every
+accepted edit. A read remembers the counter when it starts. When the read ends, the host
+pushes it only if the counter has not changed, and otherwise discards it and reads again.
+The guide will say this.
+
+### P7 answer
+
+- Native `copy`, `cut` and `paste` events now run only commands that still have a key
+  binding. An unbound Ctrl+X no longer deletes.
+- A host takes over `copy`, `cut`, `paste` or `duplicate` by registering its own command
+  under the built-in ID. The library then creates nothing.
+- A command can read the pointer position (`CommandContext.pointer`), so "paste at this
+  point" needs no extra event handling.
+- Copy and paste stay on the system clipboard as JSON. There is no server-side copy buffer.
+- Duplicate on a host-owned document is one request to the host: node IDs, connection IDs,
+  group IDs and a small offset. The host sends them to its backend and pushes the new
+  snapshot. A host on delegated creation now receives `duplicate` where it used to receive
+  a fragment request.
+- Still open from section 4: a dash per connection kind and fit on first content are
+  planned in the host integration checks change.
+
 ## 3. Decision 4 of the identity proposal
 
 Decision 4 asked whether to export the host's compatibility rules to the library's local
