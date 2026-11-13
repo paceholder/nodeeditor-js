@@ -4,9 +4,10 @@ All notable changes to `@paceholder/nodeeditor-js` are listed here. The project 
 [semantic versioning](https://semver.org/); while the version is 0.x, a minor version may
 contain breaking changes.
 
-## Unreleased
+## 0.3.0
 
-Groups: frames around nodes, stored in the document.
+Groups: frames around nodes, stored in the document. Minor version: several public unions
+and records gained a group member.
 
 - Groups are model records (`GroupRecord`) and a node names its group (`NodeRecord.group`),
   so group edits are undoable patches, go to a host that owns the document, are saved,
