@@ -134,6 +134,42 @@ path, and the host has not wired it yet.
 in the reference host that drives it. If it takes more than a few lines, consider a helper
 that takes a fetch function and does the sequence.
 
+### P7. Turning the built-in clipboard off
+
+**Problem.** A host that owns the clipboard, or cannot create nodes, removes the copy, cut,
+paste and duplicate entries from the keymap. This is not enough. The view also listens to
+the browser's `copy`, `cut` and `paste` events on its root, and these run the same commands.
+In particular, cut runs delete, so with the key binding removed a Ctrl+X still deleted the
+selection. The host had to stop those events in the capture phase on its own wrapper element.
+
+**Proposal.** Make the keymap the single source of truth, or add an explicit switch. Either
+the native events run only commands that still have a key binding, or `clipboard: false`
+removes both the bindings and the event listeners. A way to disable any built-in command by
+id would cover this and similar cases.
+
+**Why it is general.** Embedders that own the clipboard, that have read-only or fixed
+content, or that route copy and paste through their own commands all need to turn the
+built-in behaviour off completely.
+
+### P8. Dropping content from outside the canvas
+
+**How it works today.** A host can already support a drop from a palette. It listens for
+the pointer release, converts the position with `clientToWorld`, and creates the node
+itself. This works and is simple. The library does not take part in the drag.
+
+**Proposal (optional, a polish item).** A drop target that reports the pointer in world
+coordinates while content is dragged over the view. It can draw a ghost of the node at the
+position a drop would use, with the model's grid snapping, and on release it raises a
+creation intent that the host accepts or refuses like any other edit. The host would no
+longer need its own snapping or a creation path that bypasses the model.
+
+**Why it is general.** Any editor with a palette or a file list as the source of new nodes
+needs the same preview and snapping. It builds on the `"create"` capability from P1, so that
+creation can be refused up front. Hosts that do not need a preview lose nothing.
+
+**Question.** Should the drag source stay the host's concern (pointer events or native drag
+and drop), with the library only receiving "an item is over the view at this point"?
+
 ## 3. Decision 4 of the identity proposal
 
 Decision 4 asked whether to export the host's compatibility rules to the library's local
@@ -152,5 +188,3 @@ These were found on the host side and are listed so nobody looks for them here:
 
 - The host passed the snapshot as an untyped value. `GraphSnapshot` already exists, so the
   host will type it.
-- The host's backend rotates one quarter turn at a time, so the host converts the library's
-  absolute rotation into repeated steps. The backend should accept an absolute rotation.
