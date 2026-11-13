@@ -193,3 +193,23 @@ describe("one step per held key", () => {
     expect(host.resolve(key("x"), 1)?.repeat).toBe(true);
   });
 });
+
+describe("native clipboard bindings are only for copy, cut and paste", () => {
+  it("the default copy, cut and paste chords resolve as native", () => {
+    for (const k of ["c", "x", "v"]) {
+      expect(other.resolve(key(k, { ctrlKey: true }), 1)?.native).toBe(true);
+    }
+  });
+
+  it("a native mark on any other command is ignored", () => {
+    const m = createKeymap("other", [
+      { chord: "Mod+Z", command: COMMAND_IDS.undo, native: true },
+      { chord: "Mod+D", command: "host.duplicate", native: true },
+    ]);
+    expect(m.resolve(key("z", { ctrlKey: true }), 1)).toMatchObject({
+      command: COMMAND_IDS.undo,
+      native: false,
+    });
+    expect(m.resolve(key("d", { ctrlKey: true }), 1)?.native).toBe(false);
+  });
+});
