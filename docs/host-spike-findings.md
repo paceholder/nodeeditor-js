@@ -17,31 +17,53 @@ Items not yet settled or not yet delivered. Resolved decisions are in
    `@paceholder/nodeeditor-js@0.2.0` and contains the snapshot adapter. Does the host's
    registry proxy public packages, so that `npm install @paceholder/nodeeditor-js@0.2.0`
    works there? If not, say so and the library offers a packed tarball.
+   **Host answer:** Yes. The host installs `@paceholder/nodeeditor-js@0.2.0` from the registry
+   and pins it exactly.
 5. **Format identifiers.** An earlier host note asked for the next version to carry
    renamed `graph`, `document` and `fragment` identifiers without the package scope. The
    identifiers in `docs/format.md` today are `@paceholder/nodeeditor-js/graph` and
    `@paceholder/nodeeditor-js/document`. Which exact spelling does the host expect, and
    does it store these identifiers or only read them?
+   **Host answer:** The host does not store them. It imports `SNAPSHOT_FORMAT` and
+   `FORMAT_VERSION` from the package and builds each snapshot in memory from its own data,
+   so any spelling works.
 6. **Duplicate connections.** Has the host rejected a connection between two ports that are
    already connected, in either order, on every creation path and in the validation call,
    and is there a test? The editor refuses it locally, but the host is the second line of
    defence.
+   **Host answer:** Yes. The backend rejects a second connection between two ports, in
+   either order, with 409 on the batch, the single connect and the validation call. The
+   validation call names the existing connection. Backend tests cover it.
 7. **Undo and connection IDs.** After an undo or redo in the host, does a restored
    connection come back under the same stored ID? Can that ID collide with an ID the
    editor generated in between? The editor refuses a node whose ID a pending edit adds,
    but the host must keep its IDs unique.
+   **Host answer:** Yes. An undo or redo restores the connection under its stored ID
+   (checked in the browser). The editor mints random UUIDs, so a collision is practically
+   impossible, and the backend answers 409 if an ID is already in use.
 8. **Order of answers.** The host chains its own calls. Can the answer to a later edit
    reach the library before the answer to an earlier edit it depends on (for example two
    moves of one node)? The library may confirm edits in commit order; this tells it
    whether that is needed.
+   **Host answer:** The host does not serialise its calls. Each edit sends one batch and
+   awaits it. Two fast edits can be in flight together; the backend applies them in the
+   order they arrive under one lock. Arrival order can differ from submission order in
+   theory, so confirming in commit order would be safer. Not tested under load.
 9. **Validation latency.** The local connection policy stays minimal, so the host
    validator is the only judge of the host's rules and a hover over a target waits for its
    verdict. What are the typical and the worst latency of the validation call, and does
    it read any state that can change between hovering and releasing?
+   **Host answer:** The validator is one REST call per hover and reads the live project
+   (both ports, existing connections, causality). Latency is not measured yet. The host
+   will report it. The result can go stale if another client edits before the release, so
+   the host checks again when the connection is created.
 10. **Blocking creation up front.** In delegated mode the host answers a creation, and may
     refuse it. Does the host also need the editor to refuse creating nodes before any
     request is sent (for example a read-only project or missing permission), or is the
     host's refusal with a message enough? Read-only mode already blocks creation.
+    **Host answer:** The host's refusal with a message is enough. For types that can never
+    be created it sets `creatable:false`. A model-wide switch (proposal P1) would be
+    cleaner but is not needed.
 
 ## 2. Host-side duties
 
