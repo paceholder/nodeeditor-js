@@ -397,6 +397,19 @@ with `input.keymap`, for example
 modifiers (`Mod`, `Ctrl`, `Shift`, `Alt`) then a key. Keys are ignored while a gesture is
 running: one gesture is one history entry.
 
+The keymap is the single source of truth for the keyboard and the browser's Edit menu.
+Remove a binding and that command has no key, including the clipboard commands (see the
+native route below). The command API (`view.commands.run`) and host menus still run it.
+
+A command registered under an existing ID replaces the built-in one for every route that
+runs the ID: its shortcut, the native clipboard event and any menu. This is how a host
+takes over `edit.copy`, `edit.cut`, `edit.paste` or `edit.duplicate` (recipe in
+[guide-view.md](guide-view.md#clipboard-copy-cut-paste-duplicate)). The remover returned by
+`register` leaves the ID empty; it does not bring the built-in back. Remount the view for
+that. A command receives a context with `model`, `reader`, `selection`, `view` and, while
+a mouse or pen pointer is over the view, `pointer`: its world position, the point the
+built-in paste centres on.
+
 A binding with `repeat: false` runs once per press: the key-downs a held key repeats are
 consumed and run nothing. The default nudge, rotate, mirror and duplicate bindings say so,
 so holding an arrow key moves one step and adds one history entry (set `repeat: true` on
@@ -419,7 +432,14 @@ Reading and writing the clipboard works differently in browsers than in Qt, wher
 So Mod+C, Mod+X and Mod+V are bound with `native: true` in `DEFAULT_KEYMAP`: their
 key-down is not default-prevented, the browser fires its `copy`, `cut` or `paste` event,
 and the view's clipboard bridge runs `edit.copy`, `edit.cut` or `edit.paste` with the
-event's data. No prompt appears. A paste event's text decides what happens:
+event's data. No prompt appears. `native: true` only means something on a binding for `edit.copy`, `edit.cut` or
+`edit.paste`; on any other command it is ignored and the key-down runs that command
+like any other binding.
+
+The bridge runs a command only while the keymap binds at least one chord to it. Unbind
+`edit.cut` and a `cut` event runs nothing and keeps the browser's default, whether it came
+from Mod+X, the Edit menu, or another platform chord such as Shift+Delete. A host no longer
+needs to stop these events itself. A paste event's text decides what happens:
 
 1. Text that carries the fragment marker is pasted.
 2. Other text pastes nothing and the result is `not-a-fragment`. The in-app buffer is not

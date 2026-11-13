@@ -28,14 +28,14 @@
 
 ## 5. Docs
 
-- [ ] 5.1 In `docs/interaction.md`, section 6 and "Clipboard shortcuts: the native route": state that a native event runs its command only while the keymap binds that command, that unbinding a clipboard command also turns off the Edit menu and the platform's other clipboard chords for it, that `native: true` only means something on the three clipboard commands, and that replacing a command by ID takes over every route; verify a read-through and `npm run lint`
-- [ ] 5.2 In `docs/guide-view.md`, section "Clipboard: copy, cut, paste, duplicate", add a recipe for routing the clipboard to the host: replace `edit.copy`/`edit.cut`/`edit.paste`/`edit.duplicate`, read the selection and `args.at ?? ctx.pointer`, return `{ changed: false }`, push the backend's snapshot, register again after a remount (with React, in an effect keyed on the view), removing the replacement does not restore the built-in. Mention delegated creation (paste as a fragment, duplicate by IDs) as the choice for hosts that keep copy and paste on the client. Neutral wording only; verify a read-through and `npm run lint`
-- [ ] 5.3 In `docs/guide-host-authority.md`, section "Node creation by the store": the `duplicate` intent, its fields, the connection rule, no placeholder, how to answer, and that paste still sends `create-fragment` and copy and paste use the system clipboard on the client; verify a read-through
-- [ ] 5.4 Add an "Unreleased" section to `CHANGELOG.md` (no version bump): the fix (an unbound cut no longer deletes through the native event), `native` only for clipboard commands, the optional `pointer` in the command context, the `duplicate` intent (breaking for hosts on delegated creation); verify a read-through
+- [x] 5.1 In `docs/interaction.md`, section 6 and "Clipboard shortcuts: the native route": state that a native event runs its command only while the keymap binds that command, that unbinding a clipboard command also turns off the Edit menu and the platform's other clipboard chords for it, that `native: true` only means something on the three clipboard commands, and that replacing a command by ID takes over every route; verify a read-through and `npm run lint`
+- [x] 5.2 In `docs/guide-view.md`, section "Clipboard: copy, cut, paste, duplicate", add a recipe for routing the clipboard to the host: replace `edit.copy`/`edit.cut`/`edit.paste`/`edit.duplicate`, read the selection and `args.at ?? ctx.pointer`, return `{ changed: false }`, push the backend's snapshot, register again after a remount (with React, in an effect keyed on the view), removing the replacement does not restore the built-in. Mention delegated creation (paste as a fragment, duplicate by IDs) as the choice for hosts that keep copy and paste on the client. Neutral wording only; verify a read-through and `npm run lint`
+- [x] 5.3 In `docs/guide-host-authority.md`, section "Node creation by the store": the `duplicate` intent, its fields, the connection rule, no placeholder, how to answer, and that paste still sends `create-fragment` and copy and paste use the system clipboard on the client; verify a read-through
+- [x] 5.4 Add an "Unreleased" section to `CHANGELOG.md` (no version bump): the fix (an unbound cut no longer deletes through the native event), `native` only for clipboard commands, the optional `pointer` in the command context, the `duplicate` intent (breaking for hosts on delegated creation); verify a read-through
 
 ## 6. Gates
 
-- [ ] 6.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `openspec validate route-clipboard-to-host --strict`; verify all pass
+- [x] 6.1 Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run build` and `openspec validate route-clipboard-to-host --strict`; verify all pass
 
 ## Workflow follow-up
 

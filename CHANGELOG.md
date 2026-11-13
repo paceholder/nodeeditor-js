@@ -4,6 +4,26 @@ All notable changes to `@paceholder/nodeeditor-js` are listed here. The project 
 [semantic versioning](https://semver.org/); while the version is 0.x, a minor version may
 contain breaking changes.
 
+## Unreleased
+
+- Fix: the browser's copy, cut and paste events follow the keymap. A clipboard command
+  with no bound chord no longer runs from its native event, so a host that unbinds
+  Mod+X no longer loses the selection on Ctrl+X, Shift+Delete or Edit > Cut. With the
+  default keymap nothing changes.
+- `native: true` on a binding only applies to `edit.copy`, `edit.cut` and `edit.paste`;
+  on any other command the key-down runs that command like any other binding.
+- The command context has an optional `pointer`: the world position of a mouse or pen
+  pointer over the view. A host that replaces `edit.paste` or `edit.duplicate` uses it to
+  place the copy.
+- Taking over a clipboard command by registering a command under its ID is now a
+  documented, tested way to route copy, cut, paste or duplicate to the host. Removing the
+  replacement does not bring the built-in back.
+- Breaking for hosts with `nodeCreation: "delegated"`: a duplicate reaches `onDelegate` as
+  a new `duplicate` intent (node IDs, connection IDs, the IDs of copied groups and the
+  offset) instead of a `create-fragment` intent, so the backend can copy the records in
+  one operation. Answer plain `accepted`; no placeholder is shown. Paste still sends
+  `create-fragment`.
+
 ## 0.3.0
 
 Groups: frames around nodes, stored in the document. Minor version: several public unions

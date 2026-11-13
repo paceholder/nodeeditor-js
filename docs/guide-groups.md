@@ -177,4 +177,5 @@ the group records and each node's `group`, and include them in the snapshots it 
 otherwise the groups disappear with the next push. A host that does not want groups
 refuses those edits and the client rolls back. `decodeIntents` reports group operations
 under the `other` intent. When the host names nodes, the create-fragment intent of a paste
-or duplicate lists the copied groups by key and each node's group key.
+lists the copied groups by key and each node's group key, and the duplicate intent lists
+the IDs of the copied groups (see `docs/guide-host-authority.md`).
