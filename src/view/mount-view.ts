@@ -120,6 +120,13 @@ export function mountView(
     layer: stack.overlay,
     viewport: () => viewport.get(),
     scene: () => scene,
+    // A node dragged by a move preview is drawn at the offset; the scene still has it at rest.
+    nodeOffset: (node) => {
+      const shown = previews.current();
+      return shown?.kind === "move" && shown.moving.includes(node)
+        ? shown.offset
+        : undefined;
+    },
   });
 
   // Entities a drag preview draws itself are hidden from the scene layer (D6).

@@ -10,6 +10,7 @@ import {
   type GeometryScene,
   type NodeId,
   type Point,
+  type Vec2,
   type Viewport,
   worldToViewport,
 } from "../../../core/index.js";
@@ -61,6 +62,8 @@ export interface OverlayDeps {
   readonly layer: HTMLElement;
   readonly viewport: () => Viewport;
   readonly scene: () => GeometryScene | undefined;
+  /** Where a node is drawn now, relative to the scene: the drag offset of a previewed move. */
+  readonly nodeOffset?: (node: NodeId) => Vec2 | undefined;
 }
 
 interface Slot {
@@ -82,8 +85,12 @@ export function createOverlayHost(deps: OverlayDeps): OverlayHost {
     if (anchor.kind === "world") {
       return { at: worldToViewport(v, anchor.point), shift: "" };
     }
-    const body = deps.scene()?.node(anchor.node)?.bodyBounds;
-    if (!body) return undefined;
+    const still = deps.scene()?.node(anchor.node)?.bodyBounds;
+    if (!still) return undefined;
+    const by = deps.nodeOffset?.(anchor.node);
+    const body = by
+      ? { ...still, x: still.x + by.x, y: still.y + by.y }
+      : still;
     const placed = placeAtNode(body, v, anchor.placement, anchor.offset);
     const moved = placed.shiftX !== 0 || placed.shiftY !== 0;
     return {
