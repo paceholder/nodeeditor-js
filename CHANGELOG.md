@@ -6,6 +6,8 @@ contain breaking changes.
 
 ## Unreleased
 
+- Fix: an overlay anchored to a node now follows the node while it is dragged, instead of
+  staying at the old place until the drop.
 - Fix: the browser's copy, cut and paste events follow the keymap. A clipboard command
   with no bound chord no longer runs from its native event, so a host that unbinds
   Mod+X no longer loses the selection on Ctrl+X, Shift+Delete or Edit > Cut. With the

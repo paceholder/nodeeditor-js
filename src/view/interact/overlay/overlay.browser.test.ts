@@ -52,6 +52,40 @@ describe("overlay", () => {
     expect(editor.isConnected).toBe(false);
   });
 
+  it("an editor anchored to a node follows the node's drag preview and returns when the drag ends", async () => {
+    const model = buildModel([
+      twoPortNode("a", 100, 75, { w: 60, h: 30 }),
+      twoPortNode("b", 300, 75, { w: 60, h: 30 }),
+    ]);
+    const host = makeHost(500, 200);
+    const view = mountView(host, { model });
+    cleanup(() => view.dispose());
+    const editor = box();
+    const other = box();
+    view.overlay.attach(editor, { kind: "node", node: nodeId("a") });
+    view.overlay.attach(other, { kind: "node", node: nodeId("b") });
+    await frames();
+    const rest = editor.getBoundingClientRect();
+    const restOther = other.getBoundingClientRect();
+
+    view.setToolPreview({
+      kind: "move",
+      offset: { x: 40, y: 25 },
+      moving: [nodeId("a")],
+      locked: [],
+    });
+    await frames();
+    const dragged = editor.getBoundingClientRect();
+    expect(dragged.left - rest.left).toBeCloseTo(40, 3);
+    expect(dragged.top - rest.top).toBeCloseTo(25, 3);
+    // A node that is not part of the move stays where it is.
+    expect(other.getBoundingClientRect().left).toBeCloseTo(restOther.left, 3);
+
+    view.setToolPreview(null);
+    await frames();
+    expect(editor.getBoundingClientRect().left).toBeCloseTo(rest.left, 3);
+  });
+
   it("an editor anchored to a removed node is hidden", async () => {
     const model = buildModel([twoPortNode("a", 100, 75)]);
     const view = mountView(makeHost(300, 200), { model });
