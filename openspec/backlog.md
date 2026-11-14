@@ -37,6 +37,9 @@ Later queue from the roadmap; each needs a proposal before work starts, roughly 
   The resync recipe and test (P6) and the token-free push recipe (P5) are folded into
   `add-host-integration-checks` as section 4c. Dropping content from outside (P8) is
   deferred until P1 exists.
+- HTML node content for small graphs: a node type that declares `render: "html"`. The library
+  keeps geometry, ports, selection and connections; React draws only the node's inside in one
+  overlay layer. Needs a documented node-count limit and an owner decision on scope.
 - Waypoints on connections
 - Wire jumps at crossings
 - Obstacle avoidance in routing
