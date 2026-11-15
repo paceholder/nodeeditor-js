@@ -195,7 +195,7 @@ and drop), with the library only receiving "an item is over the view at this poi
 | P2 icon tint | Accepted. The tint is part of the cache key (asset plus colour), so a theme change only swaps colours. Planned. |
 | P3 corner helpers | Docs only. The guide will state the centre convention and that a corner of the unrotated box is also stable under rotation. No helpers and no origin setting until a second host asks. |
 | P3b snap bounds | Accepted as a model option, `"center"` (today) or `"bounds"`. Planned. |
-| P4 submission label | Accepted. A pure function that returns data (kind and count), never text. Planned. |
+| P4 submission label | Not added. `decodeIntents` already gives the host what it needs; the counts are one property of each intent. See "P4 answer" below. |
 | P5 hosts without revision tokens | Answered below. |
 | P6 recovery after an unknown answer | Accepted. A guide recipe and a test in the reference host. A helper only if the recipe needs more than a few lines. |
 | P7 clipboard | Done, in the library's next release. Details below. |
@@ -203,6 +203,40 @@ and drop), with the library only receiving "an item is over the view at this poi
 
 Decision 4 of the identity proposal is recorded: the local connection policy stays
 minimal and the host validator is the only judge.
+
+### P4 answer
+
+We looked at a helper that turns intents into `{ kind, count }`. It would only repeat what
+each intent already carries: the number of nodes is `intent.nodes.length`, the connections
+of a delete are `intent.connections.length`, and the operations of the catch-all are
+`intent.ops.length`. Hosts would still read the intent for names and types. A helper adds
+two public names to keep stable for a few lines of `switch`, so we did not add it.
+
+Write the label in the host:
+
+```ts
+const intents = decodeIntents(submission, model.reader);
+const first = intents[0];
+if (first) {
+  switch (first.kind) {
+    case "move": case "resize": case "rotate": case "mirror":
+      return t(`history.${first.kind}`, { count: first.nodes.length });
+    case "delete":
+      return t("history.delete", {
+        count: first.nodes.length,
+        connections: first.connections.length,
+      });
+    case "other":
+      return t("history.edit", { count: first.ops.length });
+    default: // create-node, connect, disconnect, reconnect
+      return t(`history.${first.kind}`);
+  }
+}
+```
+
+Undo and redo are not in the intents: read `submission.origin` (`local`, `undo` or `redo`).
+The submission's `label` is English text for the editor's own history; do not show it to
+users. If a second host asks for a shared helper, we will add one then.
 
 ### P5 answer
 
