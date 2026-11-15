@@ -191,10 +191,10 @@ and drop), with the library only receiving "an item is over the view at this poi
 
 | Proposal | Library answer |
 | -------- | -------------- |
-| P1 default capabilities and `create` | Accepted. Planned as its own change. `readOnly` stays a separate switch for now, because it also blocks selection-independent edits such as undo; say if you need it folded in. |
-| P2 icon tint | Accepted. The tint is part of the cache key (asset plus colour), so a theme change only swaps colours. Planned. |
+| P1 default capabilities and `create` | Accepted and planned. A model option `capabilityDefaults` (for example `{ resize: false, create: false }`) is the lowest layer, under the type and the record. `create` is a model-wide switch and not a per-node capability, because a node does not exist before it is created: with `create: false`, create, paste and duplicate are refused up front with `not-creatable`, before your delegate is called; a type with `creatable: true` is the exception. `readOnly` stays a separate switch: it wins over every layer and denies every patch, undo included, which a default cannot do. Say if you disagree. |
+| P2 icon tint | Accepted and planned. The tint is part of the cache identity: `drawAsset(ref, rect, tint?)` caches by asset, colour and zoom bucket, and your resolver is called once per asset. In an SVG, `currentColor` takes the tint; a raster image ignores it. The colour comes from a theme token, so a theme change swaps colours only. |
 | P3 corner helpers | Docs only. The guide will state the centre convention and that a corner of the unrotated box is also stable under rotation. No helpers and no origin setting until a second host asks. |
-| P3b snap bounds | Accepted as a model option, `"center"` (today) or `"bounds"`. Planned. |
+| P3b snap bounds | Accepted and planned. It is a view tool option next to `gridStep`, not a model option, because the model never snaps: `snapTo: "center"` (today, the default) or `"bounds"`. Only the dragged node is snapped; the others follow by the same offset. Keyboard nudging is unchanged. |
 | P4 submission label | Not added. `decodeIntents` already gives the host what it needs; the counts are one property of each intent. See "P4 answer" below. |
 | P5 hosts without revision tokens | Answered below. |
 | P6 recovery after an unknown answer | Accepted. A guide recipe and a test in the reference host. A helper only if the recipe needs more than a few lines. |
